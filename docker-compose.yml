@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  mdz-os:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mdz-os-app
+    ports:
+      - "3040:3040"
+    volumes:
+      - ./production-data:/app/prisma/data
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - PORT=3040
+      - NEXTAUTH_SECRET=super_secret_ess_os_key_2026_!@#
+      - DATABASE_URL=file:/app/prisma/data/production.db
+    restart: unless-stopped
+
