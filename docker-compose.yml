@@ -16,6 +16,6 @@ services:
       - NODE_ENV=production
       - PORT=3020
       - NEXTAUTH_SECRET=super_secret_ess_os_key_2026_!@#
-      - DATABASE_URL=file:/app/prisma/data/production.db
+      - DATABASE_URL=file:///app/prisma/data/production.db
     restart: unless-stopped
 
