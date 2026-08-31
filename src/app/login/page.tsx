@@ -39,7 +39,7 @@ export default function LoginPage() {
       if (res?.error) {
         setError(res.error);
       } else {
-        window.location.href = "/crmtesting";
+        window.location.href = "/mdz-crm";
       }
     } catch (err) {
       setError("An unexpected error occurred.");
@@ -53,7 +53,7 @@ export default function LoginPage() {
       {/* Header theme toggle */}
       <div className="flex items-center justify-between max-w-md mx-auto w-full pt-2">
         <div className="flex items-center gap-2 font-bold text-base text-slate-900 dark:text-slate-100">
-          <img src="/crmtesting/mdz-logo.jpg" alt="MDZ Logo" className="w-8 h-8 object-contain" />
+          <img src="/mdz-crm/mdz-logo.jpg" alt="MDZ Logo" className="w-8 h-8 object-contain" />
           <span>
             MDZ <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">OS</span>
           </span>
