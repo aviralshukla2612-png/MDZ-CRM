@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   output: "standalone",
-  basePath: "/crmtesting",
+  basePath: "/mdz-crm",
 };
 
 export default nextConfig;
