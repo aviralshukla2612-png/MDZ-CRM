@@ -9,6 +9,13 @@ export async function GET() {
 
   try {
     const employees = await prisma.employee.findMany({
+      where: {
+        user: {
+          activeRole: {
+            not: "OWNER",
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
       include: {
         user: true,
