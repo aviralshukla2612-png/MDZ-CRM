@@ -11,6 +11,13 @@ export async function GET() {
     today.setHours(0, 0, 0, 0);
 
     const employees = await prisma.employee.findMany({
+      where: {
+        user: {
+          activeRole: {
+            not: "OWNER",
+          },
+        },
+      },
       include: {
         user: true,
         attendances: {
