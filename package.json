@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3060",
+    "dev": "next dev -p 3020",
     "dev:clean": "powershell -ExecutionPolicy Bypass -File ./dev-clean.ps1",
     "build": "next build",
     "rebuild": "powershell -ExecutionPolicy Bypass -File ./rebuild.ps1",
-    "start": "next start -p 3040",
+    "start": "next start -p 3020",
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
