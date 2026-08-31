@@ -133,6 +133,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: { id: result.employee.id, code, user: safeUser } });
   } catch (error) {
+    console.error("Employee Creation Error:", error);
     return NextResponse.json({ success: false, error: "Failed to create employee" }, { status: 500 });
   }
 }
