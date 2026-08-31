@@ -3,5 +3,5 @@
 import { SessionProvider } from "next-auth/react";
 
 export function NextAuthProvider({ children }: { children: React.ReactNode }) {
-  return <SessionProvider basePath="/crmtesting/api/auth">{children}</SessionProvider>;
+  return <SessionProvider basePath="/mdz-crm/api/auth">{children}</SessionProvider>;
 }

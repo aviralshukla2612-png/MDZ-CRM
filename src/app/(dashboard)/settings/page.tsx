@@ -138,7 +138,7 @@ export default function SettingsPage() {
     if (e && e.preventDefault) e.preventDefault();
     setLunchLoading(true);
     try {
-      const res = await fetch("/crmtesting/api/attendance/mass-break", { 
+      const res = await fetch("/mdz-crm/api/attendance/mass-break", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ action: "START_LUNCH" }) 
@@ -160,7 +160,7 @@ export default function SettingsPage() {
     if (e && e.preventDefault) e.preventDefault();
     setLunchLoading(true);
     try {
-      const res = await fetch("/crmtesting/api/attendance/mass-break", { 
+      const res = await fetch("/mdz-crm/api/attendance/mass-break", { 
         method: "POST", 
         headers: { "Content-Type": "application/json" }, 
         body: JSON.stringify({ action: "RESUME_WORK" }) 
@@ -192,7 +192,7 @@ export default function SettingsPage() {
     setEmailLoading(true);
 
     try {
-      const res = await fetch("/crmtesting/api/auth/update-credentials", {
+      const res = await fetch("/mdz-crm/api/auth/update-credentials", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -208,7 +208,7 @@ export default function SettingsPage() {
         showToast("✅ Email updated! Please log in again.", "success");
         setEmailForm({ currentPassword: "", newEmail: "" });
         // Sign out so user re-authenticates with new email
-        setTimeout(() => signOut({ callbackUrl: "/crmtesting/login" }), 2500);
+        setTimeout(() => signOut({ callbackUrl: "/mdz-crm/login" }), 2500);
       } else {
         setEmailStatus({ type: "error", msg: data.error || "Failed to update email." });
       }
@@ -240,7 +240,7 @@ export default function SettingsPage() {
     setPwLoading(true);
 
     try {
-      const res = await fetch("/crmtesting/api/auth/update-credentials", {
+      const res = await fetch("/mdz-crm/api/auth/update-credentials", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

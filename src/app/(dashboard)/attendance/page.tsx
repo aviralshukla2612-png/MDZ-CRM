@@ -185,7 +185,7 @@ export default function AttendanceWorkClockPage() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch("/crmtesting/api/employees");
+      const res = await fetch("/mdz-crm/api/employees");
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setEmployees(json.data);
@@ -213,7 +213,7 @@ export default function AttendanceWorkClockPage() {
 
   const fetchAttendanceLogs = async () => {
     try {
-      let url = `/crmtesting/api/attendance/history?employeeId=${session?.user?.employeeId || ""}`;
+      let url = `/mdz-crm/api/attendance/history?employeeId=${session?.user?.employeeId || ""}`;
       
       if (startDate && endDate) {
         url += `&startDate=${startDate}&endDate=${endDate}`;
@@ -292,7 +292,7 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
         }
 
         try {
-          const res = await fetch("/crmtesting/api/attendance/punch-in", {
+          const res = await fetch("/mdz-crm/api/attendance/punch-in", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ employeeId: session?.user?.employeeId }),
@@ -348,7 +348,7 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
     }
     
     try {
-      const response = await fetch("/crmtesting/api/attendance/punch-out-request", {
+      const response = await fetch("/mdz-crm/api/attendance/punch-out-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId: session?.user?.employeeId, reason: punchOutReason }),

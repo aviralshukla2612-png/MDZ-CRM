@@ -28,7 +28,7 @@ export default function ProjectsDirectoryPage() {
 
   const fetchEmployees = async () => {
     try {
-      const res = await fetch("/crmtesting/api/employees");
+      const res = await fetch("/mdz-crm/api/employees");
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setEmployees(json.data);
@@ -41,7 +41,7 @@ export default function ProjectsDirectoryPage() {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/crmtesting/api/projects");
+      const res = await fetch("/mdz-crm/api/projects");
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setProjectsList(json.data);
@@ -56,7 +56,7 @@ export default function ProjectsDirectoryPage() {
   const executeDelete = async () => {
     if (!projectToDelete) return;
     try {
-      const res = await fetch(`/crmtesting/api/projects/${projectToDelete}`, { method: "DELETE" });
+      const res = await fetch(`/mdz-crm/api/projects/${projectToDelete}`, { method: "DELETE" });
       const json = await res.json();
       if (json.success) {
         showToast("Project deleted successfully", "success");
@@ -75,7 +75,7 @@ export default function ProjectsDirectoryPage() {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/crmtesting/api/projects", {
+      const res = await fetch("/mdz-crm/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: projectName, contractValue: 450000, assigneeId }),

@@ -47,7 +47,7 @@ export default function EmployeeLeavePage() {
   const fetchLeaves = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/crmtesting/api/attendance/leave?employeeId=${employeeId}`);
+      const res = await fetch(`/mdz-crm/api/attendance/leave?employeeId=${employeeId}`);
       const json = await res.json();
       if (json.success) {
         setLeaves(json.data.leaves);
@@ -69,7 +69,7 @@ export default function EmployeeLeavePage() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch("/crmtesting/api/attendance/leave", {
+      const res = await fetch("/mdz-crm/api/attendance/leave", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

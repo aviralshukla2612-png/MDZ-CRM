@@ -42,7 +42,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const fetchProject = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/crmtesting/api/projects/${params.id}`);
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}`);
       const json = await res.json();
       if (json.success && json.data) {
         const p = json.data;
@@ -113,7 +113,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     
     try {
       setIsDeleting(true);
-      const res = await fetch(`/crmtesting/api/projects/${params.id}`, {
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}`, {
         method: "DELETE",
       });
       const json = await res.json();

@@ -30,7 +30,7 @@ export default function LeaveRequestsPage() {
   const fetchLeaveBalances = async () => {
     setIsLeavesLoading(true);
     try {
-      const res = await fetch("/crmtesting/api/attendance/leave/balances");
+      const res = await fetch("/mdz-crm/api/attendance/leave/balances");
       const json = await res.json();
       if (json.success) {
         setEmployeesLeaves(json.data);
@@ -45,7 +45,7 @@ export default function LeaveRequestsPage() {
   const handleApplyGlobal = async () => {
     setIsGlobalLoading(true);
     try {
-      const res = await fetch("/crmtesting/api/attendance/leave/balances", {
+      const res = await fetch("/mdz-crm/api/attendance/leave/balances", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -70,7 +70,7 @@ export default function LeaveRequestsPage() {
   const handleUpdateLeaveBalance = async (employeeId: string, updates: any) => {
     setSaveLoadingId(employeeId);
     try {
-      const res = await fetch("/crmtesting/api/attendance/leave/balances", {
+      const res = await fetch("/mdz-crm/api/attendance/leave/balances", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId, ...updates })
@@ -95,7 +95,7 @@ export default function LeaveRequestsPage() {
   const fetchLeaves = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch("/crmtesting/api/attendance/leave");
+      const res = await fetch("/mdz-crm/api/attendance/leave");
       const json = await res.json();
       if (json.success && Array.isArray(json.data.leaves)) {
         setPendingLeaves(json.data.leaves.filter((req: any) => req.status === "PENDING"));
@@ -112,7 +112,7 @@ export default function LeaveRequestsPage() {
   const handleApproveReject = async (id: string, action: "APPROVE" | "REJECT") => {
     setProcessingIds(prev => new Set(prev).add(id));
     try {
-      const res = await fetch(`/crmtesting/api/attendance/leave/${id}`, {
+      const res = await fetch(`/mdz-crm/api/attendance/leave/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }), 

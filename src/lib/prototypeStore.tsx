@@ -140,10 +140,10 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
       const canViewEmployees = role === "OWNER";
 
       const [leadsRes, clientsRes, projectsRes, employeesRes] = await Promise.all([
-        canViewLeads ? fetch("/crmtesting/api/leads").catch(() => null) : Promise.resolve(null),
-        canViewClients ? fetch("/crmtesting/api/clients").catch(() => null) : Promise.resolve(null),
-        fetch("/crmtesting/api/projects").catch(() => null), // Everyone can view their projects
-        canViewEmployees ? fetch("/crmtesting/api/employees").catch(() => null) : Promise.resolve(null),
+        canViewLeads ? fetch("/mdz-crm/api/leads").catch(() => null) : Promise.resolve(null),
+        canViewClients ? fetch("/mdz-crm/api/clients").catch(() => null) : Promise.resolve(null),
+        fetch("/mdz-crm/api/projects").catch(() => null), // Everyone can view their projects
+        canViewEmployees ? fetch("/mdz-crm/api/employees").catch(() => null) : Promise.resolve(null),
       ]);
 
       if (leadsRes) {
@@ -176,7 +176,7 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
   }, [session?.user]);
 
   const addLead = (leadData: Partial<LeadEntity>) => {
-    fetch("/crmtesting/api/leads", {
+    fetch("/mdz-crm/api/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(leadData),
@@ -190,7 +190,7 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
   };
 
   const updateLeadStage = (id: string, stage: LeadEntity["stage"]) => {
-    fetch(`/crmtesting/api/leads/${id}`, {
+    fetch(`/mdz-crm/api/leads/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stage }),
@@ -204,7 +204,7 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
   };
 
   const convertLeadToClient = (leadId: string) => {
-    fetch(`/crmtesting/api/leads/${leadId}/convert`, {
+    fetch(`/mdz-crm/api/leads/${leadId}/convert`, {
       method: "POST",
     })
       .then((r) => r.json())
@@ -221,7 +221,7 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
   };
 
   const addClient = (clientData: Partial<ClientEntity>) => {
-    fetch("/crmtesting/api/clients", {
+    fetch("/mdz-crm/api/clients", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(clientData),
@@ -235,7 +235,7 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
   };
 
   const addLeadNote = (leadId: string, noteText: string) => {
-    fetch(`/crmtesting/api/leads/${leadId}`, {
+    fetch(`/mdz-crm/api/leads/${leadId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ noteText }),
@@ -249,7 +249,7 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
   };
 
   const addLeadFollowup = (leadId: string, date: string, note: string) => {
-    fetch(`/crmtesting/api/leads/${leadId}`, {
+    fetch(`/mdz-crm/api/leads/${leadId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ followupDate: date, followupNote: note }),
@@ -263,7 +263,7 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
   };
 
   const importClientsBatch = (imported: Array<{ companyName: string; contactPerson: string; email: string; phone: string }>) => {
-    fetch("/crmtesting/api/clients/import", {
+    fetch("/mdz-crm/api/clients/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imported }),

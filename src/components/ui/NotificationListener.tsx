@@ -19,7 +19,7 @@ export function NotificationListener() {
       if (activeNotification) return;
 
       try {
-        const res = await fetch("/crmtesting/api/notifications/unread");
+        const res = await fetch("/mdz-crm/api/notifications/unread");
         if (!res.ok) return;
         const json = await res.json();
         
@@ -43,7 +43,7 @@ export function NotificationListener() {
     
     try {
       // Mark as read in the DB so it doesn't show again
-      await fetch("/crmtesting/api/notifications/mark-read", {
+      await fetch("/mdz-crm/api/notifications/mark-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notificationIds: [activeNotification.id] }),

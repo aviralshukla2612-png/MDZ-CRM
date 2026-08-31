@@ -42,7 +42,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
     if (currentUser.role !== "OWNER") return;
     const checkBreaks = async () => {
       try {
-        const res = await fetch("/crmtesting/api/attendance/breaks/today");
+        const res = await fetch("/mdz-crm/api/attendance/breaks/today");
         const json = await res.json();
         if (json.success && json.data) {
           json.data.forEach((b: any) => {
@@ -79,7 +79,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
     if (isPunchingIn) return;
     setIsPunchingIn(true);
     try {
-      const res = await fetch("/crmtesting/api/attendance/punch-in", {
+      const res = await fetch("/mdz-crm/api/attendance/punch-in", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId: currentUser.employeeId }),
@@ -108,7 +108,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
       setIsBreakSheetOpen(false); // close break sheet if open
     } else {
       try {
-        await fetch("/crmtesting/api/attendance/punch-out-request", {
+        await fetch("/mdz-crm/api/attendance/punch-out-request", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ employeeId: currentUser.employeeId, reason: "" }), // Assume 8+ hours
@@ -126,7 +126,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
     }
     
     try {
-      const response = await fetch("/crmtesting/api/attendance/punch-out-request", {
+      const response = await fetch("/mdz-crm/api/attendance/punch-out-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId: currentUser.employeeId, reason: punchOutReason }),
@@ -163,7 +163,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
         )}
 
         <Link href="/owner" className="flex items-center gap-3 select-none group">
-          <img src="/crmtesting/mdz-logo.jpg" alt="MDZ Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain group-hover:scale-105 transition-all" />
+          <img src="/mdz-crm/mdz-logo.jpg" alt="MDZ Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain group-hover:scale-105 transition-all" />
           <span className="font-extrabold text-base sm:text-lg tracking-wider text-slate-900 dark:text-slate-100 uppercase font-sans flex items-center gap-1.5">
             <span className="md:hidden">MDZ</span>
             <span className="hidden md:inline font-bold">MDZ <span className="bg-gradient-to-r from-indigo-600 to-cyan-500 dark:from-indigo-400 dark:to-cyan-400 bg-clip-text text-transparent">OS</span></span>

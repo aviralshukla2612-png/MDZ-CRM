@@ -24,7 +24,7 @@ export function OwnerAttendanceHistory({ inspectedEmployee = "ALL" }: { inspecte
     const fetchHistory = async () => {
       setLoading(true);
       try {
-        let url = `/crmtesting/api/attendance/history?employeeId=${inspectedEmployee}`;
+        let url = `/mdz-crm/api/attendance/history?employeeId=${inspectedEmployee}`;
         
         if (startDate && endDate) {
           url += `&startDate=${startDate}&endDate=${endDate}`;
@@ -49,7 +49,7 @@ export function OwnerAttendanceHistory({ inspectedEmployee = "ALL" }: { inspecte
     if (!confirm("Are you sure you want to delete this attendance record?")) return;
     
     try {
-      const res = await fetch(`/crmtesting/api/attendance/history/${id}`, {
+      const res = await fetch(`/mdz-crm/api/attendance/history/${id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
