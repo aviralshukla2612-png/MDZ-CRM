@@ -102,6 +102,28 @@ async function main() {
     },
   });
 
+  // 3. Default Client
+  await prisma.client.upsert({
+    where: { clientNumber: "CLT-001" },
+    update: {},
+    create: {
+      clientNumber: "CLT-001",
+      companyName: "Zenith Tech Labs",
+      phone: "+91 98765 43210",
+      email: "contact@zenithtech.com",
+      createdById: ownerUser.id,
+      contacts: {
+        create: [
+          {
+            name: "Primary Contact",
+            designation: "Managing Director",
+            isPrimary: true,
+          },
+        ],
+      },
+    },
+  });
+
   console.log("✅ Database seeded successfully with essential data only!");
 }
 

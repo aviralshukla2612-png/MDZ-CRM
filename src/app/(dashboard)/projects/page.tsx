@@ -78,20 +78,28 @@ export default function ProjectsDirectoryPage() {
       const res = await fetch("/mdz-crm/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: projectName, contractValue: 450000, assigneeId }),
+        body: JSON.stringify({
+          name: projectName,
+          clientName: clientName.trim(),
+          contractValue: 450000,
+          assigneeId: assigneeId || undefined,
+        }),
       });
       const json = await res.json();
       if (json.success) {
         showToast(`✓ Project "${projectName || "New Project"}" created successfully`, "success");
         fetchProjects();
+        setIsAddOpen(false);
+        setProjectName("");
+        setClientName("");
+        setAssigneeId("");
+      } else {
+        showToast(json.error || "Failed to create project", "error");
       }
     } catch (error) {
-      showToast(`✓ Project created`, "success");
+      console.error("Create project error:", error);
+      showToast("An unexpected network error occurred", "error");
     }
-    setIsAddOpen(false);
-    setProjectName("");
-    setClientName("");
-    setAssigneeId("");
   };
 
   return (

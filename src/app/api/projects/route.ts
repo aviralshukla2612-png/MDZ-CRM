@@ -116,18 +116,81 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const firstClient = await prisma.client.findFirst();
 
-    const uniqueCode = `PRJ-2026-${Math.floor(100 + Math.random() * 900)}`;
+    // 1. Resolve or create a valid Client to prevent foreign key constraint violations
+    let client = null;
+    if (body.clientId) {
+      client = await prisma.client.findUnique({ where: { id: body.clientId } });
+    }
+
+    if (!client && body.clientName && typeof body.clientName === "string" && body.clientName.trim()) {
+      const trimmedClientName = body.clientName.trim();
+      client = await prisma.client.findFirst({
+        where: { companyName: trimmedClientName },
+      });
+      if (!client) {
+        const clientCount = await prisma.client.count();
+        const clientNumber = `CLT-${String(clientCount + 1).padStart(3, "0")}-${Math.floor(100 + Math.random() * 900)}`;
+        client = await prisma.client.create({
+          data: {
+            clientNumber,
+            companyName: trimmedClientName,
+            email: `${trimmedClientName.toLowerCase().replace(/[^a-z0-9]/g, "") || "client"}@example.com`,
+            phone: "+91 98765 43210",
+            createdById: authRes.id,
+            contacts: {
+              create: [
+                {
+                  name: "Primary Contact",
+                  designation: "Executive",
+                  isPrimary: true,
+                },
+              ],
+            },
+          },
+        });
+      }
+    }
+
+    if (!client) {
+      client = await prisma.client.findFirst();
+    }
+
+    if (!client) {
+      const clientCount = await prisma.client.count();
+      const clientNumber = `CLT-${String(clientCount + 1).padStart(3, "0")}`;
+      client = await prisma.client.create({
+        data: {
+          clientNumber,
+          companyName: "Zenith Tech Labs",
+          email: "contact@zenithtech.com",
+          phone: "+91 98765 43210",
+          createdById: authRes.id,
+          contacts: {
+            create: [
+              {
+                name: "Primary Contact",
+                designation: "Executive",
+                isPrimary: true,
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    // 2. Generate a unique project number
+    const projectCount = await prisma.project.count();
+    const uniqueCode = `PRJ-${new Date().getFullYear()}-${String(projectCount + 1).padStart(3, "0")}-${Math.floor(100 + Math.random() * 900)}`;
 
     const data: any = {
       projectNumber: uniqueCode,
       name: body.name || "New Digital Solution",
-      clientId: body.clientId || (firstClient ? firstClient.id : "CLT-001"),
-      contractValue: body.contractValue || 450000,
+      clientId: client.id,
+      contractValue: Number(body.contractValue) || 450000,
       status: body.status || "IN_PROGRESS",
       priority: body.priority || "HIGH",
-      progressPercentage: body.progressPercentage || 25,
+      progressPercentage: Number(body.progressPercentage) || 25,
       targetDeadline: body.deadline ? new Date(body.deadline) : new Date(Date.now() + 86400000 * 45),
       createdById: authRes.id,
     };
@@ -205,6 +268,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, data: formattedProject });
   } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to create project" }, { status: 500 });
+    console.error("POST /api/projects error:", error);
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : "Failed to create project" },
+      { status: 500 }
+    );
   }
 }
