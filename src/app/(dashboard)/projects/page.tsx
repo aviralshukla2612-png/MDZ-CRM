@@ -238,25 +238,47 @@ export default function ProjectsDirectoryPage() {
 
                 <div className="shrink-0 flex items-center gap-3">
                   <span className="text-sm font-mono font-extrabold text-indigo-600 dark:text-indigo-400">{p.progress || 0}% Complete</span>
-                  <select
-                    value={p.priority || "HIGH"}
-                    onClick={(e) => e.stopPropagation()}
-                    onChange={(e) => handleUpdatePriority(p.id, e.target.value)}
-                    className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider outline-none cursor-pointer border ${
-                      p.priority === "URGENT"
-                        ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
+                  {(session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES" ? (
+                    <select
+                      value={p.priority || "HIGH"}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => handleUpdatePriority(p.id, e.target.value)}
+                      className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider outline-none cursor-pointer border ${
+                        p.priority === "URGENT"
+                          ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
+                          : p.priority === "HIGH"
+                          ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                          : p.priority === "MEDIUM"
+                          ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                      }`}
+                    >
+                      <option value="URGENT">Q1: Fire Fighting (Urgent & Important)</option>
+                      <option value="HIGH">Q2: Productive Time (Important & Not Urgent)</option>
+                      <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
+                      <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
+                    </select>
+                  ) : (
+                    <span
+                      className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider border ${
+                        p.priority === "URGENT"
+                          ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
+                          : p.priority === "HIGH"
+                          ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                          : p.priority === "MEDIUM"
+                          ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                      }`}
+                    >
+                      {p.priority === "URGENT"
+                        ? "Q1: Fire Fighting"
                         : p.priority === "HIGH"
-                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                        ? "Q2: Productive Time"
                         : p.priority === "MEDIUM"
-                        ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                    }`}
-                  >
-                    <option value="URGENT">Q1: Fire Fighting (Urgent & Important)</option>
-                    <option value="HIGH">Q2: Productive Time (Important & Not Urgent)</option>
-                    <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
-                    <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
-                  </select>
+                        ? "Q3: Distraction"
+                        : "Q4: Down Time"}
+                    </span>
+                  )}
                   {(session?.user as any)?.role === "OWNER" && (
                     <button
                       onClick={(e) => {

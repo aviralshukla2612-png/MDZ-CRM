@@ -327,38 +327,66 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              {/* Status Selector */}
-              <select
-                value={project.status || "IN_PROGRESS"}
-                onChange={(e) => handleUpdateProjectStatus(e.target.value)}
-                className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 outline-none cursor-pointer"
-              >
-                <option value="PLANNING">PLANNING</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="ON_HOLD">ON_HOLD</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="CANCELLED">CANCELLED</option>
-              </select>
+              {/* Status Indicator */}
+              {(session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES" ? (
+                <select
+                  value={project.status || "IN_PROGRESS"}
+                  onChange={(e) => handleUpdateProjectStatus(e.target.value)}
+                  className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 outline-none cursor-pointer"
+                >
+                  <option value="PLANNING">PLANNING</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="ON_HOLD">ON_HOLD</option>
+                  <option value="COMPLETED">COMPLETED</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                </select>
+              ) : (
+                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  {project.status || "IN_PROGRESS"}
+                </span>
+              )}
 
-              {/* Urgency Priority Selector */}
-              <select
-                value={project.priority || "HIGH"}
-                onChange={(e) => handleUpdateProjectPriority(e.target.value)}
-                className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-full outline-none cursor-pointer border ${
-                  project.priority === "URGENT"
-                    ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+              {/* Urgency Priority Indicator */}
+              {(session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES" ? (
+                <select
+                  value={project.priority || "HIGH"}
+                  onChange={(e) => handleUpdateProjectPriority(e.target.value)}
+                  className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-full outline-none cursor-pointer border ${
+                    project.priority === "URGENT"
+                      ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                      : project.priority === "HIGH"
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                      : project.priority === "MEDIUM"
+                      ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                  }`}
+                >
+                  <option value="URGENT">Q1: Fire Fighting (Urgent & Important)</option>
+                  <option value="HIGH">Q2: Productive Time (Important & Not Urgent)</option>
+                  <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
+                  <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
+                </select>
+              ) : (
+                <span
+                  className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-full border ${
+                    project.priority === "URGENT"
+                      ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                      : project.priority === "HIGH"
+                      ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                      : project.priority === "MEDIUM"
+                      ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                  }`}
+                >
+                  {project.priority === "URGENT"
+                    ? "Q1: Fire Fighting (Urgent & Important)"
                     : project.priority === "HIGH"
-                    ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                    ? "Q2: Productive Time (Important & Not Urgent)"
                     : project.priority === "MEDIUM"
-                    ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
-                }`}
-              >
-                <option value="URGENT">Q1: Fire Fighting (Urgent & Important)</option>
-                <option value="HIGH">Q2: Productive Time (Important & Not Urgent)</option>
-                <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
-                <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
-              </select>
+                    ? "Q3: Distraction (Urgent & Not Important)"
+                    : "Q4: Down Time (Not Urgent & Not Important)"}
+                </span>
+              )}
             </div>
 
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
