@@ -35,7 +35,19 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
     }
 
-    return NextResponse.json({ success: true, data: project });
+    const activeTasks = project.tasks ? project.tasks.filter((t) => t.status !== "ARCHIVED") : [];
+    const totalTasks = activeTasks.length;
+    const completedTasks = activeTasks.filter(
+      (t) => t.status === "COMPLETED" || t.status === "DONE"
+    ).length;
+    const calculatedProgress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+    const projectWithProgress = {
+      ...project,
+      progressPercentage: calculatedProgress,
+    };
+
+    return NextResponse.json({ success: true, data: projectWithProgress });
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to fetch project" }, { status: 500 });
   }

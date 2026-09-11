@@ -44,6 +44,13 @@ export async function GET() {
     });
 
     const formatted = projects.map((p) => {
+      const activeTasks = p.tasks ? p.tasks.filter((t) => t.status !== "ARCHIVED") : [];
+      const totalTasks = activeTasks.length;
+      const completedTasks = activeTasks.filter(
+        (t) => t.status === "COMPLETED" || t.status === "DONE"
+      ).length;
+      const calculatedProgress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
       const tmMembership = p.memberships.find((m) => m.roleInProject === "TM" && m.isActive);
       return {
         id: p.id,
@@ -53,7 +60,8 @@ export async function GET() {
         clientName: p.client ? p.client.companyName : "Client Account",
         tmId: tmMembership?.employee?.id || "UNASSIGNED",
         tmName: tmMembership?.employee?.user?.name ? `${tmMembership.employee.user.name} (Tech Lead)` : "Unassigned",
-        progress: p.progressPercentage,
+        progress: calculatedProgress,
+        progressPercentage: calculatedProgress,
         currentStage: p.status,
         contractValue: p.contractValue,
         paidValue: 100000,
@@ -190,7 +198,7 @@ export async function POST(req: Request) {
       contractValue: Number(body.contractValue) || 450000,
       status: body.status || "IN_PROGRESS",
       priority: body.priority || "HIGH",
-      progressPercentage: Number(body.progressPercentage) || 25,
+      progressPercentage: typeof body.progressPercentage === "number" ? body.progressPercentage : (Number(body.progressPercentage) || 0),
       targetDeadline: body.deadline ? new Date(body.deadline) : new Date(Date.now() + 86400000 * 45),
       createdById: authRes.id,
     };
