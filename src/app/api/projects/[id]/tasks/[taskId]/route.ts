@@ -12,31 +12,38 @@ export async function PATCH(
 
   const { id: projectId, taskId } = params;
 
-  // Authorization: OWNER or assigned EMPLOYEE
-  if (authRes.activeRole === "EMPLOYEE") {
-    if (!authRes.employeeId) {
-      return NextResponse.json({ success: false, error: "Forbidden: Employee profile missing" }, { status: 403 });
-    }
+  const isAdminOrOwner = authRes.activeRole === "OWNER" || (authRes.activeRole as string) === "ADMIN" || authRes.activeRole === "SALES";
 
-    const membership = await prisma.projectMembership.findFirst({
-      where: {
-        projectId,
-        employeeId: authRes.employeeId,
-        isActive: true,
-      },
-    });
+  // Authorization: OWNER, ADMIN, SALES or assigned EMPLOYEE / task assignee
+  if (!isAdminOrOwner) {
+    if (authRes.activeRole === "EMPLOYEE") {
+      if (!authRes.employeeId) {
+        return NextResponse.json({ success: false, error: "Forbidden: Employee profile missing" }, { status: 403 });
+      }
 
-    if (!membership) {
+      const existingTask = await prisma.task.findUnique({ where: { id: taskId } });
+      const isTaskAssignee = existingTask?.assignedToId === authRes.employeeId;
+
+      const membership = await prisma.projectMembership.findFirst({
+        where: {
+          projectId,
+          employeeId: authRes.employeeId,
+          isActive: true,
+        },
+      });
+
+      if (!membership && !isTaskAssignee) {
+        return NextResponse.json(
+          { success: false, error: "Forbidden: You are not authorized to edit this task" },
+          { status: 403 }
+        );
+      }
+    } else {
       return NextResponse.json(
-        { success: false, error: "Forbidden: You are not an assigned member of this project" },
+        { success: false, error: "Forbidden: Insufficient permissions" },
         { status: 403 }
       );
     }
-  } else if (authRes.activeRole !== "OWNER") {
-    return NextResponse.json(
-      { success: false, error: "Forbidden: Insufficient permissions" },
-      { status: 403 }
-    );
   }
 
   try {
@@ -53,10 +60,10 @@ export async function PATCH(
 
     const body = await req.json();
 
-    // Strict Security Rule: Only OWNER can modify isMostImportant priority flag
-    if (body.isMostImportant !== undefined && authRes.activeRole !== "OWNER") {
+    // Security Rule: Only OWNER or ADMIN can modify isMostImportant priority flag
+    if (body.isMostImportant !== undefined && !isAdminOrOwner) {
       return NextResponse.json(
-        { success: false, error: "Forbidden: Only OWNER can set or modify Most Important Task status" },
+        { success: false, error: "Forbidden: Only Admin or Owner can set or modify Most Important Task status" },
         { status: 403 }
       );
     }

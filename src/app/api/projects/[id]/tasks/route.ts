@@ -81,31 +81,35 @@ export async function POST(
 
   const projectId = params.id;
 
-  // Strict RBAC: OWNER or assigned EMPLOYEE only
-  if (authRes.activeRole === "EMPLOYEE") {
-    if (!authRes.employeeId) {
-      return NextResponse.json({ success: false, error: "Forbidden: Employee profile missing" }, { status: 403 });
-    }
+  const isAdminOrOwner = authRes.activeRole === "OWNER" || (authRes.activeRole as string) === "ADMIN" || authRes.activeRole === "SALES";
 
-    const membership = await prisma.projectMembership.findFirst({
-      where: {
-        projectId,
-        employeeId: authRes.employeeId,
-        isActive: true,
-      },
-    });
+  // Authorization: OWNER, ADMIN, SALES, or assigned EMPLOYEE
+  if (!isAdminOrOwner) {
+    if (authRes.activeRole === "EMPLOYEE") {
+      if (!authRes.employeeId) {
+        return NextResponse.json({ success: false, error: "Forbidden: Employee profile missing" }, { status: 403 });
+      }
 
-    if (!membership) {
+      const membership = await prisma.projectMembership.findFirst({
+        where: {
+          projectId,
+          employeeId: authRes.employeeId,
+          isActive: true,
+        },
+      });
+
+      if (!membership) {
+        return NextResponse.json(
+          { success: false, error: "Forbidden: You are not authorized to add tasks to this project" },
+          { status: 403 }
+        );
+      }
+    } else {
       return NextResponse.json(
-        { success: false, error: "Forbidden: You are not authorized to add tasks to this project" },
+        { success: false, error: "Forbidden: Only assigned team members or Admins can create tasks" },
         { status: 403 }
       );
     }
-  } else if (authRes.activeRole !== "OWNER") {
-    return NextResponse.json(
-      { success: false, error: "Forbidden: Only assigned employees or OWNER can create tasks" },
-      { status: 403 }
-    );
   }
 
   try {
@@ -117,10 +121,10 @@ export async function POST(
       );
     }
 
-    // Security check: Only OWNER can set isMostImportant on task creation
-    if (body.isMostImportant !== undefined && authRes.activeRole !== "OWNER") {
+    // Security check: Only OWNER or ADMIN can set isMostImportant on task creation
+    if (body.isMostImportant !== undefined && !isAdminOrOwner) {
       return NextResponse.json(
-        { success: false, error: "Forbidden: Only OWNER can set Most Important Task status" },
+        { success: false, error: "Forbidden: Only Admin or Owner can set Most Important Task status" },
         { status: 403 }
       );
     }

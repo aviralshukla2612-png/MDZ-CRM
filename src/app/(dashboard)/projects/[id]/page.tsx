@@ -165,21 +165,16 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     }
   };
 
-  const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
-    let nextStatus = "IN_PROGRESS";
-    if (currentStatus === "TODO") nextStatus = "IN_PROGRESS";
-    else if (currentStatus === "IN_PROGRESS") nextStatus = "COMPLETED";
-    else if (currentStatus === "COMPLETED" || currentStatus === "DONE") nextStatus = "TODO";
-
+  const handleToggleTaskStatus = async (taskId: string, targetStatus: string) => {
     try {
       const res = await fetch(`/mdz-crm/api/projects/${params.id}/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({ status: targetStatus }),
       });
       const json = await res.json();
       if (json.success) {
-        showToast(`✓ Task status updated to ${nextStatus}`, "success");
+        showToast(`✓ Task status updated to ${targetStatus}`, "success");
         fetchProject();
       } else {
         showToast(json.error || "Failed to update task", "error");
@@ -478,8 +473,8 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
-                        {/* OWNER Priority Toggle Control */}
-                        {(session?.user as any)?.role === "OWNER" && !isDone && (
+                        {/* OWNER / ADMIN Priority Toggle Control */}
+                        {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && !isDone && (
                           <button
                             onClick={() => handleSetMostImportant(tsk.id, !tsk.isMostImportant)}
                             className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-colors flex items-center gap-1 ${
@@ -493,9 +488,10 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                           </button>
                         )}
 
-                        <button
-                          onClick={() => handleToggleTaskStatus(tsk.id, tsk.status)}
-                          className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all ${
+                        <select
+                          value={tsk.status}
+                          onChange={(e) => handleToggleTaskStatus(tsk.id, e.target.value)}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all cursor-pointer outline-hidden ${
                             isDone
                               ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border-emerald-200 dark:border-emerald-800"
                               : isInProgress
@@ -503,8 +499,10 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                               : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                           }`}
                         >
-                          {isDone ? "✓ COMPLETED" : isInProgress ? "◐ IN PROGRESS" : "☐ TODO"}
-                        </button>
+                          <option value="TODO">☐ TODO</option>
+                          <option value="IN_PROGRESS">◐ IN PROGRESS</option>
+                          <option value="COMPLETED">✓ COMPLETED</option>
+                        </select>
 
                         <button
                           onClick={() => handleArchiveTask(tsk.id)}
