@@ -228,6 +228,46 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     }
   };
 
+  const handleUpdateProjectPriority = async (newPriority: string) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: newPriority }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Project urgency updated to ${newPriority}`, "success");
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to update project urgency", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error updating project urgency", "error");
+    }
+  };
+
+  const handleUpdateProjectStatus = async (newStatus: string) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Project status updated to ${newStatus}`, "success");
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to update project status", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error updating project status", "error");
+    }
+  };
+
   const executeDeleteProject = async () => {
     setIsDeleteModalOpen(false);
     
@@ -286,13 +326,35 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                {project.status}
-              </span>
-              <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                {project.health} (2 Days Behind)
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Status Selector */}
+              <select
+                value={project.status || "IN_PROGRESS"}
+                onChange={(e) => handleUpdateProjectStatus(e.target.value)}
+                className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 outline-none cursor-pointer"
+              >
+                <option value="PLANNING">PLANNING</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="ON_HOLD">ON_HOLD</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+
+              {/* Urgency Priority Selector */}
+              <select
+                value={project.priority || "HIGH"}
+                onChange={(e) => handleUpdateProjectPriority(e.target.value)}
+                className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-full outline-none cursor-pointer border ${
+                  project.priority === "URGENT" || project.priority === "HIGH"
+                    ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
+                    : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                }`}
+              >
+                <option value="LOW">LOW URGENCY</option>
+                <option value="MEDIUM">MEDIUM URGENCY</option>
+                <option value="HIGH">HIGH URGENCY</option>
+                <option value="URGENT">URGENT (CRITICAL)</option>
+              </select>
             </div>
 
             <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">

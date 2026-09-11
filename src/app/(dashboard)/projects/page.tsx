@@ -18,6 +18,7 @@ export default function ProjectsDirectoryPage() {
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
+  const [priority, setPriority] = useState("HIGH");
   const [employees, setEmployees] = useState<any[]>([]);
   const { data: session } = useSession();
 
@@ -53,6 +54,26 @@ export default function ProjectsDirectoryPage() {
     }
   };
 
+  const handleUpdatePriority = async (projectId: string, newPriority: string) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ priority: newPriority }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Project urgency updated to ${newPriority}`, "success");
+        fetchProjects();
+      } else {
+        showToast(json.error || "Failed to update project urgency", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error updating project urgency", "error");
+    }
+  };
+
   const executeDelete = async () => {
     if (!projectToDelete) return;
     try {
@@ -82,6 +103,7 @@ export default function ProjectsDirectoryPage() {
           name: projectName,
           clientName: clientName.trim(),
           contractValue: 450000,
+          priority,
           assigneeId: assigneeId || undefined,
         }),
       });
@@ -93,6 +115,7 @@ export default function ProjectsDirectoryPage() {
         setProjectName("");
         setClientName("");
         setAssigneeId("");
+        setPriority("HIGH");
       } else {
         showToast(json.error || "Failed to create project", "error");
       }
@@ -149,6 +172,19 @@ export default function ProjectsDirectoryPage() {
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all"
             />
           </div>
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Project Urgency / Priority</label>
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-semibold"
+            >
+              <option value="LOW">LOW URGENCY</option>
+              <option value="MEDIUM">MEDIUM URGENCY</option>
+              <option value="HIGH">HIGH URGENCY</option>
+              <option value="URGENT">URGENT (CRITICAL)</option>
+            </select>
+          </div>
           {(session?.user as any)?.role !== "EMPLOYEE" && (
             <div>
               <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Assign To Developer</label>
@@ -202,15 +238,21 @@ export default function ProjectsDirectoryPage() {
 
                 <div className="shrink-0 flex items-center gap-3">
                   <span className="text-sm font-mono font-extrabold text-indigo-600 dark:text-indigo-400">{p.progress || 0}% Complete</span>
-                  <span
-                    className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                      p.health === "AT_RISK"
-                        ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20"
-                        : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20"
+                  <select
+                    value={p.priority || "HIGH"}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => handleUpdatePriority(p.id, e.target.value)}
+                    className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider outline-none cursor-pointer border ${
+                      p.priority === "URGENT" || p.health === "AT_RISK"
+                        ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
+                        : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
                     }`}
                   >
-                    {p.health || "ON_TRACK"}
-                  </span>
+                    <option value="LOW">LOW URGENCY</option>
+                    <option value="MEDIUM">MEDIUM URGENCY</option>
+                    <option value="HIGH">HIGH URGENCY</option>
+                    <option value="URGENT">URGENT (CRITICAL)</option>
+                  </select>
                   {(session?.user as any)?.role === "OWNER" && (
                     <button
                       onClick={(e) => {
