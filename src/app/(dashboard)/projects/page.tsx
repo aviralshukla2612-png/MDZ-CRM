@@ -173,16 +173,16 @@ export default function ProjectsDirectoryPage() {
             />
           </div>
           <div>
-            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Project Urgency / Priority</label>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Productivity Matrix Quadrant</label>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-semibold"
             >
-              <option value="LOW">LOW URGENCY</option>
-              <option value="MEDIUM">MEDIUM URGENCY</option>
-              <option value="HIGH">HIGH URGENCY</option>
-              <option value="URGENT">URGENT (CRITICAL)</option>
+              <option value="URGENT">Q1: Fire Fighting (Urgent & Important)</option>
+              <option value="HIGH">Q2: Productive Time (Important & Not Urgent)</option>
+              <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
+              <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
             </select>
           </div>
           {(session?.user as any)?.role !== "EMPLOYEE" && (
@@ -243,15 +243,19 @@ export default function ProjectsDirectoryPage() {
                     onClick={(e) => e.stopPropagation()}
                     onChange={(e) => handleUpdatePriority(p.id, e.target.value)}
                     className={`text-[10px] font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider outline-none cursor-pointer border ${
-                      p.priority === "URGENT" || p.health === "AT_RISK"
+                      p.priority === "URGENT"
                         ? "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/20"
-                        : "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                        : p.priority === "HIGH"
+                        ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20"
+                        : p.priority === "MEDIUM"
+                        ? "bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                     }`}
                   >
-                    <option value="LOW">LOW URGENCY</option>
-                    <option value="MEDIUM">MEDIUM URGENCY</option>
-                    <option value="HIGH">HIGH URGENCY</option>
-                    <option value="URGENT">URGENT (CRITICAL)</option>
+                    <option value="URGENT">Q1: Fire Fighting (Urgent & Important)</option>
+                    <option value="HIGH">Q2: Productive Time (Important & Not Urgent)</option>
+                    <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
+                    <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
                   </select>
                   {(session?.user as any)?.role === "OWNER" && (
                     <button

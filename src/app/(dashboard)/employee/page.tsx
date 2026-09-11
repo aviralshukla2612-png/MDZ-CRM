@@ -339,9 +339,26 @@ export default function EmployeeDeskPage() {
                   className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono">
                         {task.projectName}
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded font-mono ${
+                        task.priority === "URGENT"
+                          ? "bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300"
+                          : task.priority === "HIGH"
+                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300"
+                          : task.priority === "MEDIUM"
+                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300"
+                          : "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-300"
+                      }`}>
+                        {task.priority === "URGENT"
+                          ? "Q1: Fire Fighting"
+                          : task.priority === "HIGH"
+                          ? "Q2: Productive Time"
+                          : task.priority === "MEDIUM"
+                          ? "Q3: Distraction"
+                          : "Q4: Down Time"}
                       </span>
                       {isInProgress && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono">
@@ -431,16 +448,16 @@ export default function EmployeeDeskPage() {
           </div>
 
           <div>
-            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Priority</label>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Productivity Matrix Quadrant</label>
             <select
               value={newTaskPriority}
               onChange={(e) => setNewTaskPriority(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none font-semibold text-xs"
             >
-              <option value="LOW">Low Priority</option>
-              <option value="MEDIUM">Medium Priority</option>
-              <option value="HIGH">High Priority</option>
-              <option value="URGENT">Urgent Priority</option>
+              <option value="URGENT">Q1: Fire Fighting (Urgent & Important)</option>
+              <option value="HIGH">Q2: Productive Time (Important & Not Urgent)</option>
+              <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
+              <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
             </select>
           </div>
 

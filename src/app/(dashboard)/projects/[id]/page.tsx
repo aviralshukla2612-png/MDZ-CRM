@@ -345,15 +345,19 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                 value={project.priority || "HIGH"}
                 onChange={(e) => handleUpdateProjectPriority(e.target.value)}
                 className={`text-[10px] font-mono font-bold px-2.5 py-1 rounded-full outline-none cursor-pointer border ${
-                  project.priority === "URGENT" || project.priority === "HIGH"
+                  project.priority === "URGENT"
                     ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
-                    : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
+                    : project.priority === "HIGH"
+                    ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
+                    : project.priority === "MEDIUM"
+                    ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
                 }`}
               >
-                <option value="LOW">LOW URGENCY</option>
-                <option value="MEDIUM">MEDIUM URGENCY</option>
-                <option value="HIGH">HIGH URGENCY</option>
-                <option value="URGENT">URGENT (CRITICAL)</option>
+                <option value="URGENT">Q1: Fire Fighting (Urgent & Important)</option>
+                <option value="HIGH">Q2: Productive Time (Important & Not Urgent)</option>
+                <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
+                <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
               </select>
             </div>
 
