@@ -41,6 +41,16 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
 
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [holidays, setHolidays] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    fetch(`/mdz-crm/api/holidays?year=${selectedYear}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) setHolidays(json.data || []);
+      })
+      .catch((err) => console.error(err));
+  }, [selectedYear]);
 
   const analytics = React.useMemo(() => {
     if (!employee) return null;
@@ -100,8 +110,14 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         weekendsCount++;
       }
     }
-    const daysOffStr = `${weekendsCount} Days Off`;
-    const daysOffSubtext = `0 Official Holidays + ${weekendsCount} Weekends`;
+
+    const monthlyHolidays = holidays.filter((h: any) => {
+      const d = new Date(h.date);
+      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    });
+
+    const daysOffStr = `${weekendsCount + monthlyHolidays.length} Days Off`;
+    const daysOffSubtext = `${monthlyHolidays.length} Official Holidays + ${weekendsCount} Weekends`;
 
     let sumPunchInMins = 0;
     let cntPunchIn = 0;
@@ -146,7 +162,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
       cntPunchIn,
       cntPunchOut,
     };
-  }, [employee, selectedMonth, selectedYear]);
+  }, [employee, selectedMonth, selectedYear, holidays]);
 
   const calendarGrid = React.useMemo(() => {
     if (!employee) return [];
@@ -173,10 +189,18 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         return d.getDate() === day && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
       });
 
+      const hol = holidays.find((h: any) => {
+        const d = new Date(h.date);
+        return d.getDate() === day && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      });
+
       let dotColor = "bg-slate-400";
       let workLabel = "0h 0m";
 
-      if (isToday && employee?.punchedIn) {
+      if (hol) {
+        dotColor = "bg-indigo-500";
+        workLabel = `🎉 ${hol.title}`;
+      } else if (isToday && employee?.punchedIn) {
         dotColor = "bg-blue-500";
         workLabel = att?.totalMinutes ? `${Math.floor(att.totalMinutes / 60)}h ${att.totalMinutes % 60}m` : "0h 0m";
       } else if (att) {

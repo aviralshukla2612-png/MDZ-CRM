@@ -637,3 +637,15 @@ model TermsAcceptanceLog {
   @@index([userId])
   @@index([clientContactId])
 }
+
+model Holiday {
+  id          String   @id @default(uuid())
+  title       String
+  date        DateTime
+  description String?
+  isOptional  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
