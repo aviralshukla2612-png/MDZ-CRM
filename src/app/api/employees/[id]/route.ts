@@ -11,7 +11,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       where: { OR: [{ id: params.id }, { employeeIdCode: params.id }] },
       include: {
         user: true,
-        attendances: true,
+        attendances: { orderBy: { date: "desc" } },
+        statusEvents: { orderBy: { startedAt: "desc" } },
         workSessions: { include: { project: true } },
         memberships: {
           where: { isActive: true },

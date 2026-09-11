@@ -18,6 +18,12 @@ import {
   Phone,
   Building,
   Sparkles,
+  BarChart3,
+  Calendar,
+  Coffee,
+  AlertCircle,
+  LogOut,
+  LogIn,
 } from "lucide-react";
 
 export default function EmployeeDetailPage({ params }: { params: { id: string } }) {
@@ -32,6 +38,175 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
   const [editDepartment, setEditDepartment] = useState("");
   const [editSalary, setEditSalary] = useState<number>(0);
   const [confirmStatus, setConfirmStatus] = useState(false);
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  const analytics = React.useMemo(() => {
+    if (!employee) return null;
+    const atts = employee.attendances || [];
+    const events = employee.statusEvents || [];
+
+    const monthlyAtts = atts.filter((a: any) => {
+      const d = new Date(a.date);
+      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    });
+
+    const monthlyEvents = events.filter((e: any) => {
+      const d = new Date(e.startedAt);
+      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+    });
+
+    let totalWorkMinutes = 0;
+    let daysPresentCount = 0;
+    monthlyAtts.forEach((a: any) => {
+      if (a.totalMinutes && a.totalMinutes > 0) {
+        totalWorkMinutes += a.totalMinutes;
+        daysPresentCount++;
+      } else if (a.punchIn) {
+        daysPresentCount++;
+      }
+    });
+
+    const workHoursStr = `${Math.floor(totalWorkMinutes / 60)}h ${String(totalWorkMinutes % 60).padStart(2, "0")}m`;
+    const avgWorkMins = daysPresentCount > 0 ? Math.round(totalWorkMinutes / daysPresentCount) : 0;
+    const avgWorkStr = `Avg ${Math.floor(avgWorkMins / 60)}h ${String(avgWorkMins % 60).padStart(2, "0")}m / day (${daysPresentCount} days present)`;
+
+    let totalBreakMinutes = 0;
+    let breakSessionsCount = 0;
+    monthlyEvents.forEach((e: any) => {
+      const st = String(e.statusType || "").toUpperCase();
+      if (["BREAK", "LUNCH", "TEA_BREAK", "TEA", "LUNCH_BREAK"].includes(st)) {
+        breakSessionsCount++;
+        if (e.durationMinutes) {
+          totalBreakMinutes += e.durationMinutes;
+        } else if (e.startedAt && e.endedAt) {
+          const diff = Math.round((new Date(e.endedAt).getTime() - new Date(e.startedAt).getTime()) / 60000);
+          if (diff > 0) totalBreakMinutes += diff;
+        }
+      }
+    });
+
+    const breakTimeStr = `${Math.floor(totalBreakMinutes / 60)}h ${String(totalBreakMinutes % 60).padStart(2, "0")}m`;
+    const breakSubtext = `${breakSessionsCount} break session(s) taken`;
+
+    const halfDaysCount = monthlyAtts.filter((a: any) => a.status === "HALF_DAY" || (a.totalMinutes > 0 && a.totalMinutes < 240)).length;
+
+    const daysInMonthCount = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    let weekendsCount = 0;
+    for (let day = 1; day <= daysInMonthCount; day++) {
+      const dayOfWeek = new Date(selectedYear, selectedMonth, day).getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        weekendsCount++;
+      }
+    }
+    const daysOffStr = `${weekendsCount} Days Off`;
+    const daysOffSubtext = `0 Official Holidays + ${weekendsCount} Weekends`;
+
+    let sumPunchInMins = 0;
+    let cntPunchIn = 0;
+    let sumPunchOutMins = 0;
+    let cntPunchOut = 0;
+
+    monthlyAtts.forEach((a: any) => {
+      if (a.punchIn) {
+        const d = new Date(a.punchIn);
+        sumPunchInMins += d.getHours() * 60 + d.getMinutes();
+        cntPunchIn++;
+      }
+      if (a.punchOut) {
+        const d = new Date(a.punchOut);
+        sumPunchOutMins += d.getHours() * 60 + d.getMinutes();
+        cntPunchOut++;
+      }
+    });
+
+    const formatMinsToAmPm = (mins: number) => {
+      let h = Math.floor(mins / 60);
+      const m = mins % 60;
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12;
+      if (h === 0) h = 12;
+      return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
+    };
+
+    const avgPunchInStr = cntPunchIn > 0 ? formatMinsToAmPm(Math.round(sumPunchInMins / cntPunchIn)) : "--:--";
+    const avgPunchOutStr = cntPunchOut > 0 ? formatMinsToAmPm(Math.round(sumPunchOutMins / cntPunchOut)) : "--:--";
+
+    return {
+      workHoursStr,
+      avgWorkStr,
+      breakTimeStr,
+      breakSubtext,
+      halfDaysCount,
+      daysOffStr,
+      daysOffSubtext,
+      avgPunchInStr,
+      avgPunchOutStr,
+      cntPunchIn,
+      cntPunchOut,
+    };
+  }, [employee, selectedMonth, selectedYear]);
+
+  const calendarGrid = React.useMemo(() => {
+    if (!employee) return [];
+    const atts = employee.attendances || [];
+    const firstDayIndex = new Date(selectedYear, selectedMonth, 1).getDay();
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+
+    const today = new Date();
+    const isCurrentMonth = today.getMonth() === selectedMonth && today.getFullYear() === selectedYear;
+
+    const cells: any[] = [];
+    for (let i = 0; i < firstDayIndex; i++) {
+      cells.push({ isEmpty: true, id: `empty-${i}` });
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dayDate = new Date(selectedYear, selectedMonth, day);
+      const dayOfWeek = dayDate.getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isToday = isCurrentMonth && today.getDate() === day;
+
+      const att = atts.find((a: any) => {
+        const d = new Date(a.date);
+        return d.getDate() === day && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      });
+
+      let dotColor = "bg-slate-400";
+      let workLabel = "0h 0m";
+
+      if (isToday && employee?.punchedIn) {
+        dotColor = "bg-blue-500";
+        workLabel = att?.totalMinutes ? `${Math.floor(att.totalMinutes / 60)}h ${att.totalMinutes % 60}m` : "0h 0m";
+      } else if (att) {
+        const mins = att.totalMinutes || 0;
+        workLabel = `${Math.floor(mins / 60)}h ${mins % 60}m`;
+        if (mins >= 480 || att.status === "PRESENT") {
+          dotColor = "bg-emerald-500";
+        } else if (mins > 0 || att.status === "HALF_DAY") {
+          dotColor = "bg-rose-500";
+        } else {
+          dotColor = "bg-slate-400";
+        }
+      } else if (isWeekend) {
+        dotColor = "bg-slate-400";
+        workLabel = "OFF";
+      }
+
+      cells.push({
+        isEmpty: false,
+        id: `day-${day}`,
+        day,
+        isWeekend,
+        isToday,
+        dotColor,
+        workLabel,
+      });
+    }
+
+    return cells;
+  }, [employee, selectedMonth, selectedYear]);
 
   // Project Compensation Modal State
   const [isCompModalOpen, setIsCompModalOpen] = useState(false);
@@ -313,6 +488,227 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
           <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
             "{employee.currentTask}"
           </p>
+        </div>
+      </div>
+
+      {/* Monthly Work & Attendance Analytics */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800/80 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+                Monthly Work & Attendance Analytics
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Monthly working hours, total break durations, and average punch times
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-slate-400" />
+            <select
+              value={`${selectedYear}-${selectedMonth}`}
+              onChange={(e) => {
+                const [y, m] = e.target.value.split("-").map(Number);
+                setSelectedYear(y);
+                setSelectedMonth(m);
+              }}
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold rounded-xl px-3 py-2 outline-none cursor-pointer"
+            >
+              {[0, 1, 2, 3, 4, 5].map((offset) => {
+                const d = new Date(new Date().getFullYear(), new Date().getMonth() - offset, 1);
+                const year = d.getFullYear();
+                const month = d.getMonth();
+                const monthName = d.toLocaleString("default", { month: "long" });
+                const isCurrent = offset === 0;
+                return (
+                  <option key={`${year}-${month}`} value={`${year}-${month}`}>
+                    {monthName} {year} {isCurrent ? "(Current Month)" : ""}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        </div>
+
+        {/* 6 Metric Cards Grid */}
+        {analytics && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {/* Card 1: TOTAL WORK HOURS */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  TOTAL WORK HOURS
+                </span>
+                <Clock className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">
+                {analytics.workHoursStr}
+              </div>
+              <div className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                {analytics.avgWorkStr}
+              </div>
+            </div>
+
+            {/* Card 2: TOTAL BREAK TIME */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  TOTAL BREAK TIME
+                </span>
+                <Coffee className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">
+                {analytics.breakTimeStr}
+              </div>
+              <div className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                {analytics.breakSubtext}
+              </div>
+            </div>
+
+            {/* Card 3: HALF DAYS / EARLY OUTS */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  HALF DAYS / EARLY OUTS
+                </span>
+                <AlertCircle className="w-4 h-4 text-rose-500" />
+              </div>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">
+                {analytics.halfDaysCount} Half Day(s)
+              </div>
+              <div className="text-[11px] font-medium text-rose-600 dark:text-rose-400">
+                0.5 day salary deduction / half day
+              </div>
+            </div>
+
+            {/* Card 4: HOLIDAYS & DAYS OFF */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  HOLIDAYS & DAYS OFF
+                </span>
+                <Sparkles className="w-4 h-4 text-indigo-500" />
+              </div>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">
+                {analytics.daysOffStr}
+              </div>
+              <div className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400">
+                {analytics.daysOffSubtext}
+              </div>
+            </div>
+
+            {/* Card 5: AVG PUNCH-OUT TIME */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  AVG PUNCH-OUT TIME
+                </span>
+                <LogOut className="w-4 h-4 text-violet-500" />
+              </div>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">
+                {analytics.avgPunchOutStr}
+              </div>
+              <div className="text-[11px] font-medium text-violet-600 dark:text-violet-400">
+                Across {analytics.cntPunchOut} completed shift(s)
+              </div>
+            </div>
+
+            {/* Card 6: AVG PUNCH-IN TIME */}
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-mono font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  AVG PUNCH-IN TIME
+                </span>
+                <LogIn className="w-4 h-4 text-cyan-500" />
+              </div>
+              <div className="text-2xl font-black font-mono text-slate-900 dark:text-slate-100">
+                {analytics.avgPunchInStr}
+              </div>
+              <div className="text-[11px] font-medium text-cyan-600 dark:text-cyan-400">
+                {analytics.cntPunchIn} Working Day(s) Present
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Monthly Attendance Calendar Grid */}
+        <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-indigo-500" />
+              <h3 className="text-sm sm:text-base font-extrabold text-slate-900 dark:text-slate-100">
+                Monthly Attendance Calendar Grid
+              </h3>
+            </div>
+            <div className="flex items-center flex-wrap gap-3 text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                <span>Complete Hours</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                <span>Early Punch Out</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-400" />
+                <span>Weekend / Holiday</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                <span>Working Today</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((dayName, idx) => (
+              <div
+                key={dayName}
+                className={`text-center font-mono text-[11px] font-bold pb-1 ${
+                  idx === 0 ? "text-rose-500" : "text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                {dayName}
+              </div>
+            ))}
+
+            {calendarGrid.map((cell) => {
+              if (cell.isEmpty) {
+                return (
+                  <div
+                    key={cell.id}
+                    className="min-h-[64px] rounded-xl bg-slate-50/40 dark:bg-slate-900/40 border border-transparent"
+                  />
+                );
+              }
+              return (
+                <div
+                  key={cell.id}
+                  className={`min-h-[64px] p-2.5 rounded-xl border transition-all flex flex-col justify-between ${
+                    cell.isToday
+                      ? "border-blue-500 bg-blue-50/30 dark:bg-blue-950/20 ring-1 ring-blue-500"
+                      : "border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40"
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-mono font-bold">
+                    <span className={cell.isWeekend ? "text-slate-400 dark:text-slate-500" : "text-slate-800 dark:text-slate-200"}>
+                      {cell.day}
+                    </span>
+                    <span className={`w-2 h-2 rounded-full ${cell.dotColor}`} />
+                  </div>
+
+                  <div className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400">
+                    {cell.workLabel}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
