@@ -6,7 +6,7 @@ import { Sun, Moon, Laptop } from "lucide-react";
 type ThemeMode = "light" | "dark" | "system";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<ThemeMode>("system");
+  const [theme, setTheme] = useState<ThemeMode>("light");
 
   useEffect(() => {
     const saved = localStorage.getItem("mdz-theme") as ThemeMode | null;
@@ -14,7 +14,8 @@ export function ThemeToggle() {
       setTheme(saved);
       applyTheme(saved);
     } else {
-      applyTheme("system");
+      setTheme("light");
+      applyTheme("light");
     }
   }, []);
 
