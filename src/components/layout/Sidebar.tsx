@@ -54,6 +54,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
 
           { title: "Finance", href: "/finance", icon: <IndianRupee className="w-4 h-4" /> },
           { title: "Activity", href: "/audit", icon: <ShieldAlert className="w-4 h-4" /> },
+          { title: "Terms Management", href: "/settings/terms", icon: <BookOpen className="w-4 h-4" /> },
           { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];
 
@@ -73,9 +74,11 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
         return [
           { title: "My Desk", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
           { title: "My Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "My Finance", href: "/employee/finance", icon: <IndianRupee className="w-4 h-4" /> },
           { title: "My Work Sessions", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
           { title: "Leave Applications", href: "/attendance/leave", icon: <UserCheck className="w-4 h-4" /> },
           { title: "Documentation", href: "/docs", icon: <BookOpen className="w-4 h-4" /> },
+          { title: "Terms & Conditions", href: "/employee/terms", icon: <BookOpen className="w-4 h-4" /> },
           { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];
 
@@ -118,7 +121,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       )}
 
       <aside
-        className={`w-64 bg-white/90 dark:bg-[#090F1D]/95 backdrop-blur-2xl border-r border-slate-200/80 dark:border-slate-800/80 flex flex-col justify-between p-4 select-none transition-all duration-300 shrink-0 h-full overflow-y-auto ${
+        className={`w-64 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-r border-amber-200/80 dark:border-amber-900/40 flex flex-col justify-between p-4 select-none transition-all duration-300 shrink-0 h-full overflow-y-auto ${
           isMobileOpen
             ? "fixed inset-y-0 left-0 shadow-2xl z-50 flex md:hidden animate-slide-right"
             : "hidden md:flex z-30"
@@ -126,14 +129,14 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       >
         <div className="space-y-6">
           {/* Navigation Group Header */}
-          <div className="px-3 py-1 flex items-center justify-between border-b border-slate-100 dark:border-slate-800/60 pb-3">
-            <span className="text-[10px] font-bold tracking-widest text-indigo-600 dark:text-indigo-400 uppercase font-mono">
+          <div className="px-3 py-1 flex items-center justify-between border-b border-amber-100 dark:border-amber-900/30 pb-3">
+            <span className="text-[10px] font-extrabold tracking-widest text-amber-600 dark:text-amber-400 uppercase font-mono">
               {role} WORKSPACE
             </span>
             {isMobileOpen && (
               <button
                 onClick={onCloseMobile}
-                className="md:hidden text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs font-bold"
+                className="md:hidden text-amber-500 hover:text-amber-800 dark:hover:text-white text-xs font-bold"
               >
                 ✕
               </button>
@@ -154,18 +157,18 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
                   }}
                   className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all relative ${
                     isActive
-                      ? "bg-indigo-50 dark:bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 font-bold shadow-xs dark:shadow-lg border border-indigo-200 dark:border-indigo-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1 before:bg-indigo-600 dark:before:bg-indigo-500 before:rounded-r-full"
-                      : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-100"
+                      ? "bg-amber-50 dark:bg-amber-500/15 text-amber-900 dark:text-amber-300 font-bold shadow-xs dark:shadow-lg border border-amber-200 dark:border-amber-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-amber-500 dark:before:bg-amber-400 before:rounded-r-full"
+                      : "text-stone-600 dark:text-stone-400 hover:bg-amber-50/60 dark:hover:bg-amber-950/40 hover:text-amber-900 dark:hover:text-amber-200"
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className={isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-400"}>{item.icon}</span>
+                    <span className={isActive ? "text-amber-600 dark:text-amber-400" : "text-stone-400 dark:text-stone-500"}>{item.icon}</span>
                     <span>{item.title}</span>
                   </div>
                   {item.badge && (
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        item.badgeColor || "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                        item.badgeColor || "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                       }`}
                     >
                       {item.badge}
@@ -178,13 +181,13 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
         </div>
 
         {/* Footer Banner */}
-        <div className="bg-slate-50 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 text-xs space-y-1.5 backdrop-blur-xl shadow-xs dark:shadow-xl">
-          <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-slate-100">
-            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-pulse" />
-            <span>MDZ Smart OS</span>
+        <div className="bg-gradient-to-br from-amber-50/80 to-stone-50 dark:from-amber-950/30 dark:to-stone-900/40 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 text-xs space-y-1.5 backdrop-blur-xl shadow-xs dark:shadow-xl">
+          <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300">
+            <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
+            <span className="font-extrabold tracking-tight">Millionaire Digital CRM</span>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed font-normal">
-            Project-Centered architecture with immutable audit history.
+          <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed font-normal">
+            Enterprise CRM & Business Operating System.
           </p>
         </div>
       </aside>

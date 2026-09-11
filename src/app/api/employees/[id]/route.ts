@@ -13,6 +13,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         user: true,
         attendances: true,
         workSessions: { include: { project: true } },
+        memberships: {
+          where: { isActive: true },
+          include: {
+            project: {
+              include: {
+                client: { select: { companyName: true } },
+                tasks: { select: { id: true, status: true } },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -23,6 +34,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     // IDOR Protection: Only OWNER or the employee themselves can access this profile
     if (authRes.activeRole !== "OWNER" && authRes.employeeId !== employee.id) {
       return NextResponse.json({ success: false, error: "Forbidden: You cannot access another employee's profile" }, { status: 403 });
+    }
+
+    // Confidentiality Isolation: Strips compensationAmount for non-OWNER role
+    if (authRes.activeRole !== "OWNER") {
+      employee.memberships = employee.memberships.map((m: any) => ({
+        ...m,
+        compensationAmount: null,
+      }));
     }
 
     return NextResponse.json({ success: true, data: employee });

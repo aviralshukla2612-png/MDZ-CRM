@@ -33,6 +33,44 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
   const [editSalary, setEditSalary] = useState<number>(0);
   const [confirmStatus, setConfirmStatus] = useState(false);
 
+  // Project Compensation Modal State
+  const [isCompModalOpen, setIsCompModalOpen] = useState(false);
+  const [selectedProj, setSelectedProj] = useState<any>(null);
+  const [compAmountInput, setCompAmountInput] = useState<string>("");
+  const [compCurrencyInput, setCompCurrencyInput] = useState<string>("INR");
+  const [isClearComp, setIsClearComp] = useState<boolean>(false);
+
+  const handleSaveCompensation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProj) return;
+    try {
+      let payloadAmount: number | null = null;
+      if (!isClearComp && compAmountInput !== "") {
+        payloadAmount = Number(compAmountInput);
+        if (isNaN(payloadAmount) || payloadAmount < 0) {
+          showToast("Please enter a valid non-negative compensation amount", "error");
+          return;
+        }
+      }
+
+      const res = await fetch(`/mdz-crm/api/admin/employees/${params.id}/projects/${selectedProj.id}/compensation`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: payloadAmount, currency: compCurrencyInput }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("Project compensation updated successfully", "success");
+        setIsCompModalOpen(false);
+        fetchEmployee();
+      } else {
+        showToast(json.error || "Failed to update compensation", "error");
+      }
+    } catch (err) {
+      showToast("Network error", "error");
+    }
+  };
+
   React.useEffect(() => {
     fetchEmployee();
   }, []);
@@ -92,8 +130,46 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         setEditDepartment(e.user?.department || "");
         setEditSalary(e.salaryMonthly || 0);
 
-        // Dummy project for now since we don't have an API to fetch projects assigned to employee yet
-        setAssignedProjs([]);
+        const projs = (e.memberships || []).map((m: any) => {
+          const activeTasks = (m.project?.tasks || []).filter((t: any) => t.status !== "ARCHIVED");
+          const totalTasks = activeTasks.length;
+          const completedTasks = activeTasks.filter((t: any) => t.status === "COMPLETED" || t.status === "DONE").length;
+          const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+
+          const now = new Date();
+          const empAssignedTasks = activeTasks.filter((t: any) => t.assignedToId === e.user?.id);
+          let deliveryStatus = "ON TRACK";
+          let deliveryColor = "green";
+
+          if (empAssignedTasks.length > 0) {
+            const overdueTask = empAssignedTasks.find((t: any) => t.status !== "COMPLETED" && t.status !== "DONE" && t.deadline && now > new Date(t.deadline));
+            if (overdueTask) {
+              const days = Math.ceil((now.getTime() - new Date(overdueTask.deadline).getTime()) / (1000 * 60 * 60 * 24));
+              deliveryStatus = `DELAYED — ${days} day${days > 1 ? "s" : ""} overdue`;
+              deliveryColor = "red";
+            }
+          } else if (m.project?.targetDeadline) {
+            if (now > new Date(m.project.targetDeadline) && progress < 100) {
+              const days = Math.ceil((now.getTime() - new Date(m.project.targetDeadline).getTime()) / (1000 * 60 * 60 * 24));
+              deliveryStatus = `DELAYED — ${days} day${days > 1 ? "s" : ""} overdue`;
+              deliveryColor = "red";
+            }
+          }
+
+          return {
+            id: m.project.id,
+            projectNumber: m.project.projectNumber,
+            name: m.project.name,
+            clientName: m.project.client?.companyName || "Client",
+            roleInProject: m.roleInProject,
+            progress,
+            compensationAmount: m.compensationAmount,
+            currency: m.currency || "INR",
+            deliveryStatus,
+            deliveryColor,
+          };
+        });
+        setAssignedProjs(projs);
       }
     } catch (error) {
       console.error(error);
@@ -296,31 +372,94 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         </div>
       )}
 
-      {/* Tab 2: Assigned Projects */}
+      {/* Tab 2: Assigned Projects & Compensation */}
       {activeTab === "projects" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {assignedProjs?.map((p: any) => (
-            <div
-              key={p.id}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3 flex flex-col justify-between"
-            >
-              <div className="space-y-1">
-                <span className="text-[10px] font-mono font-bold text-slate-400">{p.id}</span>
-                <h4 className="font-bold text-base text-slate-900 dark:text-slate-100">{p.name}</h4>
-                <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">🏢 {p.clientName}</div>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                <span className="text-slate-500">Progress: <strong className="text-slate-800 dark:text-slate-200 font-mono">{p.progress}%</strong></span>
-                <Link
-                  href={`/projects/${p.id}`}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs"
-                >
-                  Open Project Workspace
-                </Link>
-              </div>
+        <div className="space-y-4">
+          {/* Total Assigned Compensation Banner */}
+          <div className="p-4 rounded-2xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg border border-slate-800">
+            <div className="space-y-0.5">
+              <div className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-wider">PROJECT-WISE COMPENSATION SUMMARY</div>
+              <div className="text-xs font-semibold text-slate-300">Total Assigned Project Compensation across {assignedProjs.length} assigned projects</div>
             </div>
-          ))}
+            <div className="text-xl sm:text-2xl font-black font-mono text-emerald-400">
+              ₹{assignedProjs.reduce((sum: number, p: any) => sum + (p.compensationAmount !== null && p.compensationAmount !== undefined ? p.compensationAmount : 0), 0).toLocaleString("en-IN")}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {assignedProjs?.map((p: any) => (
+              <div
+                key={p.id}
+                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 flex flex-col justify-between"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-slate-400">{p.projectNumber || p.id}</span>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                      {p.roleInProject || "MEMBER"}
+                    </span>
+                  </div>
+                  <h4 className="font-bold text-base text-slate-900 dark:text-slate-100">{p.name}</h4>
+                  <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">🏢 {p.clientName}</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-500 dark:text-slate-400">Project Compensation</span>
+                    {p.compensationAmount !== null && p.compensationAmount !== undefined ? (
+                      <span className="font-mono font-extrabold text-sm text-emerald-600 dark:text-emerald-400">
+                        ₹{p.compensationAmount.toLocaleString("en-IN")}
+                      </span>
+                    ) : (
+                      <span className="font-mono font-bold text-xs text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+                        Not Set
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <span className="font-bold text-slate-500 dark:text-slate-400">Delivery Performance</span>
+                    {p.deliveryColor === "red" ? (
+                      <span className="px-2 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-[10px] font-bold font-mono">
+                        🔴 {p.deliveryStatus}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold font-mono">
+                        🟢 {p.deliveryStatus}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-indigo-600 h-1.5 rounded-full transition-all" style={{ width: `${p.progress}%` }} />
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-mono text-right">{p.progress}% Complete</div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                  <button
+                    onClick={() => {
+                      setSelectedProj(p);
+                      setCompAmountInput(p.compensationAmount !== null && p.compensationAmount !== undefined ? String(p.compensationAmount) : "");
+                      setCompCurrencyInput(p.currency || "INR");
+                      setIsClearComp(false);
+                      setIsCompModalOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 transition-all flex items-center gap-1.5"
+                  >
+                    <span>{p.compensationAmount !== null && p.compensationAmount !== undefined ? "Edit Amount" : "+ Add Amount"}</span>
+                  </button>
+
+                  <Link
+                    href={`/projects/${p.id}`}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs transition-all"
+                  >
+                    Workspace
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -400,6 +539,79 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
           >
             Save Changes
           </button>
+        </form>
+      </BottomSheet>
+
+      {/* Set Project Compensation Bottom Sheet */}
+      <BottomSheet
+        isOpen={isCompModalOpen}
+        onClose={() => setIsCompModalOpen(false)}
+        title="Set Project Compensation"
+        subtitle={`Employee: ${employee?.name} | Project: ${selectedProj?.name}`}
+      >
+        <form onSubmit={handleSaveCompensation} className="space-y-4 text-xs">
+          <div className="p-3.5 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-1">
+            <div className="text-[10px] font-mono font-bold text-indigo-700 dark:text-indigo-300">ADMIN CONTROLLED ASSIGNMENT</div>
+            <div className="text-slate-800 dark:text-slate-200 font-medium">
+              Project compensation is specific to {employee?.name}'s work on {selectedProj?.name}.
+            </div>
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Project Compensation Amount (₹)</label>
+            <input
+              type="number"
+              min="0"
+              step="any"
+              disabled={isClearComp}
+              value={compAmountInput}
+              onChange={(e) => setCompAmountInput(e.target.value)}
+              placeholder="e.g. 15000"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-mono font-bold text-sm disabled:opacity-50"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Currency</label>
+            <select
+              value={compCurrencyInput}
+              onChange={(e) => setCompCurrencyInput(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-semibold"
+            >
+              <option value="INR">INR (₹)</option>
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="clearComp"
+              checked={isClearComp}
+              onChange={(e) => setIsClearComp(e.target.checked)}
+              className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+            />
+            <label htmlFor="clearComp" className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+              Clear compensation (Reset to "Not Set")
+            </label>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsCompModalOpen(false)}
+              className="w-1/2 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm transition-all"
+            >
+              Save Compensation
+            </button>
+          </div>
         </form>
       </BottomSheet>
 

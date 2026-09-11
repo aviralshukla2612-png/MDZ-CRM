@@ -47,6 +47,40 @@ export async function getCurrentUser(): Promise<CurrentUserSession | null> {
 }
 
 /**
+ * Validates that an employee user has accepted the latest published Terms version in DB.
+ * Returns a 403 NextResponse if terms re-acceptance is required, or null if compliant.
+ */
+export async function requireTermsAccepted(user: CurrentUserSession): Promise<NextResponse | null> {
+  if (user.activeRole === "EMPLOYEE") {
+    const currentTerms = await prisma.terms.findFirst({
+      where: { targetAudience: "EMPLOYEE", isCurrent: true, isDraft: false },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (currentTerms) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { termsAcceptedVersion: true },
+      });
+
+      if (!dbUser?.termsAcceptedVersion || dbUser.termsAcceptedVersion !== currentTerms.version) {
+        return NextResponse.json(
+          {
+            success: false,
+            requiresTermsAcceptance: true,
+            currentVersion: currentTerms.version,
+            acceptedVersion: dbUser?.termsAcceptedVersion || null,
+            error: `Terms acceptance required for version ${currentTerms.version}`,
+          },
+          { status: 403 }
+        );
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Standardized auth helper for APIs. 
  * Returns the CurrentUserSession, or a 401 NextResponse if unauthenticated.
  */
@@ -74,3 +108,4 @@ export async function requireRole(allowedRoles: RoleContext[]): Promise<CurrentU
   
   return user;
 }
+

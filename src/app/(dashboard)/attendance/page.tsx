@@ -397,7 +397,7 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
     <div className="space-y-8 pb-20 max-w-4xl mx-auto">
       {/* Module Header */}
       <PageHeader
-        title="MDZ Work Clock"
+        title="Millionaire Digital Work Clock"
         description="Employee day timeline, live stopwatch, work focus tracking, and break allowances."
         badge="WORK MODULE"
         icon={<Clock className="w-7 h-7 text-indigo-600 dark:text-indigo-400 animate-pulse" />}

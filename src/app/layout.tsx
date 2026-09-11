@@ -5,8 +5,8 @@ import { NextAuthProvider } from "@/components/providers/NextAuthProvider";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata = {
-  title: "MDZ OS — Master Business Operating System",
-  description: "Centralized Operating System for MDZ Company",
+  title: "Millionaire Digital CRM — Master Business Operating System",
+  description: "Centralized Operating System for Millionaire Digital CRM",
 };
 
 import { PrototypeStoreProvider } from "@/lib/prototypeStore";
@@ -14,7 +14,7 @@ import { WorkClockProvider } from "@/lib/workClockContext";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>

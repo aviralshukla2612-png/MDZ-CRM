@@ -35,9 +35,47 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  // Change Requests tab state
+  const [changeReqsData, setChangeReqsData] = useState<any>({ changeRequests: [], quota: { includedCount: 3, usedCount: 0, remainingCount: 3 } });
+  const [loadingChangeReqs, setLoadingChangeReqs] = useState<boolean>(false);
+
   React.useEffect(() => {
     fetchProject();
+    fetchChangeRequests();
   }, []);
+
+  const fetchChangeRequests = async () => {
+    try {
+      setLoadingChangeReqs(true);
+      const res = await fetch(`/mdz-crm/api/client/projects/${params.id}/change-requests`);
+      const json = await res.json();
+      if (json.success) {
+        setChangeReqsData(json);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingChangeReqs(false);
+    }
+  };
+
+  const handleApproveBudget = async (requestId: string) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/admin/projects/${params.id}/change-requests/${requestId}/approve-budget`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || "Budget increase approved!", "success");
+        fetchProject();
+        fetchChangeRequests();
+      } else {
+        showToast(json.error || "Failed to approve budget", "error");
+      }
+    } catch (e) {
+      showToast("Network error", "error");
+    }
+  };
 
   const fetchProject = async () => {
     try {
@@ -91,21 +129,108 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
 
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
-  const [taskAssignee, setTaskAssignee] = useState("Dev Patel");
+  const [taskAssigneeId, setTaskAssigneeId] = useState("");
+  const [taskPriority, setTaskPriority] = useState("MEDIUM");
+  const [submittingTask, setSubmittingTask] = useState(false);
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
-    project.tasks.push({
-      id: `TSK-00${project.tasks.length + 1}`,
-      title: taskTitle,
-      assignee: taskAssignee,
-      status: "TODO",
-      priority: "HIGH",
-    });
-    showToast(`✓ Task "${taskTitle}" assigned to ${taskAssignee}`, "success");
-    setTaskTitle("");
-    setIsTaskSheetOpen(false);
+
+    try {
+      setSubmittingTask(true);
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: taskTitle.trim(),
+          priority: taskPriority,
+          assignedToId: taskAssigneeId || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Task created successfully`, "success");
+        setTaskTitle("");
+        setIsTaskSheetOpen(false);
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to create task", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error creating task", "error");
+    } finally {
+      setSubmittingTask(false);
+    }
+  };
+
+  const handleToggleTaskStatus = async (taskId: string, currentStatus: string) => {
+    let nextStatus = "IN_PROGRESS";
+    if (currentStatus === "TODO") nextStatus = "IN_PROGRESS";
+    else if (currentStatus === "IN_PROGRESS") nextStatus = "COMPLETED";
+    else if (currentStatus === "COMPLETED" || currentStatus === "DONE") nextStatus = "TODO";
+
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Task status updated to ${nextStatus}`, "success");
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to update task", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error updating task status", "error");
+    }
+  };
+
+  const handleArchiveTask = async (taskId: string) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}/tasks/${taskId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Task archived successfully", "success");
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to archive task", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error archiving task", "error");
+    }
+  };
+
+  const handleSetMostImportant = async (taskId: string, isMostImportant: boolean) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isMostImportant }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(
+          isMostImportant
+            ? "⭐ Task marked as Most Important"
+            : "Priority designation removed",
+          "success"
+        );
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to set priority", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error setting task priority", "error");
+    }
   };
 
   const executeDeleteProject = async () => {
@@ -302,7 +427,10 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       {activeTab === "tasks" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Project Task Stack</h3>
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Project Task Stack</h3>
+              <p className="text-xs text-slate-500">Tasks directly compute the single-source-of-truth project progress.</p>
+            </div>
             <button
               onClick={() => setIsTaskSheetOpen(true)}
               className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs touch-target"
@@ -311,23 +439,85 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
             </button>
           </div>
           <div className="space-y-3 text-xs">
-            {project.tasks?.map((tsk: any) => (
-              <div key={tsk.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-slate-400">{tsk.id}</span>
-                  <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
-                    Assignee: {tsk.assignee}
-                  </span>
-                </div>
-                <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">{tsk.title}</div>
-                {tsk.blockedReason && (
-                  <div className="p-2.5 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 font-medium border border-rose-200 dark:border-rose-800 flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                    <span>{tsk.blockedReason}</span>
-                  </div>
-                )}
-              </div>
-            ))}
+            {project.tasks?.filter((t: any) => t.status !== "ARCHIVED").length === 0 ? (
+              <div className="p-8 text-center text-slate-400">No active tasks. Click "+ Create Task" to add tasks.</div>
+            ) : (
+              project.tasks
+                ?.filter((t: any) => t.status !== "ARCHIVED")
+                .map((tsk: any) => {
+                  const isDone = tsk.status === "COMPLETED" || tsk.status === "DONE";
+                  const isInProgress = tsk.status === "IN_PROGRESS";
+
+                  return (
+                    <div
+                      key={tsk.id}
+                      className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                        tsk.isMostImportant
+                          ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/80 shadow-xs"
+                          : "bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700"
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {tsk.isMostImportant && (
+                            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-500 text-white flex items-center gap-1 shadow-2xs">
+                              ⭐ MOST IMPORTANT
+                            </span>
+                          )}
+                          <span className="font-mono font-bold text-slate-400">{tsk.id.slice(0, 8)}</span>
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300">
+                            Assignee: {tsk.assignedTo?.name || tsk.assignee || "Unassigned"}
+                          </span>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                            {tsk.priority}
+                          </span>
+                        </div>
+                        <div className={`font-bold text-sm ${isDone ? "line-through text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
+                          {tsk.title}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {/* OWNER Priority Toggle Control */}
+                        {(session?.user as any)?.role === "OWNER" && !isDone && (
+                          <button
+                            onClick={() => handleSetMostImportant(tsk.id, !tsk.isMostImportant)}
+                            className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-colors flex items-center gap-1 ${
+                              tsk.isMostImportant
+                                ? "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 border-amber-300"
+                                : "bg-white dark:bg-slate-900 hover:bg-amber-50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                            }`}
+                            title={tsk.isMostImportant ? "Remove Most Important Priority" : "Mark as Most Important Priority for Employee Queue"}
+                          >
+                            <span>⭐ {tsk.isMostImportant ? "Remove Priority" : "Mark Most Important"}</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleToggleTaskStatus(tsk.id, tsk.status)}
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all ${
+                            isDone
+                              ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border-emerald-200 dark:border-emerald-800"
+                              : isInProgress
+                              ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 border-amber-200 dark:border-amber-800"
+                              : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                          }`}
+                        >
+                          {isDone ? "✓ COMPLETED" : isInProgress ? "◐ IN PROGRESS" : "☐ TODO"}
+                        </button>
+
+                        <button
+                          onClick={() => handleArchiveTask(tsk.id)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-rose-100 text-slate-600 hover:text-rose-600 text-xs font-semibold transition-colors"
+                          title="Archive Task"
+                        >
+                          Archive
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+            )}
           </div>
         </div>
       )}
@@ -396,8 +586,116 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
         </div>
       )}
 
+      {/* Tab: Change Requests & Budget Control */}
+      {activeTab === "changes" && (
+        <div className="space-y-5">
+          {/* Quota Summary Card */}
+          <div className="p-5 rounded-2xl bg-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-800 shadow-xl">
+            <div className="space-y-1">
+              <div className="text-[10px] font-mono font-bold text-indigo-400 uppercase tracking-wider">CLIENT CHANGE REQUEST QUOTA</div>
+              <div className="text-sm font-semibold text-slate-300">
+                3 Included Requests per Project Scope · Additional Requests Require Budget Increase
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs font-mono font-bold">
+              <div className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-200">
+                Included: <strong className="text-white">3</strong>
+              </div>
+              <div className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-200">
+                Used: <strong className="text-emerald-400">{changeReqsData.quota?.usedCount || 0}</strong>
+              </div>
+              <div className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-slate-200">
+                Remaining: <strong className="text-indigo-400">{changeReqsData.quota?.remainingCount || 0}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Change Requests List */}
+          {changeReqsData.changeRequests?.length === 0 ? (
+            <div className="p-8 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs">
+              No change requests have been submitted for this project yet.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {changeReqsData.changeRequests?.map((cr: any) => (
+                <div
+                  key={cr.id}
+                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs font-mono font-bold px-2.5 py-1 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                        {cr.requestNumber || `Request #${cr.requestSeqInt}`}
+                      </span>
+                      <h4 className="font-bold text-base text-slate-900 dark:text-slate-100">{cr.originalRequirement}</h4>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {cr.status === "PENDING_BUDGET_APPROVAL" ? (
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-pulse">
+                          ⚠️ PENDING BUDGET APPROVAL
+                        </span>
+                      ) : cr.status === "APPROVED" ? (
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          ✓ APPROVED
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          {cr.status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{cr.requestedChange}</p>
+
+                  {/* Multi-item breakdown */}
+                  {cr.items && cr.items.length > 0 && (
+                    <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs">
+                      <div className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                        REQUEST ITEMS ({cr.items.length} CHANGES IN 1 REQUEST)
+                      </div>
+                      <div className="space-y-1.5">
+                        {cr.items.map((item: any, idx: number) => (
+                          <div key={item.id || idx} className="flex items-start gap-2 font-medium text-slate-800 dark:text-slate-200">
+                            <span className="text-indigo-600 dark:text-indigo-400 font-bold">•</span>
+                            <span>{item.description || item.title}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Budget Surcharge & Approval Action Banner */}
+                  {cr.status === "PENDING_BUDGET_APPROVAL" && (
+                    <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                      <div className="space-y-0.5">
+                        <div className="font-bold text-amber-900 dark:text-amber-300">
+                          Additional Request Surcharge Required: ₹{(cr.costImpactAmount || 5000).toLocaleString("en-IN")}
+                        </div>
+                        <div className="text-[11px] text-amber-700 dark:text-amber-400">
+                          Request exceeds 3 included requests. Approving will update project contract value by ₹{(cr.costImpactAmount || 5000).toLocaleString("en-IN")}.
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleApproveBudget(cr.id)}
+                        className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold text-xs shadow-xs transition-all shrink-0"
+                      >
+                        Approve & Add Budget
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Remaining Tabs fallback */}
-      {["notes", "calls", "changes", "payments"].includes(activeTab) && (
+      {["notes", "calls", "payments"].includes(activeTab) && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs text-xs text-slate-600 dark:text-slate-300">
           Viewing <strong>{activeTab.toUpperCase()}</strong> workspace record for {project.name}.
         </div>
@@ -425,13 +723,15 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           <div>
             <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Assignee</label>
             <select
-              value={taskAssignee}
-              onChange={(e) => setTaskAssignee(e.target.value)}
+              value={taskAssigneeId}
+              onChange={(e) => setTaskAssigneeId(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none"
             >
               <option value="">-- Unassigned --</option>
-              {project.teamMembers?.map((m: any) => (
-                <option key={m.id} value={m.name}>{m.name} ({m.role})</option>
+              {project.memberships?.map((m: any) => (
+                <option key={m.id} value={m.employee?.user?.id}>
+                  {m.employee?.user?.name || "Member"} ({m.roleInProject})
+                </option>
               ))}
             </select>
           </div>

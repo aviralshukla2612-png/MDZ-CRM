@@ -146,14 +146,14 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#090F1D]/95 backdrop-blur-2xl border-b border-slate-200/80 dark:border-slate-800/80 px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs dark:shadow-2xl transition-all shrink-0 h-16 w-full">
+    <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-b border-amber-200/80 dark:border-amber-900/40 px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs dark:shadow-2xl transition-all shrink-0 h-16 w-full">
       {/* Left Brand Logo & Context */}
       <div className="flex items-center gap-3 shrink-0">
         {/* Mobile Menu Toggle Button */}
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
-            className="md:hidden p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 touch-target"
+            className="md:hidden p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 touch-target"
             title="Toggle Menu"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,10 +163,10 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
         )}
 
         <Link href="/owner" className="flex items-center gap-3 select-none group">
-          <img src="/mdz-crm/mdz-logo.jpg" alt="MDZ Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain group-hover:scale-105 transition-all" />
-          <span className="font-extrabold text-base sm:text-lg tracking-wider text-slate-900 dark:text-slate-100 uppercase font-sans flex items-center gap-1.5">
-            <span className="md:hidden">MDZ</span>
-            <span className="hidden md:inline font-bold">MDZ <span className="bg-gradient-to-r from-indigo-600 to-cyan-500 dark:from-indigo-400 dark:to-cyan-400 bg-clip-text text-transparent">OS</span></span>
+          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire Digital Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shadow-sm ring-1 ring-amber-400/50 group-hover:scale-105 transition-all" />
+          <span className="font-extrabold text-sm sm:text-base tracking-wider text-stone-900 dark:text-stone-100 uppercase font-sans flex items-center gap-1.5">
+            <span className="md:hidden bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 bg-clip-text text-transparent font-black">MILLIONAIRE</span>
+            <span className="hidden md:inline font-black tracking-tight">MILLIONAIRE DIGITAL <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 dark:from-amber-400 dark:to-yellow-400 bg-clip-text text-transparent">CRM</span></span>
           </span>
         </Link>
       </div>

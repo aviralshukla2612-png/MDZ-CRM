@@ -6,43 +6,43 @@
 
 @layer base {
   :root {
-    --bg-app: #F8FAFC;
+    --bg-app: #FAF8F5;
     --surface-main: #FFFFFF;
-    --surface-alt: #F1F5F9;
-    --border-main: #E2E8F0;
-    --border-subtle: #F1F5F9;
-    --text-main: #0F172A;
-    --text-muted: #64748B;
+    --surface-alt: #F7F3EA;
+    --border-main: #E8E2D5;
+    --border-subtle: #F2EDE4;
+    --text-main: #1C1917;
+    --text-muted: #78716C;
     
-    --primary-main: #4F46E5;
-    --primary-hover: #4338CA;
-    --primary-soft: rgba(79, 70, 229, 0.08);
+    --primary-main: #C5A059;
+    --primary-hover: #B38F2A;
+    --primary-soft: rgba(197, 160, 89, 0.12);
 
     --nav-bg: #FFFFFF;
-    --nav-border: #E2E8F0;
-    --nav-text: #0F172A;
-    --nav-text-muted: #64748B;
+    --nav-border: #E8E2D5;
+    --nav-text: #1C1917;
+    --nav-text-muted: #78716C;
 
     --safe-area-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .dark {
-    --bg-app: #070B14;
-    --surface-main: #0E1626;
-    --surface-alt: #141F36;
-    --border-main: #1E293B;
-    --border-subtle: #0F172A;
-    --text-main: #F8FAFC;
-    --text-muted: #94A3B8;
+    --bg-app: #0D0C0A;
+    --surface-main: #161411;
+    --surface-alt: #211E18;
+    --border-main: #332D24;
+    --border-subtle: #26221B;
+    --text-main: #FAFAF9;
+    --text-muted: #A8A29E;
 
-    --primary-main: #6366F1;
-    --primary-hover: #818CF8;
-    --primary-soft: rgba(99, 102, 241, 0.15);
+    --primary-main: #D4AF37;
+    --primary-hover: #E5C158;
+    --primary-soft: rgba(212, 175, 55, 0.2);
 
-    --nav-bg: #0A101D;
-    --nav-border: #1E293B;
-    --nav-text: #F8FAFC;
-    --nav-text-muted: #94A3B8;
+    --nav-bg: #12100E;
+    --nav-border: #332D24;
+    --nav-text: #FAFAF9;
+    --nav-text-muted: #A8A29E;
   }
 }
 
@@ -76,12 +76,12 @@ code, pre, .font-mono {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #E5C158;
   border-radius: 4px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #A38038;
 }
 
 /* Touch Target Standard */
@@ -133,31 +133,31 @@ code, pre, .font-mono {
   background-color: var(--surface-main);
   border: 1px solid var(--border-main);
   border-radius: 0.75rem;
-  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 1px 3px 0 rgba(212, 175, 55, 0.06), 0 1px 2px -1px rgba(212, 175, 55, 0.04);
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .ui-card-hover:hover {
-  border-color: #CBD5E1;
-  box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.08);
+  border-color: #D4AF37;
+  box-shadow: 0 4px 12px -1px rgba(212, 175, 55, 0.2);
 }
 
 .dark .ui-card-hover:hover {
-  border-color: #334155;
+  border-color: #DFBE6F;
 }
 
 /* Primary Button */
 .ui-button-primary {
-  background-color: var(--primary-main);
+  background: linear-gradient(135deg, #D4AF37 0%, #C5A059 100%);
   color: #FFFFFF;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 0.5rem;
   transition: all 0.15s ease-in-out;
 }
 
 .ui-button-primary:hover {
-  background-color: var(--primary-hover);
-  box-shadow: 0 4px 12px var(--primary-soft);
+  background: linear-gradient(135deg, #E5C158 0%, #B38F2A 100%);
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
 }
 
 /* Sheet & Drawer Animations */

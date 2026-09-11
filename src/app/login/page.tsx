@@ -49,13 +49,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#090E18] text-slate-900 dark:text-slate-100 flex flex-col justify-between p-4 sm:p-6 transition-colors">
+    <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0D0C0A] text-stone-900 dark:text-stone-100 flex flex-col justify-between p-4 sm:p-6 transition-colors">
       {/* Header theme toggle */}
       <div className="flex items-center justify-between max-w-md mx-auto w-full pt-2">
-        <div className="flex items-center gap-2 font-bold text-base text-slate-900 dark:text-slate-100">
-          <img src="/mdz-crm/mdz-logo.jpg" alt="MDZ Logo" className="w-8 h-8 object-contain" />
-          <span>
-            MDZ <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">OS</span>
+        <div className="flex items-center gap-2 font-bold text-base text-stone-900 dark:text-stone-100">
+          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire Digital Logo" className="w-8 h-8 object-contain rounded-lg ring-1 ring-amber-400/50 shadow-xs" />
+          <span className="font-extrabold tracking-tight">
+            MILLIONAIRE DIGITAL <span className="bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">CRM</span>
           </span>
         </div>
 
@@ -64,13 +64,13 @@ export default function LoginPage() {
 
       {/* Main Login Card */}
       <div className="max-w-md mx-auto w-full my-auto py-8">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="bg-white dark:bg-[#161411] rounded-2xl border border-amber-200/80 dark:border-amber-900/40 p-6 sm:p-8 shadow-xl space-y-6">
           <div className="space-y-1 text-left">
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-stone-100 tracking-tight">
               Welcome back
             </h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-              Sign in with your MDZ Company credentials to access your workspace.
+            <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400">
+              Sign in with your Millionaire Digital CRM credentials to access your workspace.
             </p>
           </div>
 
@@ -208,8 +208,8 @@ export default function LoginPage() {
       </BottomSheet>
 
       {/* Footer */}
-      <div className="text-center text-xs text-slate-400 pb-2 font-mono">
-        MDZ Company © 2026 • Enterprise Business OS
+      <div className="text-center text-xs text-amber-600/80 dark:text-amber-400/80 pb-2 font-mono font-semibold">
+        Millionaire Digital CRM © 2026 • Enterprise Business OS
       </div>
     </div>
   );

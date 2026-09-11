@@ -122,7 +122,7 @@ export default function SettingsPage() {
   const { data: session } = useSession();
 
   // Company settings
-  const [companyName, setCompanyName] = useState("MDZ Company");
+  const [companyName, setCompanyName] = useState("Millionaire Digital CRM");
   const [companySaved, setCompanySaved] = useState(false);
 
   const playbooks = [
