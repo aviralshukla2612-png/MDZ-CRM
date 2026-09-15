@@ -31,6 +31,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!phone || typeof phone !== "string" || !phone.trim()) {
+      return NextResponse.json(
+        { success: false, error: "Phone number is required." },
+        { status: 400 }
+      );
+    }
+
     if (!password || typeof password !== "string" || password.length < 6) {
       return NextResponse.json(
         { success: false, error: "Password must be at least 6 characters long." },

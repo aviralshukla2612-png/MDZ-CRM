@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
-import { Crown, Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, KeyRound } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { Crown, Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, KeyRound, Building2, CheckCircle2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
@@ -14,8 +15,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registeredSuccess, setRegisteredSuccess] = useState(false);
   const [isForgotOpen, setIsForgotOpen] = useState(false);
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("registered") === "true") {
+      setRegisteredSuccess(true);
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +81,16 @@ export default function LoginPage() {
               Sign in with your Millionaire Digital CRM credentials to access your workspace.
             </p>
           </div>
+
+          {registeredSuccess && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800 text-xs font-medium flex items-start gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Client Account Created Successfully!</p>
+                <p className="text-emerald-700 dark:text-emerald-300">You can now sign in with your email and password.</p>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-xs font-medium">
@@ -153,6 +171,44 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          {/* Divider for Client Section */}
+          <div className="relative flex items-center justify-center pt-2">
+            <div className="border-t border-stone-200 dark:border-stone-800 w-full" />
+            <span className="bg-white dark:bg-[#161411] px-3 text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider absolute">
+              New Client?
+            </span>
+          </div>
+
+          {/* Client-Only Registration Box */}
+          <div className="rounded-xl border border-amber-300/80 dark:border-amber-800/60 bg-gradient-to-br from-amber-50/70 to-yellow-50/40 dark:from-amber-950/25 dark:to-yellow-950/10 p-4 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <div className="p-2 rounded-lg bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5 text-left">
+                <div className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                  <span>Client Account Registration</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-200/70 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 font-semibold">Clients Only</span>
+                </div>
+                <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-snug">
+                  Register your company to access your client portal, milestones, and project deliverables.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/client-register"
+              className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 text-stone-950 dark:text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors"
+            >
+              <span>Register as Client</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+
+            <div className="text-[10px] text-stone-500 dark:text-stone-400 text-center leading-relaxed">
+              <span className="text-amber-600 dark:text-amber-400 font-semibold">Strict Note:</span> Employee self-registration is disabled. Employee accounts are created exclusively by CRM management.
+            </div>
+          </div>
 
         </div>
       </div>
