@@ -20,6 +20,7 @@ import {
   FileText,
   Sparkles,
   Calendar,
+  GitPullRequest,
 } from "lucide-react";
 
 interface Props {
@@ -89,6 +90,9 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "CLIENT":
         return [
           { title: "Project Overview", href: "/client", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Assigned Developers", href: "/client/developers", icon: <Users className="w-4 h-4" /> },
+          { title: "Change Requests (3 Max)", href: "/client/revisions", icon: <GitPullRequest className="w-4 h-4" /> },
+          { title: "Daily Updates", href: "/client/updates", icon: <Clock className="w-4 h-4" /> },
           { title: "Terms & Conditions", href: "/terms-and-conditions", icon: <BookOpen className="w-4 h-4" /> },
           { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];

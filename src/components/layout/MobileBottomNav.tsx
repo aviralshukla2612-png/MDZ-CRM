@@ -17,6 +17,7 @@ import {
   Menu,
   BookOpen,
   Settings,
+  GitPullRequest,
 } from "lucide-react";
 import { useWorkClock } from "@/lib/workClockContext";
 
@@ -61,8 +62,9 @@ export function MobileBottomNav({ role, onOpenMoreMenu }: Props) {
       case "CLIENT":
         return [
           { label: "Overview", href: "/client", icon: <FolderKanban className="w-5 h-5" /> },
-          { label: "Terms", href: "/terms-and-conditions", icon: <BookOpen className="w-5 h-5" /> },
-          { label: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" /> },
+          { label: "Developers", href: "/client/developers", icon: <Users className="w-5 h-5" /> },
+          { label: "Revisions", href: "/client/revisions", icon: <GitPullRequest className="w-5 h-5" /> },
+          { label: "Updates", href: "/client/updates", icon: <Clock className="w-5 h-5" /> },
         ];
     }
   };
