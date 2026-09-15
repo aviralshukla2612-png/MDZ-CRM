@@ -843,9 +843,61 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                       {new Date(u.createdAt).toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {u.content}
-                  </p>
+                  {/* Number-wise Task Highlights */}
+                  <div className="space-y-2">
+                    {(() => {
+                      const lines = (u.content || "").split("\n").map((l: string) => l.trim()).filter(Boolean);
+                      const isNumbered = lines.some((l: string) => /^(\d+[\.\)]|\-|\•)/.test(l));
+
+                      if (!isNumbered) {
+                        return (
+                          <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                            {u.content}
+                          </p>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-2">
+                          <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                            Task Highlights:
+                          </span>
+                          <div className="grid grid-cols-1 gap-2">
+                            {lines.map((line: string, idx: number) => {
+                              const match = line.match(/^(\d+[\.\)]|\-|\•)\s*(.*)$/);
+                              const pointText = match ? match[2] : line;
+                              const isNote = line.toLowerCase().startsWith("note:");
+
+                              if (isNote) {
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 text-xs text-amber-900 dark:text-amber-200 font-medium"
+                                  >
+                                    {line}
+                                  </div>
+                                );
+                              }
+
+                              return (
+                                <div
+                                  key={idx}
+                                  className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 flex items-start gap-2.5 shadow-2xs"
+                                >
+                                  <span className="w-5 h-5 shrink-0 rounded-lg bg-indigo-600 text-white font-extrabold text-[11px] flex items-center justify-center font-mono shadow-xs mt-0.5">
+                                    {match && !isNaN(parseInt(match[1])) ? parseInt(match[1]) : idx + 1}
+                                  </span>
+                                  <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed pt-0.5">
+                                    {pointText}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                   <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 font-medium">
                     <span>Posted by:</span>
                     <span className="font-bold text-slate-800 dark:text-slate-200">

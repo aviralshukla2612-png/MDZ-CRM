@@ -22,6 +22,7 @@ import {
   Calendar,
   GitPullRequest,
   Layers,
+  Send,
 } from "lucide-react";
 
 interface Props {
@@ -51,6 +52,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
           { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
           { title: "Workload Kanban", href: "/workload", icon: <Layers className="w-4 h-4" /> },
+          { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Team", href: "/employees", icon: <UserCheck className="w-4 h-4" /> },
           { title: "Attendance", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
           { title: "Company Holidays", href: "/attendance/holidays", icon: <Calendar className="w-4 h-4" /> },
@@ -79,6 +81,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
         return [
           { title: "My Desk", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
           { title: "My Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "My Finance", href: "/employee/finance", icon: <IndianRupee className="w-4 h-4" /> },
           { title: "My Work Sessions", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
           { title: "Leave Applications", href: "/attendance/leave", icon: <UserCheck className="w-4 h-4" /> },

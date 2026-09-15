@@ -171,9 +171,61 @@ export default function ClientUpdatesPage() {
                 </div>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                {update.content}
-              </p>
+              {/* Render Numbered Task Highlights */}
+              <div className="space-y-2">
+                {(() => {
+                  const lines = (update.content || "").split("\n").map((l) => l.trim()).filter(Boolean);
+                  const isNumbered = lines.some((l) => /^(\d+[\.\)]|\-|\•)/.test(l));
+
+                  if (!isNumbered) {
+                    return (
+                      <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                        {update.content}
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-slate-400">
+                        Task Highlights:
+                      </span>
+                      <div className="grid grid-cols-1 gap-2">
+                        {lines.map((line, idx) => {
+                          const match = line.match(/^(\d+[\.\)]|\-|\•)\s*(.*)$/);
+                          const pointText = match ? match[2] : line;
+                          const isNote = line.toLowerCase().startsWith("note:");
+
+                          if (isNote) {
+                            return (
+                              <div
+                                key={idx}
+                                className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/80 text-xs text-amber-900 dark:text-amber-200 font-medium"
+                              >
+                                {line}
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={idx}
+                              className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-start gap-3"
+                            >
+                              <span className="w-6 h-6 shrink-0 rounded-xl bg-indigo-600 text-white font-extrabold text-xs flex items-center justify-center font-mono shadow-xs mt-0.5">
+                                {match && !isNaN(parseInt(match[1])) ? parseInt(match[1]) : idx + 1}
+                              </span>
+                              <p className="text-xs text-slate-800 dark:text-slate-200 font-medium leading-relaxed pt-0.5">
+                                {pointText}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
               <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                 <span className="font-bold text-slate-700 dark:text-slate-300">
