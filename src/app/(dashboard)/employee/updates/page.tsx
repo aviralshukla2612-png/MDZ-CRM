@@ -144,7 +144,7 @@ export default function EmployeeDailyUpdatesPage() {
 
     lines.forEach((line) => {
       // Check if line starts with a number or bullet like "1.", "1)", "•", "-"
-      const match = line.match(/^(\d+[\.\)]|\-|\•)\s*(.*)$/);
+      const match = line.match(/^(\d+[.)]|[-•])\s*(.*)$/);
       if (match && match[2]) {
         points.push(match[2]);
       } else if (line.toLowerCase().startsWith("note:")) {

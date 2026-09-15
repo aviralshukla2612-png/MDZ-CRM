@@ -175,7 +175,7 @@ export default function ClientUpdatesPage() {
               <div className="space-y-2">
                 {(() => {
                   const lines = (update.content || "").split("\n").map((l) => l.trim()).filter(Boolean);
-                  const isNumbered = lines.some((l) => /^(\d+[\.\)]|\-|\•)/.test(l));
+                  const isNumbered = lines.some((l) => /^(\d+[.)]|[-•])/.test(l));
 
                   if (!isNumbered) {
                     return (
@@ -192,7 +192,7 @@ export default function ClientUpdatesPage() {
                       </span>
                       <div className="grid grid-cols-1 gap-2">
                         {lines.map((line, idx) => {
-                          const match = line.match(/^(\d+[\.\)]|\-|\•)\s*(.*)$/);
+                          const match = line.match(/^(\d+[.)]|[-•])\s*(.*)$/);
                           const pointText = match ? match[2] : line;
                           const isNote = line.toLowerCase().startsWith("note:");
 

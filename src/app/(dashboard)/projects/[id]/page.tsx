@@ -847,7 +847,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                   <div className="space-y-2">
                     {(() => {
                       const lines = (u.content || "").split("\n").map((l: string) => l.trim()).filter(Boolean);
-                      const isNumbered = lines.some((l: string) => /^(\d+[\.\)]|\-|\•)/.test(l));
+                      const isNumbered = lines.some((l: string) => /^(\d+[.)]|[-•])/.test(l));
 
                       if (!isNumbered) {
                         return (
@@ -864,7 +864,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                           </span>
                           <div className="grid grid-cols-1 gap-2">
                             {lines.map((line: string, idx: number) => {
-                              const match = line.match(/^(\d+[\.\)]|\-|\•)\s*(.*)$/);
+                              const match = line.match(/^(\d+[.)]|[-•])\s*(.*)$/);
                               const pointText = match ? match[2] : line;
                               const isNote = line.toLowerCase().startsWith("note:");
 
