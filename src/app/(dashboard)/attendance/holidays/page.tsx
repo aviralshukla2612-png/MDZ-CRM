@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -19,7 +21,13 @@ import {
 } from "lucide-react";
 
 export default function CompanyHolidaysPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const { showToast } = useToast();
+
+  const userRole = (session?.user as any)?.role || (session?.user as any)?.activeRole;
+  const isOwnerOrAdmin = userRole === "OWNER" || userRole === "ADMIN";
+
   const [holidays, setHolidays] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,9 +46,18 @@ export default function CompanyHolidaysPage() {
   // Delete State
   const [deletingHoliday, setDeletingHoliday] = useState<any>(null);
 
+  // Redirect employees away from company holidays admin page
   useEffect(() => {
-    fetchHolidays();
-  }, [selectedYear]);
+    if (status !== "loading" && session && !isOwnerOrAdmin) {
+      router.replace("/employee");
+    }
+  }, [status, session, isOwnerOrAdmin, router]);
+
+  useEffect(() => {
+    if (isOwnerOrAdmin) {
+      fetchHolidays();
+    }
+  }, [selectedYear, isOwnerOrAdmin]);
 
   const fetchHolidays = async () => {
     try {
@@ -206,17 +223,19 @@ export default function CompanyHolidaysPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            const mm = String(selectedMonth + 1).padStart(2, "0");
-            setDateStr(`${selectedYear}-${mm}-01`);
-            setIsAddOpen(true);
-          }}
-          className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>+ Add Official Holiday</span>
-        </button>
+        {isOwnerOrAdmin && (
+          <button
+            onClick={() => {
+              const mm = String(selectedMonth + 1).padStart(2, "0");
+              setDateStr(`${selectedYear}-${mm}-01`);
+              setIsAddOpen(true);
+            }}
+            className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 shrink-0 self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>+ Add Official Holiday</span>
+          </button>
+        )}
       </div>
 
       {/* Main Grid: Calendar View + Sidebar list */}
@@ -403,13 +422,15 @@ export default function CompanyHolidaysPage() {
                         )}
                       </div>
 
-                      <button
-                        onClick={() => setDeletingHoliday(h)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all opacity-80 group-hover:opacity-100"
-                        title="Delete Holiday"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {isOwnerOrAdmin && (
+                        <button
+                          onClick={() => setDeletingHoliday(h)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-all opacity-80 group-hover:opacity-100"
+                          title="Delete Holiday"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   );
                 })}

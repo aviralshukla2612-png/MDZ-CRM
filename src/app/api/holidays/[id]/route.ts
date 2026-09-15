@@ -5,6 +5,11 @@ import { requireAuth } from "@/lib/auth";
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const authRes = await requireAuth();
   if (authRes instanceof NextResponse) return authRes;
+  const user = authRes;
+
+  if (user.activeRole !== "OWNER") {
+    return NextResponse.json({ success: false, error: "Unauthorized: Only Admin/Owner can delete holidays" }, { status: 403 });
+  }
 
   try {
     const existing = await prisma.holiday.findUnique({
