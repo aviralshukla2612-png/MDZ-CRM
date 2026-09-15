@@ -118,6 +118,8 @@ export function EmployeeProjectKanban({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(
     initialSelectedEmployeeId || (employees.length > 0 ? employees[0].id : "ALL")
   );
+  // Hide left sidebar portion by default so Kanban columns take full 100% width
+  const [showSidebar, setShowSidebar] = useState(false);
 
   // Drag and Drop state
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
@@ -185,7 +187,17 @@ export function EmployeeProjectKanban({
     setOptimisticProjects(null);
   }, [displayedProjects]);
 
-  const projectsToRender = optimisticProjects || displayedProjects;
+  const rawProjects = optimisticProjects || displayedProjects;
+  const projectsToRender = useMemo(() => {
+    if (!searchTerm.trim()) return rawProjects;
+    const term = searchTerm.toLowerCase();
+    return rawProjects.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        (p.projectNumber && p.projectNumber.toLowerCase().includes(term)) ||
+        (p.clientName && p.clientName.toLowerCase().includes(term))
+    );
+  }, [rawProjects, searchTerm]);
 
   // Handle Drag & Drop status change
   const handleDropProject = async (projectId: string, targetStage: string) => {
@@ -281,18 +293,128 @@ export function EmployeeProjectKanban({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-5 items-start">
-      {/* LEFT SIDEBAR: Master Employee List (Odoo Style) */}
-      <div className="w-full lg:w-80 xl:w-96 shrink-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm overflow-hidden flex flex-col">
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                Team Workload ({employees.length})
-              </h3>
+    <div className="space-y-4 w-full">
+      {/* TOP CONTROL BAR: Full Width Developer Dropdown + Quick Filters + Toggle Sidebar */}
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-5 shadow-sm space-y-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          {/* Left: Quick Employee Selector Dropdown */}
+          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Select Developer:</span>
+              </span>
             </div>
+
+            <div className="relative flex-1 min-w-[260px] max-w-lg">
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-200 dark:border-indigo-800/60 hover:border-indigo-400 dark:hover:border-indigo-600 rounded-2xl pl-3.5 pr-10 py-2.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none shadow-xs transition-all"
+              >
+                <option value="ALL">🌐 All Company Projects ({allProjects.length} Projects)</option>
+                {(departmentFilter === "ALL" ? employees : employees.filter((e) => e.department === departmentFilter)).map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    👤 {emp.name} ({emp.totalProjects !== undefined ? emp.totalProjects : emp.assignedProjects?.length || 0} Projects) — {emp.designation || "Developer"}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600 dark:text-indigo-400">
+                <ChevronDown className="w-4 h-4" />
+              </div>
+            </div>
+
+            {/* Quick Search */}
+            <div className="relative w-full sm:w-60">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search project or role..."
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Right: Sidebar Toggle Button + Assign Button */}
+          <div className="flex items-center gap-2 shrink-0 self-end lg:self-center">
+            <button
+              type="button"
+              onClick={() => setShowSidebar(!showSidebar)}
+              className={`px-3.5 py-2.5 rounded-2xl text-xs font-bold border transition-all flex items-center gap-2 shadow-xs ${
+                showSidebar
+                  ? "bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300"
+                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
+              title={showSidebar ? "Hide employee list sidebar to expand Kanban to 100% width" : "Show employee list sidebar"}
+            >
+              <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>{showSidebar ? "Hide Team List" : "Show Team List"}</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                {employees.length}
+              </span>
+            </button>
+
+            {selectedEmployee && (
+              <button
+                type="button"
+                onClick={() => setIsAssignModalOpen(true)}
+                className="px-3.5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Assign Project</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Department Quick Filter Pills */}
+        {departments.length > 0 && (
+          <div className="flex items-center gap-1.5 pt-2 mt-1 border-t border-slate-100 dark:border-slate-800 overflow-x-auto text-[11px] font-semibold scrollbar-none">
+            <span className="text-slate-400 dark:text-slate-500 mr-1 text-[10px] uppercase font-mono tracking-wider">
+              Department:
+            </span>
+            <button
+              onClick={() => setDepartmentFilter("ALL")}
+              className={`px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap ${
+                departmentFilter === "ALL"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+              }`}
+            >
+              All
+            </button>
+            {departments.map((dept) => (
+              <button
+                key={dept}
+                onClick={() => setDepartmentFilter(dept)}
+                className={`px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap ${
+                  departmentFilter === dept
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+                }`}
+              >
+                {dept}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
+        {/* LEFT SIDEBAR: Master Employee List (Odoo Style) */}
+        {showSidebar && (
+          <div className="w-full lg:w-80 xl:w-96 shrink-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 shadow-sm overflow-hidden flex flex-col">
+            {/* Sidebar Header */}
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                    Team Workload ({employees.length})
+                  </h3>
+                </div>
             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300">
               ODOO KANBAN
             </span>
@@ -495,6 +617,7 @@ export function EmployeeProjectKanban({
           )}
         </div>
       </div>
+    )}
 
       {/* RIGHT MAIN AREA: Employee Details Header + Kanban Columns */}
       <div className="flex-1 w-full space-y-5 min-w-0">
@@ -931,6 +1054,7 @@ export function EmployeeProjectKanban({
           </form>
         </BottomSheet>
       )}
+    </div>
     </div>
   );
 }
