@@ -50,7 +50,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
           { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
-          { title: "Workload Kanban", href: "/projects?view=workload", icon: <Layers className="w-4 h-4" /> },
+          { title: "Workload Kanban", href: "/workload", icon: <Layers className="w-4 h-4" /> },
           { title: "Team", href: "/employees", icon: <UserCheck className="w-4 h-4" /> },
           { title: "Attendance", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
           { title: "Company Holidays", href: "/attendance/holidays", icon: <Calendar className="w-4 h-4" /> },

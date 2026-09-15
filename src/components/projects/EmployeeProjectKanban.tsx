@@ -501,7 +501,14 @@ export function EmployeeProjectKanban({
         {/* KANBAN BOARD (Columns by Status) */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
           {KANBAN_COLUMNS.map((col) => {
-            const colProjects = displayedProjects.filter((p) => p.status === col.id);
+            const colProjects = displayedProjects.filter((p) => {
+              const s = (p.status || "").toUpperCase();
+              if (col.id === "PLANNING") return s === "PLANNING" || s === "DRAFT" || s === "";
+              if (col.id === "IN_PROGRESS") return s === "IN_PROGRESS" || s === "ACTIVE";
+              if (col.id === "ON_HOLD") return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED";
+              if (col.id === "COMPLETED") return s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+              return s === col.id;
+            });
             const totalVal = colProjects.reduce((acc, curr) => acc + (curr.contractValue || 0), 0);
 
             return (

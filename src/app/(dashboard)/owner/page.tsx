@@ -5,6 +5,7 @@ import { CommandMetrics } from "@/components/owner/CommandMetrics";
 import { NeedsAttentionQueue } from "@/components/owner/NeedsAttentionQueue";
 import { AIOwnerAssistant } from "@/components/owner/AIOwnerAssistant";
 import { RealtimeTeamView } from "@/components/owner/RealtimeTeamView";
+import { OwnerWorkloadSection } from "@/components/owner/OwnerWorkloadSection";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Plus, Download, Crown } from "lucide-react";
 import Link from "next/link";
@@ -47,12 +48,17 @@ export default function OwnerDashboardPage() {
         <CommandMetrics />
       </section>
 
-      {/* Open Section 2: Needs Attention Exception Queue */}
+      {/* Section 2: Developer Project Allocation & Workload (Live Overview) */}
+      <section className="pt-4 border-t border-slate-200 dark:border-slate-800">
+        <OwnerWorkloadSection />
+      </section>
+
+      {/* Open Section 3: Needs Attention Exception Queue */}
       <section className="pt-4 border-t border-slate-200 dark:border-slate-800">
         <NeedsAttentionQueue />
       </section>
 
-      {/* Open Section 3: AI Executive Brief & Realtime Team Status */}
+      {/* Open Section 4: AI Executive Brief & Realtime Team Status */}
       <section className="pt-6 border-t border-slate-200 dark:border-slate-800 space-y-6">
         <AIOwnerAssistant />
         <RealtimeTeamView />
