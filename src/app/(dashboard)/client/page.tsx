@@ -44,7 +44,7 @@ export default function ClientDashboardPage() {
   useEffect(() => {
     async function fetchDashboard() {
       try {
-        const res = await fetch("/api/client/projects");
+        const res = await fetch("/mdz-crm/api/client/projects");
         const data = await res.json();
 
         if (!res.ok || !data.success) {

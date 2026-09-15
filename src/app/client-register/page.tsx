@@ -41,7 +41,7 @@ export default function ClientRegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/client/register", {
+      const res = await fetch("/mdz-crm/api/client/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

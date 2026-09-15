@@ -17,6 +17,8 @@ export default async function HomePage() {
     redirect("/sales");
   } else if (role === "EMPLOYEE") {
     redirect("/attendance");
+  } else if (role === "CLIENT") {
+    redirect("/client");
   }
 
   // Fallback

@@ -138,11 +138,12 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
       const canViewLeads = role === "OWNER" || role === "SALES";
       const canViewClients = role === "OWNER" || role === "SALES"; // Assume SALES can view clients too, or restrict to OWNER
       const canViewEmployees = role === "OWNER";
+      const canViewProjects = role === "OWNER" || role === "SALES" || role === "EMPLOYEE";
 
       const [leadsRes, clientsRes, projectsRes, employeesRes] = await Promise.all([
         canViewLeads ? fetch("/mdz-crm/api/leads").catch(() => null) : Promise.resolve(null),
         canViewClients ? fetch("/mdz-crm/api/clients").catch(() => null) : Promise.resolve(null),
-        fetch("/mdz-crm/api/projects").catch(() => null), // Everyone can view their projects
+        canViewProjects ? fetch("/mdz-crm/api/projects").catch(() => null) : Promise.resolve(null),
         canViewEmployees ? fetch("/mdz-crm/api/employees").catch(() => null) : Promise.resolve(null),
       ]);
 
