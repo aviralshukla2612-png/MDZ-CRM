@@ -2,12 +2,22 @@
 
 import React, { useState, useEffect } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { FolderKanban, Plus, ArrowRight, Sparkles, CheckCircle2, Trash2 } from "lucide-react";
+import {
+  FolderKanban,
+  Plus,
+  ArrowRight,
+  Sparkles,
+  CheckCircle2,
+  Trash2,
+  Users,
+  LayoutGrid,
+} from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { EmployeeProjectKanban } from "@/components/projects/EmployeeProjectKanban";
 
 export default function ProjectsDirectoryPage() {
   const { showToast } = useToast();
@@ -20,9 +30,25 @@ export default function ProjectsDirectoryPage() {
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState("HIGH");
   const [employees, setEmployees] = useState<any[]>([]);
+  const [activeView, setActiveView] = useState<"kanban" | "directory">("kanban");
+  const [initialEmployeeId, setInitialEmployeeId] = useState<string | undefined>(undefined);
   const { data: session } = useSession();
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const viewParam = params.get("view");
+      const empParam = params.get("employeeId");
+      if (viewParam === "directory") {
+        setActiveView("directory");
+      } else if (viewParam === "kanban" || viewParam === "workload") {
+        setActiveView("kanban");
+      }
+      if (empParam) {
+        setInitialEmployeeId(empParam);
+        setActiveView("kanban");
+      }
+    }
     fetchProjects();
     fetchEmployees();
   }, []);
@@ -143,6 +169,46 @@ export default function ProjectsDirectoryPage() {
         }
       />
 
+      {/* View Switcher Tabs (Odoo Kanban vs Directory) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-3">
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl">
+          <button
+            onClick={() => setActiveView("kanban")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeView === "kanban"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Developer Workload (Kanban)</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-extrabold">
+              ODOO
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveView("directory")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeView === "directory"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <FolderKanban className="w-4 h-4" />
+            <span>All Projects Directory ({projectsList.length})</span>
+          </button>
+        </div>
+
+        <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
+          {activeView === "kanban" ? (
+            <span>Select any developer on the left sidebar to inspect and manage their assigned projects.</span>
+          ) : (
+            <span>Showing all company project workspaces and live weighted execution progress.</span>
+          )}
+        </div>
+      </div>
+
       <BottomSheet
         isOpen={isAddOpen}
         onClose={() => setIsAddOpen(false)}
@@ -211,8 +277,18 @@ export default function ProjectsDirectoryPage() {
         </form>
       </BottomSheet>
 
-      {/* Floating Translucent Cards Directory */}
-      {loading ? (
+      {/* Main Content: Either Odoo Kanban Split View or Directory List */}
+      {activeView === "kanban" ? (
+        <EmployeeProjectKanban
+          employees={employees}
+          allProjects={projectsList}
+          onRefresh={() => {
+            fetchProjects();
+            fetchEmployees();
+          }}
+          initialSelectedEmployeeId={initialEmployeeId}
+        />
+      ) : loading ? (
         <div className="p-12 text-center text-slate-400 text-sm animate-pulse">Loading active project workspaces from database...</div>
       ) : (
         <div className="space-y-4">

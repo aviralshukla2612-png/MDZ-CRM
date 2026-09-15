@@ -208,28 +208,31 @@ export default function EmployeesPage() {
             </Link>
 
             <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-xs">
-              <span className="text-slate-500 dark:text-slate-400">
-                Assigned: <strong className="text-slate-800 dark:text-slate-200">{emp.assignedProjects.length} Projects</strong>
-              </span>
+              <Link
+                href={`/projects?view=workload&employeeId=${emp.id}`}
+                className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5"
+                title="View in Workload Kanban"
+              >
+                <span>Assigned: <strong>{emp.totalProjects !== undefined ? emp.totalProjects : emp.assignedProjects?.length || 0} Projects</strong></span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
 
               <div className="flex items-center gap-2">
+                <Link
+                  href={`/projects?view=workload&employeeId=${emp.id}`}
+                  className="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] transition-colors"
+                >
+                  Workload Kanban
+                </Link>
                 <button
                   onClick={(e) => {
                     e.preventDefault();
                     setConfirmDelete({ isOpen: true, id: emp.id, name: emp.name });
                   }}
-                  className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-xs flex items-center gap-1.5 transition-all shadow-xs"
-                  title="Fire Employee"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
-                <Link
-                  href={`/employees/${emp.id}`}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all group-hover:translate-x-0.5 shadow-xs"
-                >
-                  <span>Employee 360°</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                </Link>
               </div>
             </div>
           </div>

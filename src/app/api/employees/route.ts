@@ -23,6 +23,17 @@ export async function GET() {
         workSessions: {
           include: { project: true },
         },
+        memberships: {
+          where: { isActive: true },
+          include: {
+            project: {
+              include: {
+                client: true,
+                tasks: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -36,37 +47,75 @@ export async function GET() {
       const isPunchedIn = todayAtt.some((a) => a.punchIn && !a.punchOut);
       const isShiftCompleted = todayAtt.some((a) => a.punchIn && a.punchOut);
 
+      const activeMemberships = e.memberships || [];
+      const assignedProjects = activeMemberships.map((m) => {
+        const p = m.project;
+        const totalTasks = p.tasks?.filter((t: any) => t.status !== "ARCHIVED").length || 0;
+        const completedTasks = p.tasks?.filter((t: any) => (t.status === "COMPLETED" || t.status === "DONE") && t.status !== "ARCHIVED").length || 0;
+        const calculatedProgress = totalTasks === 0 ? (p.progressPercentage || 0) : Math.round((completedTasks / totalTasks) * 100);
+
+        return {
+          id: p.id,
+          projectNumber: p.projectNumber,
+          name: p.name,
+          status: p.status,
+          priority: p.priority,
+          progress: calculatedProgress,
+          progressPercentage: calculatedProgress,
+          contractValue: p.contractValue || 0,
+          targetDeadline: p.targetDeadline ? new Date(p.targetDeadline).toLocaleDateString() : "No Deadline",
+          roleInProject: m.roleInProject,
+          assignedAt: m.assignedAt ? new Date(m.assignedAt).toLocaleDateString() : undefined,
+          compensationAmount: m.compensationAmount,
+          clientName: p.client?.companyName || "Unknown Client",
+          totalTasks,
+          completedTasks,
+          tasks: (p.tasks || []).map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            priority: t.priority,
+            isMostImportant: t.isMostImportant,
+          })),
+        };
+      });
+
       return {
-      id: e.id,
-      employeeId: e.employeeIdCode,
-      name: e.user.name,
-      email: e.user.email,
-      role: e.user.activeRole,
-      designation: e.user.designation,
-      department: e.user.department,
-      phone: "+91 98980 000" + (e.employeeIdCode.length > 3 ? e.employeeIdCode.slice(-2) : "01"),
-      punchedIn: isPunchedIn,
-      shiftCompleted: isShiftCompleted,
-      punchInTime: todayAtt[0]?.punchIn ? new Date(todayAtt[0].punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "09:00 AM",
-      todayWorkSeconds: (e.attendances[0]?.totalMinutes || 120) * 60,
-      currentProject: e.workSessions[0]?.project?.name || "General Workspace",
-      currentTask: e.workSessions[0]?.notes || "Focusing on active tasks",
-      assignedProjects: ["PRJ-2026-001"],
-      todayTimeline: e.workSessions.map((w) => ({
-        id: w.id,
-        timeRange: "09:00 AM - 11:00 AM",
-        activity: w.notes || "Core development",
-        project: w.project?.name || "General",
-        duration: `${w.durationMinutes}m`,
-      })),
-      attendanceRecord: e.attendances.map((a) => ({
-        date: new Date(a.date).toLocaleDateString(),
-        punchIn: a.punchIn ? new Date(a.punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "09:00 AM",
-        punchOut: a.punchOut ? new Date(a.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "On-Going",
-        status: a.status,
-        workHours: `${Math.floor((a.totalMinutes || 0) / 60)}h ${(a.totalMinutes || 0) % 60}m`,
-      })),
-    };
+        id: e.id,
+        employeeId: e.employeeIdCode,
+        name: e.user.name,
+        email: e.user.email,
+        role: e.user.activeRole,
+        designation: e.user.designation,
+        department: e.user.department,
+        phone: "+91 98980 000" + (e.employeeIdCode.length > 3 ? e.employeeIdCode.slice(-2) : "01"),
+        punchedIn: isPunchedIn,
+        shiftCompleted: isShiftCompleted,
+        punchInTime: todayAtt[0]?.punchIn ? new Date(todayAtt[0].punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "09:00 AM",
+        todayWorkSeconds: (e.attendances[0]?.totalMinutes || 120) * 60,
+        currentProject: assignedProjects[0]?.name || e.workSessions[0]?.project?.name || "General Workspace",
+        currentTask: e.workSessions[0]?.notes || "Focusing on active tasks",
+        totalProjects: assignedProjects.length,
+        activeProjectsCount: assignedProjects.filter((p) => p.status === "IN_PROGRESS").length,
+        planningProjectsCount: assignedProjects.filter((p) => p.status === "PLANNING").length,
+        completedProjectsCount: assignedProjects.filter((p) => p.status === "COMPLETED").length,
+        onHoldProjectsCount: assignedProjects.filter((p) => p.status === "ON_HOLD").length,
+        assignedProjects: assignedProjects,
+        todayTimeline: e.workSessions.map((w) => ({
+          id: w.id,
+          timeRange: "09:00 AM - 11:00 AM",
+          activity: w.notes || "Core development",
+          project: w.project?.name || "General",
+          duration: `${w.durationMinutes}m`,
+        })),
+        attendanceRecord: e.attendances.map((a) => ({
+          date: new Date(a.date).toLocaleDateString(),
+          punchIn: a.punchIn ? new Date(a.punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "09:00 AM",
+          punchOut: a.punchOut ? new Date(a.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "On-Going",
+          status: a.status,
+          workHours: `${Math.floor((a.totalMinutes || 0) / 60)}h ${(a.totalMinutes || 0) % 60}m`,
+        })),
+      };
     });
 
     return NextResponse.json({ success: true, data: formatted });
