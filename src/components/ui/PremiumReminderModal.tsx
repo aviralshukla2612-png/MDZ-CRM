@@ -1,13 +1,16 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Coffee, LogOut, X, FolderKanban } from "lucide-react";
+import { Coffee, LogOut, X, FolderKanban, ClipboardCheck, ArrowRight } from "lucide-react";
 
 interface PremiumReminderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: "LUNCH" | "PUNCH_OUT" | "PROJECT_ASSIGNMENT";
+  type: "LUNCH" | "PUNCH_OUT" | "PROJECT_ASSIGNMENT" | "DAILY_UPDATE";
   title: string;
   message: string;
+  actionText?: string;
+  onAction?: () => void;
+  secondaryText?: string;
 }
 
 export function PremiumReminderModal({
@@ -16,9 +19,13 @@ export function PremiumReminderModal({
   type,
   title,
   message,
+  actionText,
+  onAction,
+  secondaryText = "Remind Me Later",
 }: PremiumReminderModalProps) {
   const isLunch = type === "LUNCH";
   const isProject = type === "PROJECT_ASSIGNMENT";
+  const isDailyUpdate = type === "DAILY_UPDATE";
   
   return (
     <AnimatePresence>
@@ -40,10 +47,18 @@ export function PremiumReminderModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-white dark:bg-[#0B1120] shadow-2xl dark:shadow-[0_0_80px_-15px_rgba(79,70,229,0.3)] ring-1 ring-slate-200 dark:ring-slate-800"
+            className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-white dark:bg-[#0B1120] shadow-2xl dark:shadow-[0_0_80px_-15px_rgba(245,158,11,0.3)] ring-1 ring-slate-200 dark:ring-slate-800"
           >
             {/* Glowing Accent Top Bar */}
-            <div className={`absolute top-0 left-0 w-full h-1.5 ${isProject ? 'bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500' : isLunch ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500' : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500'}`} />
+            <div className={`absolute top-0 left-0 w-full h-1.5 ${
+              isDailyUpdate
+                ? 'bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-500'
+                : isProject
+                ? 'bg-gradient-to-r from-cyan-400 via-blue-500 to-indigo-500'
+                : isLunch
+                ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500'
+                : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500'
+            }`} />
 
             <div className="p-8 pb-10">
               <button
@@ -56,16 +71,20 @@ export function PremiumReminderModal({
               {/* Icon Container with Glow */}
               <div className="flex justify-center mb-6">
                 <div className={`relative flex items-center justify-center w-20 h-20 rounded-3xl ${
-                  isProject
+                  isDailyUpdate
+                    ? 'bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-500/20 dark:to-orange-500/20'
+                    : isProject
                     ? 'bg-gradient-to-br from-cyan-100 to-blue-100 dark:from-cyan-500/20 dark:to-blue-500/20'
                     : isLunch 
                     ? 'bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-500/20 dark:to-orange-500/20' 
                     : 'bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-500/20 dark:to-purple-500/20'
                 }`}>
                   <div className={`absolute inset-0 blur-xl opacity-50 ${
-                    isProject ? 'bg-cyan-400' : isLunch ? 'bg-orange-400' : 'bg-indigo-400'
+                    isDailyUpdate ? 'bg-amber-400' : isProject ? 'bg-cyan-400' : isLunch ? 'bg-orange-400' : 'bg-indigo-400'
                   }`} />
-                  {isProject ? (
+                  {isDailyUpdate ? (
+                    <ClipboardCheck className="w-10 h-10 text-amber-600 dark:text-amber-400 relative z-10" strokeWidth={1.5} />
+                  ) : isProject ? (
                     <FolderKanban className="w-10 h-10 text-cyan-600 dark:text-cyan-400 relative z-10" strokeWidth={1.5} />
                   ) : isLunch ? (
                     <Coffee className="w-10 h-10 text-orange-500 dark:text-orange-400 relative z-10" strokeWidth={1.5} />
@@ -95,25 +114,46 @@ export function PremiumReminderModal({
                 </motion.p>
               </div>
 
-              {/* Action Button */}
+              {/* Action Buttons */}
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mt-8 flex justify-center"
+                className="mt-8 flex flex-col gap-2.5"
               >
-                <button
-                  onClick={onClose}
-                  className={`w-full py-3.5 px-6 rounded-2xl font-bold text-white shadow-lg transition-all active:scale-95 ${
-                    isProject
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-cyan-500/25'
-                      : isLunch 
-                      ? 'bg-gradient-to-r from-orange-500 to-rose-500 hover:shadow-orange-500/25' 
-                      : 'bg-gradient-to-r from-indigo-500 to-purple-500 hover:shadow-indigo-500/25'
-                  }`}
-                >
-                  {isProject ? 'Open Workspace' : isLunch ? 'Got it, taking a break!' : 'Got it, wrapping up!'}
-                </button>
+                {onAction ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        onClose();
+                        onAction();
+                      }}
+                      className="w-full py-3.5 px-6 rounded-2xl font-extrabold text-sm text-white bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 shadow-lg shadow-amber-500/25 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <span>{actionText || "Update Daily Tasks Now"}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={onClose}
+                      className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+                    >
+                      {secondaryText}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={onClose}
+                    className={`w-full py-3.5 px-6 rounded-2xl font-bold text-white shadow-lg transition-all active:scale-95 ${
+                      isProject
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-cyan-500/25'
+                        : isLunch 
+                        ? 'bg-gradient-to-r from-orange-500 to-rose-500 hover:shadow-orange-500/25' 
+                        : 'bg-gradient-to-r from-indigo-500 to-purple-500 hover:shadow-indigo-500/25'
+                    }`}
+                  >
+                    {isProject ? 'Open Workspace' : isLunch ? 'Got it, taking a break!' : 'Got it, wrapping up!'}
+                  </button>
+                )}
               </motion.div>
             </div>
           </motion.div>
