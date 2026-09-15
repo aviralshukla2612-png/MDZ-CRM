@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LeadPipelineBoard } from "@/components/sales/LeadPipelineBoard";
 import { Lead } from "@/components/sales/LeadPipelineBoard";
@@ -10,6 +12,8 @@ import { DataImportModal } from "@/components/ui/DataImportModal";
 import { Target, Plus, Sparkles, FileSpreadsheet } from "lucide-react";
 
 export default function LeadsPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const { showToast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
 
@@ -23,9 +27,14 @@ export default function LeadsPage() {
   const [projectScope, setProjectScope] = useState("");
   const [isImportOpen, setIsImportOpen] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (session?.user?.role === "SUB_ADMIN") {
+      showToast("Access restricted: Sub-Admin does not have access to Sales & Leads.", "error");
+      router.replace("/projects");
+      return;
+    }
     fetchLeads();
-  }, []);
+  }, [session, router]);
 
   const fetchLeads = async () => {
     try {

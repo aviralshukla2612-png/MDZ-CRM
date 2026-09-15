@@ -3,7 +3,8 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, PhoneCall, Calendar, ArrowRight, ArrowUpRight, CheckCircle2, User, Building, IndianRupee, Trash } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Plus, PhoneCall, Calendar, ArrowRight, ArrowUpRight, CheckCircle2, User, Building, IndianRupee, Trash, ShieldCheck } from "lucide-react";
 import { ConvertLeadModal } from "./ConvertLeadModal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useToast } from "@/components/ui/Toast";
@@ -26,6 +27,7 @@ export interface Lead {
 }
 
 export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClientApi, deleteLeadApi }: { leads: Lead[], updateLeadStageApi: any, convertLeadToClientApi: any, deleteLeadApi?: any }) {
+  const { data: session } = useSession();
   const STAGES = [
     { id: "NEW", title: "New Prospects" },
     { id: "CONTACTED", title: "Contacted" },
@@ -132,17 +134,38 @@ export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClie
                       ₹{lead.leadValue.toLocaleString("en-IN")}
                     </div>
 
-                    {lead.stage === "WON" && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          convertLeadToClientApi(lead.id);
-                        }}
-                        className="w-full mt-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-xs transition-colors touch-target"
-                      >
-                        <span>Convert to Client</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                    {(lead.stage === "WON" || lead.stage === "PENDING_SUPER_ADMIN_APPROVAL") && (
+                      <div className="space-y-1.5 mt-2">
+                        {lead.stage === "PENDING_SUPER_ADMIN_APPROVAL" && (
+                          <div className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 rounded-lg px-2 py-1 text-center">
+                            ⏳ Awaiting Super Admin Approval
+                          </div>
+                        )}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            convertLeadToClientApi(lead.id);
+                          }}
+                          className={`w-full py-2 rounded-xl text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-xs transition-colors touch-target ${
+                            session?.user?.role === "OWNER"
+                              ? "bg-indigo-600 hover:bg-indigo-700"
+                              : "bg-emerald-600 hover:bg-emerald-700"
+                          }`}
+                        >
+                          {session?.user?.role === "OWNER" ? (
+                            <>
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <span>Approve Sale & Hand off to Sub Admin</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Submit for Super Admin Approval</span>
+                              <ArrowRight className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}

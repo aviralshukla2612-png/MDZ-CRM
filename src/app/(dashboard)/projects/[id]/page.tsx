@@ -435,12 +435,13 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               {/* Status Indicator */}
-              {(session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES" ? (
+              {(session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "SUB_ADMIN" || (session?.user as any)?.role === "SALES" ? (
                 <select
                   value={project.status || "IN_PROGRESS"}
                   onChange={(e) => handleUpdateProjectStatus(e.target.value)}
                   className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 outline-none cursor-pointer"
                 >
+                  <option value="PENDING_SUB_ADMIN_ALLOCATION">PENDING TEAM ALLOCATION</option>
                   <option value="PLANNING">PLANNING</option>
                   <option value="IN_PROGRESS">IN_PROGRESS</option>
                   <option value="ON_HOLD">ON_HOLD</option>
@@ -449,12 +450,12 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                 </select>
               ) : (
                 <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  {project.status || "IN_PROGRESS"}
+                  {project.status === "PENDING_SUB_ADMIN_ALLOCATION" ? "PENDING TEAM ALLOCATION" : (project.status || "IN_PROGRESS")}
                 </span>
               )}
 
               {/* Urgency Priority Indicator */}
-              {(session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES" ? (
+              {(session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "SUB_ADMIN" || (session?.user as any)?.role === "SALES" ? (
                 <select
                   value={project.priority || "HIGH"}
                   onChange={(e) => handleUpdateProjectPriority(e.target.value)}
@@ -521,7 +522,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+            {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "SUB_ADMIN" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
               <button
                 onClick={openAssignModal}
                 className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs touch-target"
@@ -558,6 +559,30 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
             </Link>
           </div>
         </div>
+
+        {/* Sub Admin Allocation Banner */}
+        {project.status === "PENDING_SUB_ADMIN_ALLOCATION" && (
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-indigo-50 dark:from-amber-950/40 dark:to-indigo-950/40 border border-amber-300 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚡</span>
+              <div>
+                <strong className="text-slate-900 dark:text-slate-100 font-extrabold text-sm block">
+                  Awaiting Sub Admin Team Allocation
+                </strong>
+                <p className="text-slate-600 dark:text-slate-400 text-xs mt-0.5">
+                  This sale was approved by Super Admin. Assign employees to activate the project and reflect it in their workspace.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab("team")}
+              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-sm transition-all"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Assign Employees Now</span>
+            </button>
+          </div>
+        )}
 
         {/* Progress Engine */}
         <div className="space-y-1 pt-1">

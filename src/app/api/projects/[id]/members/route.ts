@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "SALES", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -70,7 +70,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "SALES", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -136,6 +136,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       });
     }
 
+    // If project was awaiting Sub Admin team allocation, activate it to IN_PROGRESS
+    if (project.status === "PENDING_SUB_ADMIN_ALLOCATION") {
+      await prisma.project.update({
+        where: { id: project.id },
+        data: { status: "IN_PROGRESS" },
+      });
+    }
+
     // Send notification to the assigned employee
     if (employee.userId) {
       try {
@@ -165,7 +173,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "SALES", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {

@@ -59,6 +59,13 @@ export function MobileBottomNav({ role, onOpenMoreMenu }: Props) {
           { label: "Projects", href: "/projects", icon: <FolderKanban className="w-5 h-5" /> },
           { label: "Team", href: "/employees", icon: <UserCheck className="w-5 h-5" /> },
         ];
+      case "SUB_ADMIN":
+        return [
+          { label: "Overview", href: "/owner", icon: <LayoutDashboard className="w-5 h-5" /> },
+          { label: "Projects", href: "/projects", icon: <FolderKanban className="w-5 h-5" /> },
+          { label: "Updates", href: "/employee/updates", icon: <Clock className="w-5 h-5" /> },
+          { label: "Team", href: "/employees", icon: <UserCheck className="w-5 h-5" /> },
+        ];
       case "CLIENT":
         return [
           { label: "Overview", href: "/client", icon: <FolderKanban className="w-5 h-5" /> },

@@ -151,6 +151,11 @@ export default function ProjectsDirectoryPage() {
     }
   };
 
+  const pendingAllocationProjects = projectsList.filter(
+    (p) => p.status === "PENDING_SUB_ADMIN_ALLOCATION" || p.status === "PENDING_ALLOCATION"
+  );
+  const isAdminOrSubAdmin = session?.user?.role === "OWNER" || session?.user?.role === "SUB_ADMIN";
+
   return (
     <div className="space-y-8 pb-16">
       <PageHeader
@@ -168,6 +173,68 @@ export default function ProjectsDirectoryPage() {
           </button>
         }
       />
+
+      {/* SUB ADMIN / SUPER ADMIN ALLOCATION QUEUE */}
+      {isAdminOrSubAdmin && pendingAllocationProjects.length > 0 && (
+        <div className="p-5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-indigo-500/10 to-purple-500/10 border-2 border-indigo-500/30 dark:border-indigo-500/40 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <span className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                ⚡
+              </span>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span>Sales Approved by Super Admin</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold">
+                    {pendingAllocationProjects.length} Awaiting Sub Admin Allocation
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  These closed deals were approved by Super Admin. Assign employees to activate them and reflect on employee desks.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+            {pendingAllocationProjects.map((p) => (
+              <div
+                key={p.id}
+                className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-indigo-200/80 dark:border-indigo-800/80 shadow-xs flex flex-col justify-between gap-3"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                      {p.projectCode || p.projectNumber}
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                      Needs Team Assignment
+                    </span>
+                  </div>
+                  <h4 className="font-extrabold text-slate-900 dark:text-slate-100 text-xs mt-1 truncate">
+                    {p.name}
+                  </h4>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    Client: <strong>{p.clientName}</strong>
+                  </div>
+                  <div className="text-[11px] font-mono font-bold text-emerald-600 mt-0.5">
+                    ₹{Number(p.contractValue || 0).toLocaleString("en-IN")}
+                  </div>
+                </div>
+
+                <Link
+                  href={`/projects/${p.id}`}
+                  className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>Assign Employees & Activate</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* View Switcher Tabs (Odoo Kanban vs Directory) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-3">

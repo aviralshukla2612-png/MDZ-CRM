@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { LeadPipelineBoard } from "@/components/sales/LeadPipelineBoard";
 import { TrendingUp, PhoneCall, Plus, Target, Sparkles, Flame, CheckCircle2, FileSpreadsheet } from "lucide-react";
@@ -11,6 +13,8 @@ import { DataImportModal } from "@/components/ui/DataImportModal";
 import { Lead } from "@/components/sales/LeadPipelineBoard";
 
 export default function SalesDashboardPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const { showToast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
@@ -24,9 +28,14 @@ export default function SalesDashboardPage() {
 
   const [isImportOpen, setIsImportOpen] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
+    if (session?.user?.role === "SUB_ADMIN") {
+      showToast("Access restricted: Sub-Admin does not have access to Sales.", "error");
+      router.replace("/projects");
+      return;
+    }
     fetchLeads();
-  }, []);
+  }, [session, router]);
 
   const fetchLeads = async () => {
     try {

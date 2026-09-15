@@ -174,6 +174,16 @@ export default function EmployeesPage() {
                       <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                         {emp.employeeId}
                       </span>
+                      {emp.role === "SUB_ADMIN" && (
+                        <span className="text-[10px] font-mono font-extrabold px-2.5 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          SUB ADMIN
+                        </span>
+                      )}
+                      {emp.role === "SALES" && (
+                        <span className="text-[10px] font-mono font-extrabold px-2.5 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                          SALES
+                        </span>
+                      )}
                     </div>
                     <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 mt-0.5">
                       {emp.designation} • {emp.department}
@@ -301,6 +311,7 @@ export default function EmployeesPage() {
             >
               <option value="EMPLOYEE">Standard Employee</option>
               <option value="SALES">Sales Representative</option>
+              <option value="SUB_ADMIN">Sub Admin (Management except Sales & Finance)</option>
             </select>
           </div>
           <button

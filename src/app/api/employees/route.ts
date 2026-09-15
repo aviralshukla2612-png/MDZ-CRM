@@ -125,7 +125,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authRes = await requireRole(["OWNER"]);
+  const authRes = await requireRole(["OWNER", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -152,7 +152,7 @@ export async function POST(req: Request) {
           name: body.name,
           designation: body.designation || "Team Member",
           department: body.department || "General",
-          activeRole: body.role === "SALES" ? "SALES" : "EMPLOYEE",
+          activeRole: body.role === "SALES" ? "SALES" : body.role === "SUB_ADMIN" ? "SUB_ADMIN" : "EMPLOYEE",
           avatarUrl: `https://images.unsplash.com/photo-${1500000000000 + count * 100}?w=150`,
         },
       });

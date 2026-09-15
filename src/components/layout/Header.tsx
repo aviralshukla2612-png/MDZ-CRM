@@ -166,7 +166,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           href={
             currentUser.role === "CLIENT"
               ? "/client"
-              : currentUser.role === "OWNER"
+              : currentUser.role === "OWNER" || currentUser.role === "SUB_ADMIN"
               ? "/owner"
               : currentUser.role === "SALES"
               ? "/sales"

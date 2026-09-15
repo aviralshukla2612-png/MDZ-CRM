@@ -100,6 +100,11 @@ export default function EmployeeDailyUpdatesPage() {
         p.clientUpdates.forEach((u: any) => {
           list.push({
             ...u,
+            title: u.title || `Update on ${p.name}`,
+            author: u.author || {
+              name: u.authorName || "Employee",
+              designation: u.authorRole || "Developer",
+            },
             projectId: p.id,
             projectName: p.name,
             projectNumber: p.projectNumber || p.projectCode,
@@ -198,33 +203,42 @@ export default function EmployeeDailyUpdatesPage() {
   };
 
   const activeProject = projects.find((p) => p.id === selectedProjectId);
+  const currentRole = session?.user?.role || "EMPLOYEE";
+  const isEmployee = currentRole === "EMPLOYEE";
+  const isAdmin = currentRole === "OWNER" || currentRole === "SUB_ADMIN";
 
   return (
     <div className="space-y-6 pb-16 font-sans">
       {/* Page Header */}
       <PageHeader
-        title="Daily Progress Updates"
-        description="Structured, number-wise task updates shared directly with the Client in their portal and Admin in real-time."
-        badge="DAILY LOGS"
+        title={isAdmin ? "Employee Daily Progress Logs" : "Daily Progress Updates"}
+        description={
+          isAdmin
+            ? "Monitor real-time, number-wise daily task updates submitted by team members across projects."
+            : "Structured, number-wise task updates shared directly with the Client in their portal and Admin in real-time."
+        }
+        badge={isAdmin ? "TEAM MONITORING" : "DAILY LOGS"}
         icon={<Clock className="w-7 h-7 text-amber-500" />}
         actions={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsTaskSheetOpen(true)}
-              className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs transition-colors shadow-2xs flex items-center gap-1.5 touch-target"
-            >
-              <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>+ Add Task</span>
-            </button>
+          isEmployee ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsTaskSheetOpen(true)}
+                className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs transition-colors shadow-2xs flex items-center gap-1.5 touch-target"
+              >
+                <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>+ Add Task</span>
+              </button>
 
-            <button
-              onClick={() => setIsUpdateModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 touch-target active:scale-95"
-            >
-              <Send className="w-3.5 h-3.5 text-white" />
-              <span>+ Post Daily Update</span>
-            </button>
-          </div>
+              <button
+                onClick={() => setIsUpdateModalOpen(true)}
+                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 touch-target active:scale-95"
+              >
+                <Send className="w-3.5 h-3.5 text-white" />
+                <span>+ Post Daily Update</span>
+              </button>
+            </div>
+          ) : null
         }
       />
 
@@ -246,7 +260,9 @@ export default function EmployeeDailyUpdatesPage() {
                 onChange={(e) => setSelectedProjectId(e.target.value)}
                 className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-200 dark:border-indigo-800/60 hover:border-indigo-400 dark:hover:border-indigo-600 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none shadow-xs transition-all"
               >
-                <option value="ALL">🌐 All Assigned Projects ({projects.length} Projects)</option>
+                <option value="ALL">
+                  🌐 {isAdmin ? "All Projects" : "All Assigned Projects"} ({projects.length} Projects)
+                </option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     📁 {p.name} {p.projectCode || p.projectNumber ? `(${p.projectCode || p.projectNumber})` : ""} {p.clientName ? `— ${p.clientName}` : ""}
@@ -317,19 +333,23 @@ export default function EmployeeDailyUpdatesPage() {
             </div>
             <div>
               <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100">
-                No daily updates logged yet
+                {isAdmin ? "No employee daily updates logged yet" : "No daily updates logged yet"}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
-                Post number-wise task highlights to keep the Client and Admin updated with your daily milestones.
+                {isAdmin
+                  ? "When employees log their number-wise daily task updates for this project, they will appear here."
+                  : "Post number-wise task highlights to keep the Client and Admin updated with your daily milestones."}
               </p>
             </div>
-            <button
-              onClick={() => setIsUpdateModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition-all inline-flex items-center gap-2"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Post First Daily Update</span>
-            </button>
+            {isEmployee && (
+              <button
+                onClick={() => setIsUpdateModalOpen(true)}
+                className="px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition-all inline-flex items-center gap-2"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Post First Daily Update</span>
+              </button>
+            )}
           </div>
         ) : (
           filteredUpdates.map((update) => {

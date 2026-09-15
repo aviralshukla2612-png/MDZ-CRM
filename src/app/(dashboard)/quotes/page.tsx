@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { FileText, Plus, Download, Send, CheckCircle2, Sparkles, IndianRupee, Printer } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
@@ -14,11 +16,20 @@ interface QuoteItem {
 }
 
 export default function QuotesPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const { showToast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [clientName, setClientName] = useState("");
   const [quoteTitle, setQuoteTitle] = useState("");
   const [taxRate, setTaxRate] = useState(18);
+
+  useEffect(() => {
+    if (session?.user?.role === "SUB_ADMIN") {
+      showToast("Access restricted: Sub-Admin does not have access to Proposals / Quotes.", "error");
+      router.replace("/projects");
+    }
+  }, [session, router, showToast]);
 
   const [items, setItems] = useState<QuoteItem[]>([
     { id: "1", description: "UI/UX Design & Figma Design System", qty: 1, rate: 75000 },

@@ -40,6 +40,10 @@ export async function GET() {
         },
         documents: true,
         changeRequests: true,
+        clientUpdates: {
+          include: { author: true },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
@@ -108,6 +112,18 @@ export async function GET() {
           value: cr.costImpactAmount,
           status: cr.status,
           date: new Date(cr.createdAt).toLocaleDateString(),
+        })),
+        clientUpdates: (p.clientUpdates || []).map((u) => ({
+          id: u.id,
+          title: u.title,
+          content: u.content,
+          createdAt: u.createdAt.toISOString(),
+          authorName: u.author?.name || "Employee",
+          authorRole: u.author?.activeRole || "EMPLOYEE",
+          author: {
+            name: u.author?.name || "Employee",
+            designation: u.author?.designation || "Developer",
+          },
         })),
       };
     });

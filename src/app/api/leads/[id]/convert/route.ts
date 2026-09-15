@@ -39,10 +39,24 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       );
     }
 
-    // Deriving identity from the session instead of querying random OWNER
+    // If Sales rep triggers conversion, submit for Super Admin approval
+    if (authRes.activeRole === "SALES") {
+      const updatedLead = await prisma.lead.update({
+        where: { id: lead.id },
+        data: { status: "PENDING_SUPER_ADMIN_APPROVAL" },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Sale deal submitted to Super Admin for approval.",
+        data: { lead: updatedLead, pendingSuperAdminApproval: true },
+      });
+    }
+
+    // Deriving identity from the session (Super Admin / Owner approval)
     const actorId = authRes.id;
 
-    // 3. Execute Atomic Prisma Transaction
+    // 3. Execute Atomic Prisma Transaction for Super Admin Approval
     const result = await prisma.$transaction(async (tx) => {
       const company = lead.companyName || lead.contactPerson || "New Client Enterprise";
       const clientCount = await tx.client.count();
@@ -75,7 +89,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         },
       });
 
-      // B. Create Project Record in DB
+      // B. Create Project in PENDING_SUB_ADMIN_ALLOCATION status
       const projectCount = await tx.project.count();
       const uniquePrjCode = `PRJ-2026-${String(projectCount + 101).padStart(3, "0")}`;
 
@@ -85,9 +99,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           name: `${company} Core Platform Solution`,
           clientId: newClient.id,
           contractValue: lead.expectedValue || lead.estimatedBudget || 400000,
-          status: "IN_PROGRESS",
+          status: "PENDING_SUB_ADMIN_ALLOCATION",
           priority: lead.priority || "MEDIUM",
-          progressPercentage: 10,
+          progressPercentage: 0,
           createdById: actorId,
         },
         include: {
@@ -106,7 +120,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       // D. Log Immutable Audit Activity Event
       await tx.activityEvent.create({
         data: {
-          eventType: "LEAD_WON_CONVERTED",
+          eventType: "SALE_APPROVED_BY_SUPER_ADMIN",
           actorId: actorId,
           entityType: "LEAD",
           entityId: lead.id,
@@ -117,6 +131,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             clientNumber: newClient.clientNumber,
             projectNumber: newProject.projectNumber,
             contractValue: newProject.contractValue,
+            status: "PENDING_SUB_ADMIN_ALLOCATION",
             timestamp: new Date().toISOString(),
           }),
         },

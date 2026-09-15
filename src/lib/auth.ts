@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-options";
 import { NextResponse } from "next/server";
 
-export type RoleContext = "OWNER" | "SALES" | "EMPLOYEE" | "CLIENT";
+export type RoleContext = "OWNER" | "SUB_ADMIN" | "SALES" | "EMPLOYEE" | "CLIENT";
 
 export interface CurrentUserSession {
   id: string;

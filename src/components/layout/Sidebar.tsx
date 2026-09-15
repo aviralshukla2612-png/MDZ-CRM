@@ -65,6 +65,23 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];
 
+      case "SUB_ADMIN":
+        return [
+          { title: "Overview", href: "/owner", icon: <LayoutDashboard className="w-4 h-4" /> },
+          { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
+          { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Workload Kanban", href: "/workload", icon: <Layers className="w-4 h-4" /> },
+          { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
+          { title: "Team", href: "/employees", icon: <UserCheck className="w-4 h-4" /> },
+          { title: "Attendance", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
+          { title: "Company Holidays", href: "/attendance/holidays", icon: <Calendar className="w-4 h-4" /> },
+          { title: "Punch Out Requests", href: "/attendance-requests", icon: <Clock className="w-4 h-4" /> },
+          { title: "Leave Applications", href: "/leave-requests", icon: <UserCheck className="w-4 h-4" /> },
+          { title: "Activity", href: "/audit", icon: <ShieldAlert className="w-4 h-4" /> },
+          { title: "Terms Management", href: "/settings/terms", icon: <BookOpen className="w-4 h-4" /> },
+          { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
+        ];
+
       case "SALES":
         return [
           { title: "Sales Overview", href: "/sales", icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -141,7 +158,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           {/* Navigation Group Header */}
           <div className="px-3 py-1 flex items-center justify-between border-b border-amber-100 dark:border-amber-900/30 pb-3">
             <span className="text-[10px] font-extrabold tracking-widest text-amber-600 dark:text-amber-400 uppercase font-mono">
-              {role} WORKSPACE
+              {role === "SUB_ADMIN" ? "SUB ADMIN" : role} WORKSPACE
             </span>
             {isMobileOpen && (
               <button

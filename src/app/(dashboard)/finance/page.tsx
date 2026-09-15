@@ -1,12 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { IndianRupee, Plus, AlertCircle, CheckCircle2, Sparkles, TrendingUp } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 
 export default function FinancePage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const { showToast } = useToast();
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,8 +34,13 @@ export default function FinancePage() {
   });
 
   useEffect(() => {
+    if (session?.user?.role === "SUB_ADMIN") {
+      showToast("Access restricted: Sub-Admin does not have access to Finance.", "error");
+      router.replace("/projects");
+      return;
+    }
     fetchFinanceData();
-  }, []);
+  }, [session, router]);
 
   const fetchFinanceData = async () => {
     try {
