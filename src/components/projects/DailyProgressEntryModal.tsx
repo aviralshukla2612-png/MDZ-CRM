@@ -38,7 +38,7 @@ export default function DailyProgressEntryModal({
     setLoading(true);
 
     try {
-      const res = await fetch(`/api/client/projects/${projectId}/daily-updates`, {
+      const res = await fetch(`/mdz-crm/api/client/projects/${projectId}/daily-updates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

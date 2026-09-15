@@ -23,9 +23,11 @@ import {
   History,
   Trash2,
   UserPlus,
+  Send,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
 
 export default function ProjectWorkspacePage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
@@ -35,6 +37,9 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
+  // Daily Progress Update Modal state
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
   // Member Assignment & Removal state
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -214,6 +219,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           livingDocs: p.documents || [],
           scopeItems: p.scopeText ? p.scopeText.split("\n") : [],
           changeRequests: p.changeRequests || [],
+          clientUpdates: p.clientUpdates || [],
         });
       }
     } catch (e) {
@@ -224,7 +230,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   };
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "workflow" | "tasks" | "team" | "docs" | "notes" | "calls" | "changes" | "payments"
+    "overview" | "workflow" | "tasks" | "updates" | "team" | "docs" | "notes" | "calls" | "changes" | "payments"
   >("overview");
 
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
@@ -398,6 +404,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     { id: "overview", label: "Overview & Scope" },
     { id: "workflow", label: "Workflow Playbook" },
     { id: "tasks", label: `Task Stack (${project.tasks?.length || 0})` },
+    { id: "updates", label: `Daily Updates (${project.clientUpdates?.length || 0})` },
     { id: "team", label: `Team & Removal History (${project.teamMembers?.length || 0})` },
     { id: "docs", label: `Living Docs (${project.livingDocs?.length || 0})` },
     { id: "notes", label: "Work Notes" },
@@ -534,6 +541,14 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                 <span>{isDeleting ? "Deleting..." : "Delete Project"}</span>
               </button>
             )}
+            <button
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs touch-target"
+              title="Post daily progress update to Client & Admin"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Post Daily Update</span>
+            </button>
             <Link
               href="/portal/demo-token-abc"
               className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors flex items-center gap-1.5"
@@ -770,6 +785,80 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                 })
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab 3: Daily Updates (Visible to Client & Admin) */}
+      {activeTab === "updates" && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                <Send className="w-4 h-4 text-amber-500" />
+                <span>Daily Progress Updates</span>
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Daily progress logs visible to the Client in their portal and Admin in real-time.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsUpdateModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 self-start sm:self-auto transition-all touch-target"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ Post Daily Update</span>
+            </button>
+          </div>
+
+          {(!project.clientUpdates || project.clientUpdates.length === 0) ? (
+            <div className="py-12 text-center text-slate-400 space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+                <Send className="w-6 h-6" />
+              </div>
+              <p className="text-xs">No daily progress updates posted yet.</p>
+              <button
+                onClick={() => setIsUpdateModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-xs font-bold transition-colors inline-flex items-center gap-1.5"
+              >
+                <span>+ Post First Daily Update</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {project.clientUpdates.map((u: any) => (
+                <div
+                  key={u.id}
+                  className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                        {u.title}
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800">
+                        Client & Admin Visible
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      {new Date(u.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+                    {u.content}
+                  </p>
+                  <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500 font-medium">
+                    <span>Posted by:</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {u.author?.name || "Team Member"}
+                    </span>
+                    {u.author?.designation && (
+                      <span className="text-slate-400 font-normal">({u.author.designation})</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1166,6 +1255,18 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
         message="Are you completely sure you want to permanently delete this project? This action will destroy all related tasks, documents, and payment histories. This cannot be undone."
         confirmText="Yes, delete project"
         isDestructive={true}
+      />
+
+      {/* Daily Progress Update Modal (Posts to Client & Admin) */}
+      <DailyProgressEntryModal
+        projectId={params.id}
+        projectName={project.name}
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        onSuccess={() => {
+          showToast("✓ Daily update posted to Client & Admin successfully!", "success");
+          fetchProject();
+        }}
       />
     </div>
   );

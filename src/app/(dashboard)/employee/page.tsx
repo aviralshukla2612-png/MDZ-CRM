@@ -20,6 +20,7 @@ import {
   ArrowRight,
   ShieldCheck,
 } from "lucide-react";
+import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
 
 export default function EmployeeDeskPage() {
   const { data: session } = useSession();
@@ -34,6 +35,10 @@ export default function EmployeeDeskPage() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("MEDIUM");
   const [submittingTask, setSubmittingTask] = useState(false);
+
+  // Daily Progress Update Modal state
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [updateModalProject, setUpdateModalProject] = useState<any>(null);
 
   useEffect(() => {
     fetchEmployeeProjects();
@@ -152,6 +157,19 @@ export default function EmployeeDeskPage() {
         badge={session?.user?.role || "EMPLOYEE"}
         actions={
           <div className="flex items-center gap-2">
+            {projects.length > 0 && (
+              <button
+                onClick={() => {
+                  setUpdateModalProject(projects[0]);
+                  setIsUpdateModalOpen(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs transition-colors shadow-xs flex items-center gap-1.5 touch-target"
+                title="Post daily progress update to Client & Admin"
+              >
+                <Send className="w-3.5 h-3.5 text-white" />
+                <span>Post Daily Update</span>
+              </button>
+            )}
             <button
               onClick={() => setIsTaskSheetOpen(true)}
               className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-xs flex items-center gap-1.5 touch-target"
@@ -296,13 +314,28 @@ export default function EmployeeDeskPage() {
                   )}
                 </div>
 
-                <Link
-                  href={`/projects/${prj.id}`}
-                  className="w-full py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700"
-                >
-                  <span>Open Task Workspace</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUpdateModalProject(prj);
+                      setIsUpdateModalOpen(true);
+                    }}
+                    className="py-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 border border-amber-200 dark:border-amber-800 shadow-2xs"
+                    title="Post a daily progress update visible to Client & Admin"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Daily Update</span>
+                  </button>
+
+                  <Link
+                    href={`/projects/${prj.id}`}
+                    className="py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 border border-slate-200 dark:border-slate-700"
+                  >
+                    <span>Tasks</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
             );
           })}
@@ -471,6 +504,22 @@ export default function EmployeeDeskPage() {
           </button>
         </form>
       </BottomSheet>
+
+      {updateModalProject && (
+        <DailyProgressEntryModal
+          projectId={updateModalProject.id}
+          projectName={updateModalProject.name}
+          isOpen={isUpdateModalOpen}
+          onClose={() => {
+            setIsUpdateModalOpen(false);
+            setUpdateModalProject(null);
+          }}
+          onSuccess={() => {
+            showToast("✓ Daily update posted to Client & Admin successfully!", "success");
+            fetchEmployeeProjects();
+          }}
+        />
+      )}
     </div>
   );
 }

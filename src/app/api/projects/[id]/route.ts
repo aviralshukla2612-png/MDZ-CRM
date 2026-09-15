@@ -18,6 +18,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         tasks: true,
         documents: true,
         changeRequests: true,
+        clientUpdates: {
+          include: { author: true },
+          orderBy: { createdAt: "desc" },
+        },
         memberships: {
           include: { employee: { include: { user: true } } },
         },
