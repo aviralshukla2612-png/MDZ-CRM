@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   FolderKanban,
@@ -22,6 +22,8 @@ import {
   Sparkles,
   Shield,
   Briefcase,
+  ChevronDown,
+  GripVertical,
 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
@@ -42,6 +44,7 @@ export interface ProjectCardItem {
   clientName: string;
   totalTasks: number;
   completedTasks: number;
+  assignedEmployeeId?: string;
   tasks?: Array<{ id: string; title: string; status: string; priority: string }>;
 }
 
@@ -116,6 +119,10 @@ export function EmployeeProjectKanban({
     initialSelectedEmployeeId || (employees.length > 0 ? employees[0].id : "ALL")
   );
 
+  // Drag and Drop state
+  const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
+  const [optimisticProjects, setOptimisticProjects] = useState<ProjectCardItem[] | null>(null);
+
   // Modal to assign current employee to a project
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignProjectId, setAssignProjectId] = useState("");
@@ -153,20 +160,89 @@ export function EmployeeProjectKanban({
 
   // Projects to display in the Kanban board
   const displayedProjects = useMemo(() => {
+    let projs: ProjectCardItem[] = [];
     if (selectedEmployee) {
-      return selectedEmployee.assignedProjects || [];
-    }
-    // "ALL" mode: aggregate all projects across all employees
-    const map = new Map<string, ProjectCardItem>();
-    employees.forEach((emp) => {
-      emp.assignedProjects?.forEach((p) => {
-        if (!map.has(p.id)) {
-          map.set(p.id, p);
-        }
+      projs = (selectedEmployee.assignedProjects || []).map((p) => ({
+        ...p,
+        assignedEmployeeId: selectedEmployee.id,
+      }));
+    } else {
+      const map = new Map<string, ProjectCardItem>();
+      employees.forEach((emp) => {
+        emp.assignedProjects?.forEach((p) => {
+          if (!map.has(p.id)) {
+            map.set(p.id, { ...p, assignedEmployeeId: emp.id });
+          }
+        });
       });
-    });
-    return Array.from(map.values());
+      projs = Array.from(map.values());
+    }
+    return projs;
   }, [selectedEmployee, employees]);
+
+  // Sync optimistic projects when displayedProjects changes
+  useEffect(() => {
+    setOptimisticProjects(null);
+  }, [displayedProjects]);
+
+  const projectsToRender = optimisticProjects || displayedProjects;
+
+  // Handle Drag & Drop status change
+  const handleDropProject = async (projectId: string, targetStage: string) => {
+    const proj = projectsToRender.find((p) => p.id === projectId);
+    if (!proj) return;
+
+    const currentStage = (proj.status || "PLANNING").toUpperCase();
+    if (currentStage === targetStage) return;
+
+    // Optimistic visual update (0ms lag)
+    setOptimisticProjects((prev) => {
+      const base = prev ? [...prev] : [...displayedProjects];
+      return base.map((p) => (p.id === projectId ? { ...p, status: targetStage } : p));
+    });
+
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: targetStage }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Moved "${proj.name}" to ${targetStage.replace("_", " ")}`, "success");
+        onRefresh();
+      } else {
+        showToast(json.error || "Failed to update project status", "error");
+        setOptimisticProjects(null);
+      }
+    } catch (e) {
+      showToast("Network error moving project", "error");
+      setOptimisticProjects(null);
+    }
+  };
+
+  // Handle reassigning developer directly from project card dropdown
+  const handleReassignProject = async (projectId: string, newEmployeeId: string) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${projectId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: newEmployeeId,
+          roleInProject: "DEVELOPER",
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || "Assigned developer to project successfully!", "success");
+        onRefresh();
+      } else {
+        showToast(json.error || "Failed to assign developer", "error");
+      }
+    } catch (e) {
+      showToast("Network error assigning developer", "error");
+    }
+  };
 
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -232,6 +308,31 @@ export function EmployeeProjectKanban({
               placeholder="Search developer, role..."
               className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-colors"
             />
+          </div>
+
+          {/* All Employee Quick Dropdown Selector */}
+          <div className="space-y-1 pt-1">
+            <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
+              <span>All Employees Dropdown</span>
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono">Quick Select</span>
+            </div>
+            <div className="relative">
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-bold outline-none focus:border-indigo-500 cursor-pointer appearance-none pr-8 transition-colors shadow-2xs"
+              >
+                <option value="ALL">🌐 All Company Projects ({allProjects.length} Projects)</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    👤 {emp.name} ({emp.totalProjects !== undefined ? emp.totalProjects : emp.assignedProjects?.length || 0} Projects) — {emp.designation || "Developer"}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
+                ▼
+              </div>
+            </div>
           </div>
 
           {/* Department Filter Pills */}
@@ -435,6 +536,20 @@ export function EmployeeProjectKanban({
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                {/* Header Employee Selector Dropdown */}
+                <select
+                  value={selectedEmployeeId}
+                  onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                  className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
+                >
+                  <option value="ALL">🌐 All Employees View</option>
+                  {employees.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.name} ({e.totalProjects} projs)
+                    </option>
+                  ))}
+                </select>
+
                 <button
                   onClick={() => setIsAssignModalOpen(true)}
                   className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
@@ -469,7 +584,7 @@ export function EmployeeProjectKanban({
               <div className="p-3 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60">
                 <div className="text-blue-600 dark:text-blue-400 text-[11px] font-semibold">In Planning</div>
                 <div className="text-lg font-extrabold text-blue-700 dark:text-blue-300 font-mono mt-0.5">
-                  {selectedEmployee.planningProjectsCount}
+                  {selectedEmployee.planningProjectsCount || selectedEmployee.assignedProjects?.filter(p => (p.status || '').toUpperCase() === 'PLANNING' || (p.status || '').toUpperCase() === 'DRAFT').length || 0}
                 </div>
               </div>
               <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60">
@@ -487,21 +602,46 @@ export function EmployeeProjectKanban({
                 All Company Project Workloads
               </h2>
               <p className="text-xs text-slate-500">
-                Showing all active projects across all {employees.length} developers.
+                Showing all active projects across all {employees.length} developers. Drag cards to update statuses.
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs font-mono font-bold">
-              <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                Total Projects: {allProjects.length}
+            <div className="flex items-center gap-3 text-xs">
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
+              >
+                <option value="ALL">🌐 All Employees View</option>
+                {employees.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    👤 {e.name} ({e.totalProjects} projs)
+                  </option>
+                ))}
+              </select>
+              <span className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold">
+                Total: {allProjects.length}
               </span>
             </div>
           </div>
         )}
 
-        {/* KANBAN BOARD (Columns by Status) */}
+        {/* DRAG AND DROP INSTRUCTION BANNER */}
+        <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-700 dark:text-indigo-300 font-medium">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <span>
+              <strong>Drag & Drop Enabled:</strong> Drag any project card between stages (Planning, In Progress, On Hold, Won) to instantly update its status.
+            </span>
+          </div>
+          <span className="text-[10px] font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shrink-0 hidden sm:inline">
+            Drag card to column
+          </span>
+        </div>
+
+        {/* KANBAN BOARD (Columns by Status with Drop Zones) */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
           {KANBAN_COLUMNS.map((col) => {
-            const colProjects = displayedProjects.filter((p) => {
+            const colProjects = projectsToRender.filter((p) => {
               const s = (p.status || "").toUpperCase();
               if (col.id === "PLANNING") return s === "PLANNING" || s === "DRAFT" || s === "";
               if (col.id === "IN_PROGRESS") return s === "IN_PROGRESS" || s === "ACTIVE";
@@ -514,7 +654,38 @@ export function EmployeeProjectKanban({
             return (
               <div
                 key={col.id}
-                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3.5 space-y-3 flex flex-col min-h-[420px]"
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                  e.currentTarget.classList.add(
+                    "ring-2",
+                    "ring-indigo-500",
+                    "bg-indigo-50/70",
+                    "dark:bg-indigo-950/50"
+                  );
+                }}
+                onDragLeave={(e) => {
+                  e.currentTarget.classList.remove(
+                    "ring-2",
+                    "ring-indigo-500",
+                    "bg-indigo-50/70",
+                    "dark:bg-indigo-950/50"
+                  );
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove(
+                    "ring-2",
+                    "ring-indigo-500",
+                    "bg-indigo-50/70",
+                    "dark:bg-indigo-950/50"
+                  );
+                  const pId = e.dataTransfer.getData("projectId") || draggedProjectId;
+                  if (pId) {
+                    handleDropProject(pId, col.id);
+                  }
+                }}
+                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3.5 space-y-3 flex flex-col min-h-[440px] transition-all"
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/80 dark:border-slate-800">
@@ -546,10 +717,11 @@ export function EmployeeProjectKanban({
                 )}
 
                 {/* Cards Container */}
-                <div className="space-y-3 flex-1 overflow-y-auto max-h-[600px] pr-1">
+                <div className="space-y-3 flex-1 overflow-y-auto max-h-[620px] pr-1">
                   {colProjects.length === 0 ? (
-                    <div className="h-36 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800/80 flex flex-col items-center justify-center text-center p-4 text-slate-400 text-xs">
+                    <div className="h-40 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800/80 flex flex-col items-center justify-center text-center p-4 text-slate-400 text-xs space-y-1">
                       <span>No projects in this stage</span>
+                      <span className="text-[10px] text-slate-400/80">Drop cards here to change stage</span>
                     </div>
                   ) : (
                     colProjects.map((proj) => {
@@ -561,19 +733,32 @@ export function EmployeeProjectKanban({
                           : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200";
 
                       const isLeadRole = proj.roleInProject === "TM";
+                      const isBeingDragged = draggedProjectId === proj.id;
 
                       return (
                         <div
                           key={proj.id}
-                          className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-2xs hover:shadow-md hover:border-indigo-500/50 transition-all space-y-3 group"
+                          draggable
+                          onDragStart={(e) => {
+                            setDraggedProjectId(proj.id);
+                            e.dataTransfer.setData("projectId", proj.id);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          onDragEnd={() => setDraggedProjectId(null)}
+                          className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-2xs hover:shadow-md hover:border-indigo-500/50 transition-all space-y-3 group cursor-grab active:cursor-grabbing ${
+                            isBeingDragged ? "opacity-30 scale-95 border-dashed border-indigo-500" : ""
+                          }`}
                         >
-                          {/* Top Badges */}
+                          {/* Top Badges & Drag Handle */}
                           <div className="flex items-center justify-between gap-2">
-                            <span
-                              className={`text-[9px] font-extrabold font-mono px-2 py-0.5 rounded-md border ${priorityColor}`}
-                            >
-                              {proj.priority}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 transition-colors" />
+                              <span
+                                className={`text-[9px] font-extrabold font-mono px-2 py-0.5 rounded-md border ${priorityColor}`}
+                              >
+                                {proj.priority}
+                              </span>
+                            </div>
 
                             <span
                               className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md ${
@@ -623,8 +808,30 @@ export function EmployeeProjectKanban({
                             </div>
                           </div>
 
+                          {/* Assignee Selection Dropdown on Project Card */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] gap-2">
+                            <span className="text-slate-500 font-semibold text-[10px] flex items-center gap-1 shrink-0">
+                              <User className="w-3 h-3 text-indigo-500" />
+                              <span>Assign:</span>
+                            </span>
+                            <select
+                              value={proj.assignedEmployeeId || selectedEmployee?.id || ""}
+                              onChange={(e) => handleReassignProject(proj.id, e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-800 dark:text-slate-200 outline-none cursor-pointer max-w-[140px] truncate"
+                              title="Reassign to developer"
+                            >
+                              <option value="" disabled>-- Developer --</option>
+                              {employees.map((emp) => (
+                                <option key={emp.id} value={emp.id}>
+                                  {emp.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
                           {/* Tasks summary & Deadline */}
-                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-500">
+                          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
                             <span className="flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                               <span>{proj.completedTasks}/{proj.totalTasks} Tasks</span>
