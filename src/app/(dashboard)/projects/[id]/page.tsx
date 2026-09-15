@@ -22,6 +22,7 @@ import {
   Plus,
   History,
   Trash2,
+  UserPlus,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -35,6 +36,19 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
+  // Member Assignment & Removal state
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [availableEmployees, setAvailableEmployees] = useState<any[]>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [selectedRoleInProject, setSelectedRoleInProject] = useState("DEVELOPER");
+  const [selectedCompensation, setSelectedCompensation] = useState("");
+  const [assigningMember, setAssigningMember] = useState(false);
+
+  const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<any>(null);
+  const [removalReason, setRemovalReason] = useState("");
+  const [removingMember, setRemovingMember] = useState(false);
+
   // Change Requests tab state
   const [changeReqsData, setChangeReqsData] = useState<any>({ changeRequests: [], quota: { includedCount: 3, usedCount: 0, remainingCount: 3 } });
   const [loadingChangeReqs, setLoadingChangeReqs] = useState<boolean>(false);
@@ -43,6 +57,88 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     fetchProject();
     fetchChangeRequests();
   }, []);
+
+  const openAssignModal = async () => {
+    setIsAssignModalOpen(true);
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}/members`);
+      const json = await res.json();
+      if (json.success && json.availableEmployees) {
+        setAvailableEmployees(json.availableEmployees);
+        if (json.availableEmployees.length > 0 && !selectedEmployeeId) {
+          setSelectedEmployeeId(json.availableEmployees[0].id);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load employees for assignment:", e);
+    }
+  };
+
+  const handleAssignMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEmployeeId) {
+      showToast("Please select a team member", "error");
+      return;
+    }
+    try {
+      setAssigningMember(true);
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: selectedEmployeeId,
+          roleInProject: selectedRoleInProject,
+          compensationAmount: selectedCompensation ? Number(selectedCompensation) : undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || "Developer assigned successfully!", "success");
+        setIsAssignModalOpen(false);
+        setSelectedCompensation("");
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to assign developer", "error");
+      }
+    } catch (e) {
+      showToast("Network error assigning developer", "error");
+    } finally {
+      setAssigningMember(false);
+    }
+  };
+
+  const openRemoveModal = (member: any) => {
+    setMemberToRemove(member);
+    setRemovalReason("");
+    setIsRemoveModalOpen(true);
+  };
+
+  const handleRemoveMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!memberToRemove) return;
+    try {
+      setRemovingMember(true);
+      const res = await fetch(
+        `/mdz-crm/api/projects/${params.id}/members?membershipId=${memberToRemove.id}&reason=${encodeURIComponent(
+          removalReason || "Reassigned by Admin"
+        )}`,
+        { method: "DELETE" }
+      );
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || "Team member removed from project", "success");
+        setIsRemoveModalOpen(false);
+        setMemberToRemove(null);
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to remove member", "error");
+      }
+    } catch (e) {
+      showToast("Network error removing member", "error");
+    } finally {
+      setRemovingMember(false);
+    }
+  };
 
   const fetchChangeRequests = async () => {
     try {
@@ -95,12 +191,16 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           paidValue: p.paymentMilestones?.reduce((s: number, m: any) => s + m.paidAmount, 0) || 0,
           overdueValue: p.paymentMilestones?.filter((m: any) => m.status === 'OVERDUE').reduce((s: number, m: any) => s + m.amount, 0) || 0,
           deadline: p.targetDeadline ? new Date(p.targetDeadline).toLocaleDateString() : "No Deadline",
-          tmName: p.memberships?.find((m: any) => m.roleInProject === "TM")?.employee?.user?.name || "Unassigned",
-          teamMembers: p.memberships?.map((m: any) => ({
+          tmName: p.memberships?.find((m: any) => m.roleInProject === "TM" && m.isActive)?.employee?.user?.name || "Unassigned",
+          teamMembers: p.memberships?.filter((m: any) => m.isActive).map((m: any) => ({
             id: m.id,
+            employeeId: m.employeeId,
             name: m.employee?.user?.name || "Unknown",
+            email: m.employee?.user?.email,
+            phone: m.employee?.phone || "+91 98765 43210",
             role: m.roleInProject,
             active: m.isActive,
+            compensationAmount: m.compensationAmount,
             assignedDate: m.assignedAt ? new Date(m.assignedAt).toLocaleDateString() : "Unknown",
           })) || [],
           removalHistory: p.memberships?.filter((m: any) => !m.isActive).map((m: any) => ({
@@ -395,13 +495,35 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
             <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-3">
               <span>🏢 <strong className="text-indigo-600 dark:text-indigo-400">{project.clientName}</strong></span>
               <span>•</span>
-              <span>TM: <strong className="text-slate-800 dark:text-slate-200">{project.tmName}</strong></span>
+              <span className="flex items-center gap-1.5">
+                <span>TM: <strong className="text-slate-800 dark:text-slate-200">{project.tmName}</strong></span>
+                {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+                  <button
+                    onClick={openAssignModal}
+                    className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 transition-colors"
+                    title="Assign Developer or Tech Lead"
+                  >
+                    <UserPlus className="w-3 h-3" />
+                    <span>{project.tmName === "Unassigned" ? "Assign Developer / TM" : "Manage"}</span>
+                  </button>
+                )}
+              </span>
               <span>•</span>
               <span>Deadline: <strong className="text-slate-800 dark:text-slate-200">{project.deadline}</strong></span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+              <button
+                onClick={openAssignModal}
+                className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs touch-target"
+                title="Assign Developer to Project"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Assign Developer</span>
+              </button>
+            )}
             {(session?.user as any)?.role === "OWNER" && (
               <button
                 onClick={() => setIsDeleteModalOpen(true)}
@@ -485,18 +607,55 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
             )}
 
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3 text-xs">
-              <h3 className="font-bold text-slate-900 dark:text-slate-100">Active Team Members</h3>
-              {project.teamMembers?.slice(0, 3).map((m: any) => (
-                <div key={m.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                  <Link href={`/employees/${m.id}`} className="hover:underline">
-                    <div className="font-bold text-slate-900 dark:text-slate-100">{m.name}</div>
-                    <div className="text-[11px] text-slate-500">{m.role}</div>
-                  </Link>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono">
-                    Active
-                  </span>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100">Active Team Members</h3>
+                {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+                  <button
+                    onClick={openAssignModal}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Assign
+                  </button>
+                )}
+              </div>
+              {project.teamMembers?.length === 0 ? (
+                <div className="py-4 text-center text-slate-400 space-y-2">
+                  <p>No developers assigned yet.</p>
+                  {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+                    <button
+                      onClick={openAssignModal}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-bold text-xs hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800"
+                    >
+                      + Assign Developer
+                    </button>
+                  )}
                 </div>
-              ))}
+              ) : (
+                project.teamMembers?.slice(0, 4).map((m: any) => (
+                  <div key={m.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                    <div>
+                      <Link href={`/employees/${m.employeeId || m.id}`} className="font-bold text-slate-900 dark:text-slate-100 hover:underline block">
+                        {m.name}
+                      </Link>
+                      <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold">{m.role}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono">
+                        Active
+                      </span>
+                      {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+                        <button
+                          onClick={() => openRemoveModal(m)}
+                          className="text-slate-400 hover:text-rose-500 p-1 transition-colors"
+                          title="Remove from project"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -619,18 +778,67 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
         <div className="space-y-6">
           {/* Active Members */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Active Assigned Team Members</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              {project.teamMembers?.map((m: any) => (
-                <div key={m.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
-                  <Link href={`/employees/${m.id}`} className="font-bold text-slate-900 dark:text-slate-100 hover:underline block text-sm">
-                    {m.name}
-                  </Link>
-                  <div className="text-indigo-600 dark:text-indigo-400 font-semibold">{m.role}</div>
-                  <div className="text-[10px] text-slate-400 font-mono">Assigned: {m.assignedDate}</div>
-                </div>
-              ))}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Active Assigned Team Members</h3>
+                <p className="text-xs text-slate-500">Developers and engineers actively assigned to this project workspace.</p>
+              </div>
+              {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+                <button
+                  onClick={openAssignModal}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 touch-target shrink-0 self-start sm:self-auto"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>+ Assign Developer</span>
+                </button>
+              )}
             </div>
+
+            {project.teamMembers?.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
+                <Users className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600" />
+                <div className="font-semibold text-slate-700 dark:text-slate-300 text-sm">No Developers Assigned Yet</div>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Assign a Tech Lead (TM) or developers to this project so they can receive tasks, post updates, and appear in the client portal.
+                </p>
+                {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+                  <button
+                    onClick={openAssignModal}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs inline-flex items-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Assign Developer Now</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                {project.teamMembers?.map((m: any) => (
+                  <div key={m.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <Link href={`/employees/${m.employeeId || m.id}`} className="font-bold text-slate-900 dark:text-slate-100 hover:underline block text-sm">
+                          {m.name}
+                        </Link>
+                        <div className="text-indigo-600 dark:text-indigo-400 font-semibold">{m.role}</div>
+                      </div>
+                      {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+                        <button
+                          onClick={() => openRemoveModal(m)}
+                          className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                          title="Remove from project"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    {m.email && <div className="text-[11px] text-slate-500 truncate">📧 {m.email}</div>}
+                    {m.phone && <div className="text-[11px] text-slate-500">📞 {m.phone}</div>}
+                    <div className="text-[10px] text-slate-400 font-mono">Assigned: {m.assignedDate}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Immutable Removal History Log (Requirement #12) */}
@@ -832,6 +1040,120 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
             className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs touch-target mt-2"
           >
             Assign Task
+          </button>
+        </form>
+      </BottomSheet>
+
+      {/* Assign Developer Modal */}
+      <BottomSheet
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        title="Assign Developer / Member to Project"
+        subtitle="Assign an engineer, tech lead, or designer to this project workspace."
+      >
+        <form onSubmit={handleAssignMember} className="space-y-4 text-xs">
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+              Select Team Member / Developer *
+            </label>
+            {availableEmployees.length === 0 ? (
+              <div className="p-3 text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                Loading team members...
+              </div>
+            ) : (
+              <select
+                value={selectedEmployeeId}
+                onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium"
+                required
+              >
+                <option value="">-- Choose Employee / Developer --</option>
+                {availableEmployees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} — {emp.designation || emp.role} ({emp.email})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+              Project Role *
+            </label>
+            <select
+              value={selectedRoleInProject}
+              onChange={(e) => setSelectedRoleInProject(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium"
+            >
+              <option value="TM">TM (Tech Lead / Project Lead)</option>
+              <option value="DEVELOPER">DEVELOPER (Fullstack Developer)</option>
+              <option value="FRONTEND">FRONTEND DEVELOPER</option>
+              <option value="BACKEND">BACKEND DEVELOPER</option>
+              <option value="UI_UX">UI / UX DESIGNER</option>
+              <option value="QA">QA / TEST ENGINEER</option>
+              <option value="MEMBER">TEAM MEMBER</option>
+            </select>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Selecting <strong>TM</strong> marks them as the Tech Lead shown in client & admin headers.
+            </p>
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+              Project Compensation (₹ INR, Optional)
+            </label>
+            <input
+              type="number"
+              value={selectedCompensation}
+              onChange={(e) => setSelectedCompensation(e.target.value)}
+              placeholder="e.g. 25000"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={assigningMember}
+            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs shadow-xs touch-target mt-2 flex items-center justify-center gap-2"
+          >
+            {assigningMember ? "Assigning..." : "Confirm & Assign Developer"}
+          </button>
+        </form>
+      </BottomSheet>
+
+      {/* Remove Member Modal */}
+      <BottomSheet
+        isOpen={isRemoveModalOpen}
+        onClose={() => setIsRemoveModalOpen(false)}
+        title={`Remove ${memberToRemove?.name || "Member"} from Project`}
+        subtitle="Historical contributions will be preserved in removal history."
+      >
+        <form onSubmit={handleRemoveMember} className="space-y-4 text-xs">
+          <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
+            Removing this developer will preserve their completed work and log an entry into the <strong>Immutable Team Removal History</strong>.
+          </p>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+              Reason for Removal / Reassignment *
+            </label>
+            <input
+              type="text"
+              value={removalReason}
+              onChange={(e) => setRemovalReason(e.target.value)}
+              placeholder="e.g. Project phase completed, shifted to another client project"
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={removingMember}
+            className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white font-bold text-xs shadow-xs touch-target mt-2"
+          >
+            {removingMember ? "Removing..." : "Confirm Removal"}
           </button>
         </form>
       </BottomSheet>
