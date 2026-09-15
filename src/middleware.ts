@@ -5,14 +5,23 @@ export async function middleware(req: any) {
   const { pathname } = req.nextUrl;
   console.log("MIDDLEWARE HIT:", pathname);
   
-  // Exclude static files, API routes, login, and portal
-  if (
+  // Exclude static files, API routes, login, client registration, terms, and portal
+  const isPublicRoute = 
     pathname.startsWith("/api") || 
     pathname.startsWith("/_next") || 
     pathname === "/login" ||
+    pathname.endsWith("/login") ||
+    pathname === "/client-register" ||
+    pathname.endsWith("/client-register") ||
+    pathname.startsWith("/client-register") ||
+    pathname === "/terms-and-conditions" ||
+    pathname.endsWith("/terms-and-conditions") ||
+    pathname.startsWith("/terms-and-conditions") ||
     pathname.startsWith("/portal") ||
-    pathname.includes(".")
-  ) {
+    pathname.includes("/portal") ||
+    pathname.includes(".");
+
+  if (isPublicRoute) {
     return NextResponse.next();
   }
 
