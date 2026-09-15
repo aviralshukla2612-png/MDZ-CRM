@@ -166,7 +166,7 @@ export default function CompanyHolidaysPage() {
     for (let day = 1; day <= daysInMonth; day++) {
       const cellDate = new Date(selectedYear, selectedMonth, day);
       const dayOfWeek = cellDate.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isWeekend = dayOfWeek === 0; // Only Sunday is weekly off, Saturday is working
       const isToday =
         today.getDate() === day &&
         today.getMonth() === selectedMonth &&
@@ -284,7 +284,7 @@ export default function CompanyHolidaysPage() {
           <div className="space-y-2">
             <div className="grid grid-cols-7 gap-2 text-center font-mono text-[11px] font-bold">
               {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d, i) => (
-                <div key={d} className={i === 0 || i === 6 ? "text-rose-500" : "text-slate-400"}>
+                <div key={d} className={i === 0 ? "text-rose-500 font-black" : "text-slate-500 dark:text-slate-400"}>
                   {d}
                 </div>
               ))}

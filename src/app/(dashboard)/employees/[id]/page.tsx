@@ -181,7 +181,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
     for (let day = 1; day <= daysInMonth; day++) {
       const dayDate = new Date(selectedYear, selectedMonth, day);
       const dayOfWeek = dayDate.getDay();
-      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isWeekend = dayOfWeek === 0; // Only Sunday is weekly off, Saturday is working
       const isToday = isCurrentMonth && today.getDate() === day;
 
       const att = atts.find((a: any) => {
