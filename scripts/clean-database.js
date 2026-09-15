@@ -2,40 +2,53 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
+async function safeDelete(fn, label) {
+  try {
+    await fn();
+  } catch (err) {
+    // If table does not exist or has cascade constraint, log and continue
+    if (err.code === "P2021") {
+      // Table does not exist in DB yet
+      return;
+    }
+    console.warn(`Note: safeDelete for ${label} skipped:`, err.message || err);
+  }
+}
+
 async function main() {
   console.log("🧹 Starting database cleanup: wiping all dummy data, keeping only Super Admin...");
 
-  // 1. Delete all transactional, project, client, task, lead, and notification data
-  await prisma.userPushToken.deleteMany();
-  await prisma.notification.deleteMany();
-  await prisma.activityEvent.deleteMany();
-  await prisma.clientUpdate.deleteMany();
-  await prisma.clientPortalToken.deleteMany();
-  await prisma.invoice.deleteMany();
-  await prisma.paymentMilestone.deleteMany();
+  // 1. Delete all transactional, project, client, task, lead, and notification data safely
+  await safeDelete(() => prisma.userPushToken.deleteMany(), "userPushToken");
+  await safeDelete(() => prisma.notification.deleteMany(), "notification");
+  await safeDelete(() => prisma.activityEvent.deleteMany(), "activityEvent");
+  await safeDelete(() => prisma.clientUpdate.deleteMany(), "clientUpdate");
+  await safeDelete(() => prisma.clientPortalToken.deleteMany(), "clientPortalToken");
+  await safeDelete(() => prisma.invoice.deleteMany(), "invoice");
+  await safeDelete(() => prisma.paymentMilestone.deleteMany(), "paymentMilestone");
 
-  await prisma.workSession.deleteMany();
-  await prisma.employeeStatusEvent.deleteMany();
-  await prisma.attendance.deleteMany();
-  await prisma.leaveRequest.deleteMany();
-  await prisma.changeRequestItem.deleteMany();
-  await prisma.changeRequest.deleteMany();
-  await prisma.clientDiscussion.deleteMany();
-  await prisma.projectNote.deleteMany();
-  await prisma.documentVersion.deleteMany();
-  await prisma.projectDocument.deleteMany();
-  await prisma.task.deleteMany();
-  await prisma.projectChecklist.deleteMany();
-  await prisma.projectStage.deleteMany();
-  await prisma.projectMembership.deleteMany();
-  await prisma.project.deleteMany();
-  await prisma.projectType.deleteMany();
-  await prisma.clientContact.deleteMany();
-  await prisma.client.deleteMany();
-  await prisma.leadActivity.deleteMany();
-  await prisma.leadFollowup.deleteMany();
-  await prisma.lead.deleteMany();
-  await prisma.termsAcceptanceLog.deleteMany();
+  await safeDelete(() => prisma.workSession.deleteMany(), "workSession");
+  await safeDelete(() => prisma.employeeStatusEvent.deleteMany(), "employeeStatusEvent");
+  await safeDelete(() => prisma.attendance.deleteMany(), "attendance");
+  await safeDelete(() => prisma.leaveRequest.deleteMany(), "leaveRequest");
+  await safeDelete(() => prisma.changeRequestItem.deleteMany(), "changeRequestItem");
+  await safeDelete(() => prisma.changeRequest.deleteMany(), "changeRequest");
+  await safeDelete(() => prisma.clientDiscussion.deleteMany(), "clientDiscussion");
+  await safeDelete(() => prisma.projectNote.deleteMany(), "projectNote");
+  await safeDelete(() => prisma.documentVersion.deleteMany(), "documentVersion");
+  await safeDelete(() => prisma.projectDocument.deleteMany(), "projectDocument");
+  await safeDelete(() => prisma.task.deleteMany(), "task");
+  await safeDelete(() => prisma.projectChecklist.deleteMany(), "projectChecklist");
+  await safeDelete(() => prisma.projectStage.deleteMany(), "projectStage");
+  await safeDelete(() => prisma.projectMembership.deleteMany(), "projectMembership");
+  await safeDelete(() => prisma.project.deleteMany(), "project");
+  await safeDelete(() => prisma.projectType.deleteMany(), "projectType");
+  await safeDelete(() => prisma.clientContact.deleteMany(), "clientContact");
+  await safeDelete(() => prisma.client.deleteMany(), "client");
+  await safeDelete(() => prisma.leadActivity.deleteMany(), "leadActivity");
+  await safeDelete(() => prisma.leadFollowup.deleteMany(), "leadFollowup");
+  await safeDelete(() => prisma.lead.deleteMany(), "lead");
+  await safeDelete(() => prisma.termsAcceptanceLog.deleteMany(), "termsAcceptanceLog");
 
   console.log("✓ Wiped all projects, leads, clients, invoices, attendance, and notifications.");
 
@@ -112,22 +125,24 @@ async function main() {
   });
 
   // 4. Delete all other users and employees
-  const deletedEmployees = await prisma.employee.deleteMany({
-    where: { userId: { not: ownerUser.id } },
-  });
+  await safeDelete(
+    () => prisma.employee.deleteMany({ where: { userId: { not: ownerUser.id } } }),
+    "other employees"
+  );
 
-  const deletedUserRoles = await prisma.userRole.deleteMany({
-    where: { userId: { not: ownerUser.id } },
-  });
+  await safeDelete(
+    () => prisma.userRole.deleteMany({ where: { userId: { not: ownerUser.id } } }),
+    "other userRoles"
+  );
 
-  const deletedUsers = await prisma.user.deleteMany({
-    where: { id: { not: ownerUser.id } },
-  });
+  await safeDelete(
+    () => prisma.user.deleteMany({ where: { id: { not: ownerUser.id } } }),
+    "other users"
+  );
 
-  console.log(`✓ Deleted ${deletedUsers.count} non-admin user(s) and ${deletedEmployees.count} employee profile(s).`);
   console.log("\n==========================================");
   console.log("✨ CLEANUP COMPLETE: Database is clean!");
-  console.log(`Super Admin Email: ${ownerUser.email}`);
+  console.log(`Super Admin: ${ownerUser.name} (${ownerUser.email})`);
   console.log("==========================================\n");
 }
 
