@@ -7,9 +7,11 @@ import { ThemeToggle } from "../ui/ThemeToggle";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useWorkClock } from "@/lib/workClockContext";
 import { useToast } from "@/components/ui/Toast";
+import { NotificationBell } from "./NotificationBell";
 
 interface Props {
   currentUser: {
+    id?: string;
     name: string;
     email: string;
     role: string;
@@ -268,7 +270,12 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
         </div>
         )}
 
-        {/* Global Notifications for Owner */}
+        {/* Notification Bell Center */}
+        <div className="shrink-0">
+          <NotificationBell currentUserId={currentUser.id} />
+        </div>
+
+        {/* Theme Toggle */}
         <div className="hidden md:block shrink-0">
           <ThemeToggle />
         </div>

@@ -55,6 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Header */}
       <Header
         currentUser={{
+          id: (session?.user as any)?.id,
           email: session?.user?.email || "",
           name: session?.user?.name || "User",
           role: currentRole,
