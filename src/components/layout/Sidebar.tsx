@@ -88,10 +88,9 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
 
       case "CLIENT":
         return [
-          { title: "Project Overview", href: "/portal/demo-token-abc", icon: <FolderKanban className="w-4 h-4" /> },
-          { title: "Scope & Milestones", href: "/portal/demo-token-abc", icon: <UserCheck className="w-4 h-4" /> },
-          { title: "Published Updates", href: "/portal/demo-token-abc", icon: <BookOpen className="w-4 h-4" /> },
-          { title: "Payments & Invoices", href: "/portal/demo-token-abc", icon: <IndianRupee className="w-4 h-4" /> },
+          { title: "Project Overview", href: "/client", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Terms & Conditions", href: "/terms-and-conditions", icon: <BookOpen className="w-4 h-4" /> },
+          { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];
 
       default:

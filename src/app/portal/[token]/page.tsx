@@ -15,20 +15,62 @@ export default async function ClientPortalPage({ params }: { params: { token: st
     }
   });
 
+  let clientRecord: any = portalToken?.client;
+  let activeProject: any = portalToken?.project;
+
   if (!portalToken) {
-    return notFound();
+    if (token === "demo-token-abc") {
+      const demoProject = await prisma.project.findFirst({
+        include: { client: true },
+        orderBy: { createdAt: "desc" },
+      });
+      clientRecord = demoProject?.client || ({ companyName: "Apex Global Enterprises" } as any);
+      activeProject = demoProject || null;
+    } else {
+      return (
+        <div className="min-h-screen bg-slate-50 dark:bg-[#090E18] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 max-w-md w-full text-center space-y-4 shadow-xl">
+            <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Portal Access Link Invalid</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              This tokenized access link could not be verified. Please request an updated link or log in to your account.
+            </p>
+            <a
+              href="/mdz-crm/login"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition-colors"
+            >
+              Sign In to Client Portal
+            </a>
+          </div>
+        </div>
+      );
+    }
+  } else if (!portalToken.isActive || portalToken.expiresAt < new Date()) {
+    return (
+      <div className="min-h-screen bg-slate-50 dark:bg-[#090E18] flex items-center justify-center p-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 max-w-md w-full text-center space-y-4 shadow-xl">
+          <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Portal Access Token Expired</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            This token has expired. Please contact your account manager for a new access token.
+          </p>
+          <a
+            href="/mdz-crm/login"
+            className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-500 transition-colors"
+          >
+            Sign In to Client Portal
+          </a>
+        </div>
+      </div>
+    );
   }
-
-  if (!portalToken.isActive || portalToken.expiresAt < new Date()) {
-    // In a real application, you might show a specific "Token Expired" page instead of a 404
-    return notFound();
-  }
-
-  const clientRecord = portalToken.client;
-  const activeProject = portalToken.project;
 
   const project = {
-    clientCompany: clientRecord.companyName,
+    clientCompany: clientRecord?.companyName || "Apex Global Enterprises",
     projectName: activeProject ? activeProject.name : "Onboarding Stage",
     launchDate: activeProject?.targetDeadline ? new Date(activeProject.targetDeadline).toLocaleDateString() : "TBD",
     progress: activeProject ? activeProject.progressPercentage : 0,

@@ -73,7 +73,7 @@ export default function ClientProjectDetailPage() {
   useEffect(() => {
     async function fetchProject() {
       try {
-        const res = await fetch(`/api/client/projects/${projectId}`);
+        const res = await fetch(`/mdz-crm/api/client/projects/${projectId}`);
         const data = await res.json();
 
         if (!res.ok || !data.success) {

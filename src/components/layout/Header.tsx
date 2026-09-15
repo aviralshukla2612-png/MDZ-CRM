@@ -162,7 +162,18 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           </button>
         )}
 
-        <Link href="/owner" className="flex items-center gap-3 select-none group">
+        <Link
+          href={
+            currentUser.role === "CLIENT"
+              ? "/client"
+              : currentUser.role === "OWNER"
+              ? "/owner"
+              : currentUser.role === "SALES"
+              ? "/sales"
+              : "/employee"
+          }
+          className="flex items-center gap-3 select-none group"
+        >
           <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire Digital Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shadow-sm ring-1 ring-amber-400/50 group-hover:scale-105 transition-all" />
           <span className="font-extrabold text-sm sm:text-base tracking-wider text-stone-900 dark:text-stone-100 uppercase font-sans flex items-center gap-1.5">
             <span className="md:hidden bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 bg-clip-text text-transparent font-black">MILLIONAIRE</span>
@@ -172,23 +183,25 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
       </div>
 
       {/* Center Search Shortcut (Desktop only - flexible container so it never overlaps controls) */}
-      <button
-        onClick={onOpenSearch}
-        className="hidden lg:flex items-center justify-between max-w-xs xl:max-w-sm w-full mx-4 px-4 py-2 rounded-xl bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-indigo-500/40 text-xs transition-all shadow-xs dark:shadow-lg group shrink"
-      >
-        <div className="flex items-center gap-2.5 truncate">
-          <Search className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors shrink-0" />
-          <span className="font-sans truncate">Search Leads, Projects, Employees...</span>
-        </div>
-        <kbd className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shrink-0 ml-2">
-          ⌘K
-        </kbd>
-      </button>
+      {currentUser.role !== "CLIENT" && (
+        <button
+          onClick={onOpenSearch}
+          className="hidden lg:flex items-center justify-between max-w-xs xl:max-w-sm w-full mx-4 px-4 py-2 rounded-xl bg-slate-100/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/80 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:border-indigo-500/40 text-xs transition-all shadow-xs dark:shadow-lg group shrink"
+        >
+          <div className="flex items-center gap-2.5 truncate">
+            <Search className="w-4 h-4 text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors shrink-0" />
+            <span className="font-sans truncate">Search Leads, Projects, Employees...</span>
+          </div>
+          <kbd className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shrink-0 ml-2">
+            ⌘K
+          </kbd>
+        </button>
+      )}
 
       {/* Right Controls & Live Work Session Stopwatch (Always shrink-0, never overlapped) */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
-        {/* Work Clock Controls Bar */}
-        {currentUser.role !== "OWNER" && (
+        {/* Work Clock Controls Bar (Employees & Sales only, never for Clients or Owner) */}
+        {(currentUser.role === "EMPLOYEE" || currentUser.role === "SALES") && (
         <div className="flex items-center gap-2 shrink-0">
           {status === "WORKING" && (
             <div className="flex items-center gap-1.5 shrink-0">

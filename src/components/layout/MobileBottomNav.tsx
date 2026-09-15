@@ -15,6 +15,8 @@ import {
   IndianRupee,
   PhoneCall,
   Menu,
+  BookOpen,
+  Settings,
 } from "lucide-react";
 import { useWorkClock } from "@/lib/workClockContext";
 
@@ -58,9 +60,9 @@ export function MobileBottomNav({ role, onOpenMoreMenu }: Props) {
         ];
       case "CLIENT":
         return [
-          { label: "Portal", href: "/portal/demo-token-abc", icon: <FolderKanban className="w-5 h-5" /> },
-          { label: "Scope", href: "/portal/demo-token-abc", icon: <UserCheck className="w-5 h-5" /> },
-          { label: "Invoices", href: "/portal/demo-token-abc", icon: <IndianRupee className="w-5 h-5" /> },
+          { label: "Overview", href: "/client", icon: <FolderKanban className="w-5 h-5" /> },
+          { label: "Terms", href: "/terms-and-conditions", icon: <BookOpen className="w-5 h-5" /> },
+          { label: "Settings", href: "/settings", icon: <Settings className="w-5 h-5" /> },
         ];
     }
   };

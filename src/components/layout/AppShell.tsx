@@ -38,8 +38,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [session, pathname, currentRole]);
 
-  // If on login page, render full viewport without app shell
-  if (pathname === "/login") {
+  // If on login page or external token portal, render full viewport without app shell
+  if (pathname === "/login" || pathname.startsWith("/portal")) {
     return <main className="min-h-screen">{children}</main>;
   }
 
