@@ -1,16 +1,44 @@
 const { createServer } = require("http");
 const { parse } = require("url");
-const next = require("next");
+const path = require("path");
+const fs = require("fs");
 const { WebSocketServer } = require("ws");
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT || "3020", 10);
 
-const app = next({ dev, hostname, port });
-const handle = app.getRequestHandler();
+async function start() {
+  let handle;
 
-app.prepare().then(() => {
+  if (dev) {
+    // Development mode
+    const next = require("next");
+    const app = next({ dev, hostname, port });
+    await app.prepare();
+    handle = app.getRequestHandler();
+  } else {
+    // Production standalone mode
+    const NextServer = require("next/dist/server/next-server").default;
+    let nextConfig = {};
+    const configPath = path.join(__dirname, ".next/required-server-files.json");
+    if (fs.existsSync(configPath)) {
+      try {
+        nextConfig = require(configPath).config;
+      } catch (e) {
+        console.warn("[Server] Could not parse required-server-files.json config", e);
+      }
+    }
+    const nextServer = new NextServer({
+      hostname,
+      port,
+      dir: __dirname,
+      dev: false,
+      conf: nextConfig,
+    });
+    handle = nextServer.getRequestHandler();
+  }
+
   const server = createServer(async (req, res) => {
     try {
       const parsedUrl = parse(req.url, true);
@@ -85,7 +113,6 @@ app.prepare().then(() => {
         wss.emit("connection", ws, req);
       });
     }
-    // In dev mode, Next.js internal HMR uses other upgrade paths which will fall through or be handled by Next
   });
 
   // Expose global broadcaster for Next.js API routes & background jobs
@@ -120,4 +147,9 @@ app.prepare().then(() => {
     console.log(`\n> MDZ CRM Server ready on http://${hostname}:${port}/mdz-crm`);
     console.log(`> Live WebSocket listening on ws://${hostname}:${port}/mdz-crm/ws\n`);
   });
+}
+
+start().catch((err) => {
+  console.error("Failed to start server:", err);
+  process.exit(1);
 });
