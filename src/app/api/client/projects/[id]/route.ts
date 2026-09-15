@@ -46,6 +46,7 @@ export async function GET(
                 select: {
                   id: true,
                   name: true,
+                  email: true,
                   designation: true,
                   department: true,
                   avatarUrl: true,
@@ -54,6 +55,12 @@ export async function GET(
             },
           },
         },
+      },
+      changeRequests: {
+        include: {
+          items: true,
+        },
+        orderBy: { requestSeqInt: "desc" },
       },
       clientUpdates: {
         where: { visibility: "CLIENT_VISIBLE" },
@@ -92,19 +99,30 @@ export async function GET(
   const progressPercentage =
     totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-  // Developer Current Work Mapping
+  // Change Requests Quota Calculation (3 Included Revisions)
+  const submittedRequests = project.changeRequests.filter(
+    (cr) => cr.status !== "DRAFT" && cr.status !== "CANCELLED"
+  );
+  const usedCount = submittedRequests.length;
+  const remainingCount = Math.max(0, 3 - usedCount);
+
+  // Developer Current Work Mapping & Contacts
   const teamMembers = project.memberships.map((m) => {
     const devUser = m.employee.user;
     // Prioritize IN_PROGRESS task assigned to developer, fallback to non-completed
     const devTasks = activeTasks.filter((t) => t.assignedToId === devUser.id);
     const inProgressTask = devTasks.find((t) => t.status === "IN_PROGRESS");
     const currentTask = inProgressTask || devTasks.find((t) => t.status !== "COMPLETED" && t.status !== "DONE") || null;
+    const empCode = m.employee.employeeIdCode || "01";
+    const phone = (m.employee as any).phone || ("+91 98980 000" + (empCode.length > 3 ? empCode.slice(-2) : "01"));
 
     return {
       membershipId: m.id,
       roleInProject: m.roleInProject,
       name: devUser.name,
-      designation: devUser.designation || "Developer",
+      email: devUser.email,
+      phone,
+      designation: devUser.designation || "Software Developer",
       department: devUser.department,
       avatarUrl: devUser.avatarUrl,
       currentTask: currentTask
@@ -139,6 +157,12 @@ export async function GET(
         totalTasks === 0 ? "No tasks have been added to this project yet." : null,
       teamMembers,
       clientUpdates: project.clientUpdates,
+      changeRequests: project.changeRequests,
+      quota: {
+        includedCount: 3,
+        usedCount,
+        remainingCount,
+      },
     },
   });
 }

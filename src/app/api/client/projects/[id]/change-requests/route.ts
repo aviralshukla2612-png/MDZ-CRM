@@ -184,6 +184,45 @@ export async function POST(
       return createdReq;
     });
 
+    // Notify Admin (Owner) and Assigned Developers
+    try {
+      const owners = await prisma.user.findMany({
+        where: { activeRole: "OWNER", isActive: true },
+        select: { id: true },
+      });
+
+      const memberships = await prisma.projectMembership.findMany({
+        where: { projectId: project.id, isActive: true },
+        include: { employee: { select: { userId: true } } },
+      });
+
+      const recipientIds = new Set<string>();
+      owners.forEach((o) => recipientIds.add(o.id));
+      memberships.forEach((m) => {
+        if (m.employee?.userId) recipientIds.add(m.employee.userId);
+      });
+      recipientIds.delete(authRes.id);
+
+      const seq = newChangeRequest.requestSeqInt || 1;
+      const quotaLabel = seq <= 3 ? `Change ${seq}/3` : `Additional Change (#${seq})`;
+      const notificationTitle = `Client Change Request: ${newChangeRequest.requestNumber}`;
+      const notificationMessage = `${authRes.name || "Client"} requested changes for ${project.name}: "${title}" (${quotaLabel}).`;
+
+      for (const recipientId of recipientIds) {
+        await prisma.notification.create({
+          data: {
+            recipientId,
+            title: notificationTitle,
+            message: notificationMessage,
+            urgency: "HIGH",
+            linkUrl: `/projects/${project.id}`,
+          },
+        });
+      }
+    } catch (notifError) {
+      console.error("Failed to send change request notifications:", notifError);
+    }
+
     return NextResponse.json({
       success: true,
       changeRequest: newChangeRequest,
