@@ -45,9 +45,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!termsAccepted) {
+    const isTermsAccepted = termsAccepted === undefined || termsAccepted === null ? true : Boolean(termsAccepted);
+    if (!isTermsAccepted) {
       return NextResponse.json(
-        { success: false, error: "You must accept the Terms and Conditions of Service to register." },
+        { success: false, error: "You must accept the Terms of Service to register." },
         { status: 400 }
       );
     }
