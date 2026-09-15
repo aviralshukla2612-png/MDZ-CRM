@@ -13,6 +13,7 @@
     "lint": "next lint",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:clean-data": "tsx scripts/clean-database.ts",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },
