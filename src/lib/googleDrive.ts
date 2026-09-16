@@ -5,29 +5,57 @@ let driveClientInstance: ReturnType<typeof google.drive> | null = null;
 
 /**
  * Checks if all required Google Drive environment variables are set.
+ * Supports either OAuth 2.0 (recommended for personal Gmail) or Service Account.
  */
 export function isGoogleDriveConfigured(): boolean {
-  return Boolean(
+  const hasOAuth = Boolean(
+    process.env.GOOGLE_DRIVE_CLIENT_ID &&
+    process.env.GOOGLE_DRIVE_CLIENT_SECRET &&
+    process.env.GOOGLE_DRIVE_REFRESH_TOKEN &&
+    process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
+  );
+  const hasServiceAccount = Boolean(
     process.env.GOOGLE_DRIVE_CLIENT_EMAIL &&
     process.env.GOOGLE_DRIVE_PRIVATE_KEY &&
     process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID
   );
+  return hasOAuth || hasServiceAccount;
 }
 
 /**
  * Returns a singleton instance of the authenticated Google Drive v3 client.
+ * Priority: OAuth 2.0 (User Quota) > Service Account.
  */
 export function getDriveClient() {
   if (driveClientInstance) {
     return driveClientInstance;
   }
 
+  // 1. Check for OAuth 2.0 Credentials (Personal Gmail with full storage quota)
+  const oauthClientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
+  const oauthClientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
+  const oauthRefreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+
+  if (oauthClientId && oauthClientSecret && oauthRefreshToken) {
+    const oauth2Client = new google.auth.OAuth2(
+      oauthClientId,
+      oauthClientSecret,
+      process.env.GOOGLE_DRIVE_REDIRECT_URI || "https://developers.google.com/oauthplayground"
+    );
+    oauth2Client.setCredentials({
+      refresh_token: oauthRefreshToken,
+    });
+    driveClientInstance = google.drive({ version: "v3", auth: oauth2Client });
+    return driveClientInstance;
+  }
+
+  // 2. Fallback to Service Account
   const clientEmail = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
   let privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY;
 
   if (!clientEmail || !privateKey) {
     throw new Error(
-      "Google Drive Service Account is not configured. Missing GOOGLE_DRIVE_CLIENT_EMAIL or GOOGLE_DRIVE_PRIVATE_KEY in .env."
+      "Google Drive is not configured. Missing OAuth 2.0 credentials or Service Account credentials in .env."
     );
   }
 
