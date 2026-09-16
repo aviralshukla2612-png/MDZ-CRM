@@ -52,6 +52,7 @@ export function MobileBottomNav({ role, onOpenMoreMenu }: Props) {
           { label: "Calls", href: "/sales/followups", icon: <PhoneCall className="w-5 h-5" /> },
           { label: "Clients", href: "/clients", icon: <Users className="w-5 h-5" /> },
         ];
+      case "ADMIN":
       case "OWNER":
         return [
           { label: "Overview", href: "/owner", icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -73,6 +74,8 @@ export function MobileBottomNav({ role, onOpenMoreMenu }: Props) {
           { label: "Revisions", href: "/client/revisions", icon: <GitPullRequest className="w-5 h-5" /> },
           { label: "Updates", href: "/client/updates", icon: <Clock className="w-5 h-5" /> },
         ];
+      default:
+        return [];
     }
   };
 

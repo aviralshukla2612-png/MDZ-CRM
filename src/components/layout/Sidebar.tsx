@@ -23,6 +23,7 @@ import {
   GitPullRequest,
   Layers,
   Send,
+  Cloud,
 } from "lucide-react";
 
 interface Props {
@@ -43,7 +44,8 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
   const pathname = usePathname();
 
   const getNavItems = (): NavItem[] => {
-    switch (role) {
+    switch (role as string) {
+      case "ADMIN":
       case "OWNER":
         return [
           { title: "Overview", href: "/owner", icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -51,6 +53,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
           { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Workload Kanban", href: "/workload", icon: <Layers className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Team", href: "/employees", icon: <UserCheck className="w-4 h-4" /> },
@@ -70,6 +73,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Overview", href: "/owner", icon: <LayoutDashboard className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
           { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Workload Kanban", href: "/workload", icon: <Layers className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Team", href: "/employees", icon: <UserCheck className="w-4 h-4" /> },
@@ -91,6 +95,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Follow-ups Today", href: "/sales/followups", icon: <PhoneCall className="w-4 h-4" /> },
           { title: "Clients Directory", href: "/clients", icon: <Users className="w-4 h-4" /> },
+          { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];
 
@@ -98,11 +103,11 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
         return [
           { title: "My Desk", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
           { title: "My Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "My Finance", href: "/employee/finance", icon: <IndianRupee className="w-4 h-4" /> },
           { title: "My Work Sessions", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
           { title: "Leave Applications", href: "/attendance/leave", icon: <UserCheck className="w-4 h-4" /> },
-          { title: "Documentation", href: "/docs", icon: <BookOpen className="w-4 h-4" /> },
           { title: "Terms & Conditions", href: "/employee/terms", icon: <BookOpen className="w-4 h-4" /> },
           { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];

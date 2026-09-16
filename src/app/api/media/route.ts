@@ -14,21 +14,41 @@ export async function GET(req: NextRequest) {
     const entityType = searchParams.get("entityType");
     const entityId = searchParams.get("entityId");
     const category = searchParams.get("category");
+    const mediaType = searchParams.get("type"); // "video" | "image" | "document"
+    const search = searchParams.get("search");
 
-    if (!entityType || !entityId) {
-      return NextResponse.json(
-        { success: false, error: "entityType and entityId query parameters are required." },
-        { status: 400 }
-      );
+    const whereClause: any = {};
+
+    if (entityType && entityType !== "ALL") {
+      whereClause.entityType = entityType.toUpperCase();
     }
 
-    const whereClause: any = {
-      entityType: entityType.toUpperCase(),
-      entityId,
-    };
+    if (entityId && entityId !== "ALL") {
+      whereClause.entityId = entityId;
+    }
 
     if (category && category !== "ALL") {
       whereClause.category = category;
+    }
+
+    if (mediaType && mediaType !== "ALL") {
+      if (mediaType === "video") {
+        whereClause.mimeType = { startsWith: "video/" };
+      } else if (mediaType === "image") {
+        whereClause.mimeType = { startsWith: "image/" };
+      } else if (mediaType === "document") {
+        whereClause.OR = [
+          { mimeType: { contains: "pdf" } },
+          { mimeType: { contains: "word" } },
+          { mimeType: { contains: "sheet" } },
+          { mimeType: { contains: "text" } },
+          { mimeType: { contains: "presentation" } },
+        ];
+      }
+    }
+
+    if (search && search.trim()) {
+      whereClause.originalName = { contains: search.trim(), mode: "insensitive" };
     }
 
     // If client, hide internal-only categories
@@ -39,6 +59,7 @@ export async function GET(req: NextRequest) {
     const files = await prisma.mediaFile.findMany({
       where: whereClause,
       orderBy: { createdAt: "desc" },
+      take: 100,
       include: {
         uploadedBy: {
           select: { id: true, name: true, email: true, activeRole: true },

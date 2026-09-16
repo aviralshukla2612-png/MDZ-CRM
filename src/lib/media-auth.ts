@@ -101,6 +101,22 @@ export async function canUploadMedia(
       return user.id === entityId;
     }
 
+    case "EMPLOYEE": {
+      // Sub-admin/owner can upload to any employee folder, employee can upload to their own
+      if (isOwner(user) || isSubAdmin(user)) return true;
+      return user.employeeId === entityId || user.id === entityId;
+    }
+
+    case "GENERAL": {
+      // Sub-admins, Employees, Owners, and Sales can upload shared Drive assets, docs, videos, images
+      return (
+        user.activeRole === "EMPLOYEE" ||
+        user.activeRole === "SALES" ||
+        isSubAdmin(user) ||
+        isOwner(user)
+      );
+    }
+
     case "INVOICE": {
       return isSales(user);
     }
@@ -128,6 +144,21 @@ export async function canReadMedia(
   const type = mediaFile.entityType.toUpperCase();
 
   switch (type) {
+    case "GENERAL": {
+      // Internal staff can access general shared Drive knowledge assets, videos, images, and docs
+      return (
+        user.activeRole === "EMPLOYEE" ||
+        user.activeRole === "SALES" ||
+        isSubAdmin(user) ||
+        isOwner(user)
+      );
+    }
+
+    case "EMPLOYEE": {
+      if (isOwner(user) || isSubAdmin(user)) return true;
+      return user.employeeId === mediaFile.entityId || user.id === mediaFile.entityId;
+    }
+
     case "PROJECT": {
       if (user.activeRole === "CLIENT") {
         // Clients can read project documents only if the project belongs to them AND the document is not internal-only

@@ -138,7 +138,16 @@ export async function resolveEntityFolder(
     return await getOrCreateSubfolder(rootId, "Avatars");
   }
 
-  return await getOrCreateSubfolder(rootId, "General");
+  if (normalizedEntity === "EMPLOYEE") {
+    const employeesFolder = await getOrCreateSubfolder(rootId, "Employees");
+    return await getOrCreateSubfolder(employeesFolder, `Employee-${entityId}`);
+  }
+
+  const generalFolder = await getOrCreateSubfolder(rootId, "General");
+  if (category && category !== "GENERAL") {
+    return await getOrCreateSubfolder(generalFolder, category);
+  }
+  return generalFolder;
 }
 
 /**

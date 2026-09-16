@@ -7,7 +7,7 @@ import { AIOwnerAssistant } from "@/components/owner/AIOwnerAssistant";
 import { RealtimeTeamView } from "@/components/owner/RealtimeTeamView";
 import { OwnerWorkloadSection } from "@/components/owner/OwnerWorkloadSection";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Plus, Download, Crown } from "lucide-react";
+import { Plus, Download, Crown, Cloud } from "lucide-react";
 import Link from "next/link";
 
 import { useToast } from "@/components/ui/Toast";
@@ -25,6 +25,13 @@ export default function OwnerDashboardPage() {
         icon={<Crown className="w-7 h-7 text-amber-500 dark:text-amber-400" />}
         actions={
           <div className="flex items-center gap-2">
+            <Link
+              href="/docs"
+              className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs flex items-center gap-1.5"
+            >
+              <Cloud className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>Upload to Drive</span>
+            </Link>
             <button
               onClick={() => showToast("Executive brief export initiated (PDF)", "info")}
               className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs flex items-center gap-1.5"

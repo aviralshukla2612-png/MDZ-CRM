@@ -19,8 +19,14 @@ import {
   Loader2,
   ArrowRight,
   ShieldCheck,
+  Cloud,
+  HardDrive,
+  Film,
+  Sparkles,
 } from "lucide-react";
 import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
+import { MediaUploader } from "@/components/ui/MediaUploader";
+import { MediaGallery } from "@/components/ui/MediaGallery";
 
 export default function EmployeeDeskPage() {
   const { data: session } = useSession();
@@ -39,6 +45,13 @@ export default function EmployeeDeskPage() {
   // Daily Progress Update Modal state
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [updateModalProject, setUpdateModalProject] = useState<any>(null);
+
+  // Google Drive Quick Upload Modal state
+  const [isDriveUploadModalOpen, setIsDriveUploadModalOpen] = useState(false);
+  const [driveUploadDestination, setDriveUploadDestination] = useState<"GENERAL" | "PROJECT">("GENERAL");
+  const [driveTargetProjectId, setDriveTargetProjectId] = useState<string>("");
+  const [driveCategory, setDriveCategory] = useState<string>("GENERAL");
+  const [driveRefreshKey, setDriveRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchEmployeeProjects();
@@ -157,6 +170,19 @@ export default function EmployeeDeskPage() {
         badge={session?.user?.role || "EMPLOYEE"}
         actions={
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (projects.length > 0 && !driveTargetProjectId) {
+                  setDriveTargetProjectId(projects[0].id);
+                }
+                setIsDriveUploadModalOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs transition-colors shadow-xs flex items-center gap-1.5 touch-target"
+              title="Upload video, image, or document directly to Google Drive"
+            >
+              <Cloud className="w-3.5 h-3.5 text-white" />
+              <span>Upload to Drive</span>
+            </button>
             {projects.length > 0 && (
               <button
                 onClick={() => {
@@ -445,6 +471,49 @@ export default function EmployeeDeskPage() {
         </div>
       </div>
 
+      {/* Google Drive Cloud Storage & Uploads Section */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="space-y-0.5">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <Cloud className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <span>Google Drive Files & Media Storage</span>
+            </h2>
+            <p className="text-xs text-slate-500">
+              Upload videos, screenshots, documents, and project deliverables directly into Google Drive.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (projects.length > 0 && !driveTargetProjectId) {
+                  setDriveTargetProjectId(projects[0].id);
+                }
+                setIsDriveUploadModalOpen(true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Upload to Drive</span>
+            </button>
+            <Link
+              href="/docs"
+              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors"
+            >
+              Open Full Drive Hub →
+            </Link>
+          </div>
+        </div>
+
+        <MediaGallery
+          key={driveRefreshKey}
+          entityType="ALL"
+          entityId="ALL"
+          allowDelete={true}
+        />
+      </div>
+
       {/* Add Task Bottom Sheet */}
       <BottomSheet
         isOpen={isTaskSheetOpen}
@@ -503,6 +572,72 @@ export default function EmployeeDeskPage() {
             <span>Save Project Task</span>
           </button>
         </form>
+      </BottomSheet>
+
+      {/* Google Drive Upload Modal Bottom Sheet */}
+      <BottomSheet
+        isOpen={isDriveUploadModalOpen}
+        onClose={() => setIsDriveUploadModalOpen(false)}
+        title="Upload to Google Drive"
+        subtitle="Stream videos, images, and files directly to company Google Drive storage."
+      >
+        <div className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Storage Destination</label>
+              <select
+                value={driveUploadDestination}
+                onChange={(e) => setDriveUploadDestination(e.target.value as any)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none font-semibold"
+              >
+                <option value="GENERAL">General / Shared Storage</option>
+                <option value="PROJECT">Project Folder</option>
+              </select>
+            </div>
+
+            {driveUploadDestination === "PROJECT" ? (
+              <div>
+                <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Select Project</label>
+                <select
+                  value={driveTargetProjectId}
+                  onChange={(e) => setDriveTargetProjectId(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none font-semibold"
+                >
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Category</label>
+                <select
+                  value={driveCategory}
+                  onChange={(e) => setDriveCategory(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none font-semibold"
+                >
+                  <option value="GENERAL">General Assets & Files</option>
+                  <option value="VIDEO">Video / Screen Recording</option>
+                  <option value="IMAGE">Design / Screenshot</option>
+                  <option value="SPECIFICATION">Specification</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          <MediaUploader
+            entityType={driveUploadDestination === "PROJECT" && driveTargetProjectId ? "PROJECT" : "GENERAL"}
+            entityId={driveUploadDestination === "PROJECT" && driveTargetProjectId ? driveTargetProjectId : "knowledge-base"}
+            category={driveCategory}
+            onUploadSuccess={() => {
+              setDriveRefreshKey((k) => k + 1);
+              setIsDriveUploadModalOpen(false);
+              showToast("✓ File uploaded to Google Drive successfully!", "success");
+            }}
+          />
+        </div>
       </BottomSheet>
 
       {updateModalProject && (

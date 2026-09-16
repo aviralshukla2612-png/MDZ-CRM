@@ -6,7 +6,7 @@ export function hasRoleContext(user: CurrentUserSession, role: RoleContext): boo
 }
 
 export function isOwner(user: CurrentUserSession): boolean {
-  return user.activeRole === "OWNER";
+  return user.activeRole === "OWNER" || user.activeRole === "ADMIN";
 }
 
 export function isSubAdmin(user: CurrentUserSession): boolean {
@@ -14,15 +14,20 @@ export function isSubAdmin(user: CurrentUserSession): boolean {
 }
 
 export function isAdminOrSubAdmin(user: CurrentUserSession): boolean {
-  return user.activeRole === "OWNER" || user.activeRole === "SUB_ADMIN";
+  return user.activeRole === "OWNER" || user.activeRole === "ADMIN" || user.activeRole === "SUB_ADMIN";
 }
 
 export function isSales(user: CurrentUserSession): boolean {
-  return user.activeRole === "SALES" || user.activeRole === "OWNER";
+  return user.activeRole === "SALES" || user.activeRole === "OWNER" || user.activeRole === "ADMIN";
 }
 
 export function isEmployee(user: CurrentUserSession): boolean {
-  return user.activeRole === "EMPLOYEE" || user.activeRole === "OWNER" || user.activeRole === "SUB_ADMIN";
+  return (
+    user.activeRole === "EMPLOYEE" ||
+    user.activeRole === "OWNER" ||
+    user.activeRole === "ADMIN" ||
+    user.activeRole === "SUB_ADMIN"
+  );
 }
 
 export function isClient(user: CurrentUserSession): boolean {
@@ -39,7 +44,7 @@ export async function isProjectTM(userId: string, projectId: string): Promise<bo
     include: { employeeProfile: true },
   });
 
-  if (user?.activeRole === "OWNER" || user?.activeRole === "SUB_ADMIN") return true; // Owner & Sub-Admin have universal TM authority
+  if (user?.activeRole === "OWNER" || user?.activeRole === "ADMIN" || user?.activeRole === "SUB_ADMIN") return true; // Owner, Admin & Sub-Admin have universal TM authority
 
   if (!user?.employeeProfile) return false;
 
