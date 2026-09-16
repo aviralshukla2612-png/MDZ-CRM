@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { verifyClientProjectAccess, canUserCreateDailyUpdate } from "@/lib/client-auth";
 import { prisma } from "@/lib/prisma";
+import { sendNotificationToAdmins } from "@/lib/notifications";
 
 export async function GET(
   request: Request,
@@ -117,6 +118,25 @@ export async function POST(
         },
       },
     });
+
+    // Notify Admins & Sub-Admins in real-time
+    try {
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { name: true, projectNumber: true },
+      });
+      const authorName = newUpdate.author?.name || userOrRes.name || "Employee";
+      const projName = project?.name || "Project";
+      await sendNotificationToAdmins({
+        title: "📋 Daily Task Update Submitted",
+        message: `${authorName} posted daily update for ${projName}: "${newUpdate.title}"`,
+        urgency: "MEDIUM",
+        linkUrl: `/employee/updates`,
+        excludeUserId: userOrRes.id,
+      });
+    } catch (notifErr) {
+      console.warn("[DailyUpdate] Failed to notify admins:", notifErr);
+    }
 
     return NextResponse.json(
       {

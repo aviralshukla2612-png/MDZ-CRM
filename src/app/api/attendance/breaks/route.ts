@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { sendNotificationToAdmins, formatToIST } from "@/lib/notifications";
 
 export async function POST(req: Request) {
   const authRes = await requireAuth();
@@ -27,6 +28,11 @@ export async function POST(req: Request) {
             { id: employeeId },
             { employeeIdCode: employeeId }
           ]
+        },
+        include: {
+          user: {
+            select: { id: true, name: true }
+          }
         }
       });
       
@@ -48,6 +54,24 @@ export async function POST(req: Request) {
           notes: notes || null,
         }
       });
+
+      // Notify Admins & Sub-Admins of break / lunch start
+      try {
+        const empName = employee.user?.name || employee.employeeIdCode || "Employee";
+        const timeStr = formatToIST(new Date());
+        const isLunch = (statusType && statusType.toUpperCase().includes("LUNCH")) || (notes && notes.toLowerCase().includes("lunch"));
+        const label = isLunch ? "lunch break" : "break";
+        await sendNotificationToAdmins({
+          title: isLunch ? "🍱 Employee on Lunch Break" : "☕ Employee on Break",
+          message: `${empName} started ${label} at ${timeStr}${notes ? ` (${notes})` : ""}.`,
+          urgency: "LOW",
+          linkUrl: "/attendance",
+          excludeUserId: employee.user?.id,
+        });
+      } catch (notifErr) {
+        console.warn("[Breaks] Failed to notify admins of break start:", notifErr);
+      }
+
       return NextResponse.json({ success: true, data: event });
 
     } else if (action === "END") {
@@ -58,6 +82,11 @@ export async function POST(req: Request) {
             { id: employeeId },
             { employeeIdCode: employeeId }
           ]
+        },
+        include: {
+          user: {
+            select: { id: true, name: true }
+          }
         }
       });
       
@@ -85,6 +114,22 @@ export async function POST(req: Request) {
             }
           })
         ]);
+
+        // Notify Admins & Sub-Admins of break end / back to work
+        try {
+          const empName = employee.user?.name || employee.employeeIdCode || "Employee";
+          const timeStr = formatToIST(new Date());
+          await sendNotificationToAdmins({
+            title: "💻 Employee Resumed Work",
+            message: `${empName} resumed work / back from break at ${timeStr}.`,
+            urgency: "LOW",
+            linkUrl: "/attendance",
+            excludeUserId: employee.user?.id,
+          });
+        } catch (notifErr) {
+          console.warn("[Breaks] Failed to notify admins of break end:", notifErr);
+        }
+
         return NextResponse.json({ success: true, data: updated, newEvent: newWorkEvent });
       } else {
         return NextResponse.json({ success: true, message: "No open event found" });

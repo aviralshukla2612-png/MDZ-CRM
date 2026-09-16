@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { sendNotificationToAdmins, formatToIST } from "@/lib/notifications";
 
 export async function POST(req: Request) {
   const authRes = await requireAuth();
@@ -20,6 +21,11 @@ export async function POST(req: Request) {
           { id: employeeId },
           { employeeIdCode: employeeId }
         ]
+      },
+      include: {
+        user: {
+          select: { id: true, name: true }
+        }
       }
     });
 
@@ -79,6 +85,24 @@ export async function POST(req: Request) {
         data: { endedAt: serverNow }
       })
     ]);
+
+    // Notify Admins & Sub-Admins of employee punch out
+    try {
+      const empName = employee.user?.name || employee.employeeIdCode || "Employee";
+      const timeStr = formatToIST(serverNow);
+      const hours = Math.floor(workedMinutes / 60);
+      const mins = workedMinutes % 60;
+      const durationStr = `${hours}h ${mins}m`;
+      await sendNotificationToAdmins({
+        title: "🔴 Employee Punched Out",
+        message: `${empName} punched out at ${timeStr}. Total work: ${durationStr}.`,
+        urgency: "MEDIUM",
+        linkUrl: "/attendance",
+        excludeUserId: employee.user?.id,
+      });
+    } catch (notifErr) {
+      console.warn("[PunchOut] Failed to notify admins:", notifErr);
+    }
 
     return NextResponse.json({
       success: true,

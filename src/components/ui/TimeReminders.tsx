@@ -99,6 +99,8 @@ export function TimeReminders() {
           if (status === "WORKING" || status === "ON_BREAK") {
             setShowDailyTaskReminder(true);
             localStorage.setItem(dailyTaskKey, "true");
+            // Also dispatch push notification so user gets alert even on other tabs
+            fetch("/mdz-crm/api/notifications/daily-task-reminder", { method: "POST" }).catch(() => {});
           }
         }
       }

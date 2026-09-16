@@ -69,6 +69,12 @@ export async function sendFcmPushToTokens(tokens: string[], payload: FcmPayload)
   }
 
   try {
+    const resolvedLink = payload.linkUrl
+      ? payload.linkUrl.startsWith("/mdz-crm")
+        ? payload.linkUrl
+        : `/mdz-crm${payload.linkUrl.startsWith("/") ? "" : "/"}${payload.linkUrl}`
+      : "/mdz-crm";
+
     const messaging = getMessaging(app);
     const message: MulticastMessage = {
       tokens,
@@ -79,15 +85,23 @@ export async function sendFcmPushToTokens(tokens: string[], payload: FcmPayload)
       data: {
         title: payload.title,
         message: payload.body,
-        linkUrl: payload.linkUrl || "/mdz-crm",
+        linkUrl: resolvedLink,
+        icon: payload.icon || "/mdz-crm/mdz-logo.jpg",
       },
       webpush: {
+        headers: {
+          Urgency: "high",
+        },
         fcmOptions: {
-          link: payload.linkUrl || "/mdz-crm",
+          link: resolvedLink,
         },
         notification: {
+          title: payload.title,
+          body: payload.body,
           icon: payload.icon || "/mdz-crm/mdz-logo.jpg",
           badge: "/mdz-crm/mdz-logo.jpg",
+          requireInteraction: true,
+          tag: `mdz-${Date.now()}`,
         },
       },
     };

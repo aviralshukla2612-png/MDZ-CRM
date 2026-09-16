@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { verifyClientProjectAccess } from "@/lib/client-auth";
 import { recalculateProjectProgress } from "@/lib/progressEngine";
+import { sendNotificationToAdmins } from "@/lib/notifications";
 
 export async function GET(
   req: Request,
@@ -153,6 +154,25 @@ export async function POST(
 
     // Recalculate Progress Engine & Update Project Cache
     const progress = await recalculateProjectProgress(projectId);
+
+    // If created by employee, notify Admins & Sub-Admins
+    if (authRes.activeRole === "EMPLOYEE") {
+      try {
+        const project = await prisma.project.findUnique({
+          where: { id: projectId },
+          select: { name: true },
+        });
+        await sendNotificationToAdmins({
+          title: "📌 New Task Added by Employee",
+          message: `${authRes.name} added task "${newTask.title}" to project "${project?.name || 'Project'}".`,
+          urgency: "LOW",
+          linkUrl: `/projects/${projectId}`,
+          excludeUserId: authRes.id,
+        });
+      } catch (notifErr) {
+        console.warn("[TaskCreation] Failed to notify admins:", notifErr);
+      }
+    }
 
     return NextResponse.json({
       success: true,

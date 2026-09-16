@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { sendNotificationToAdmins, formatToIST } from "@/lib/notifications";
 
 export async function POST(req: Request) {
   const authRes = await requireAuth();
@@ -37,6 +38,11 @@ export async function POST(req: Request) {
           { id: employeeId },
           { employeeIdCode: employeeId }
         ]
+      },
+      include: {
+        user: {
+          select: { id: true, name: true }
+        }
       }
     });
 
@@ -124,6 +130,21 @@ export async function POST(req: Request) {
 
       return newAttendance;
     });
+
+    // Notify Admins & Sub-Admins in real-time
+    try {
+      const empName = employee.user?.name || employee.employeeIdCode || "Employee";
+      const timeStr = formatToIST(attendance.punchIn);
+      await sendNotificationToAdmins({
+        title: "🟢 Employee Punched In",
+        message: `${empName} punched in for work at ${timeStr}.`,
+        urgency: "MEDIUM",
+        linkUrl: "/attendance",
+        excludeUserId: employee.user?.id,
+      });
+    } catch (notifErr) {
+      console.warn("[PunchIn] Failed to notify admins:", notifErr);
+    }
 
     return NextResponse.json({ success: true, data: attendance });
   } catch (error: any) {
