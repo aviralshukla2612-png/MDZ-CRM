@@ -38,8 +38,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [session, pathname, currentRole]);
 
-  // If on login page or external token portal, render full viewport without app shell
-  if (pathname === "/login" || pathname.startsWith("/portal")) {
+  // If on login, client registration, external portal, or public terms, render full viewport without app shell
+  const normalizedPath = pathname?.replace(/^\/mdz-crm/, "") || pathname || "";
+  const isStandalonePage =
+    normalizedPath === "/login" ||
+    normalizedPath === "/client-register" ||
+    normalizedPath === "/terms-and-conditions" ||
+    normalizedPath.startsWith("/portal");
+
+  if (isStandalonePage) {
     return <main className="min-h-screen">{children}</main>;
   }
 
