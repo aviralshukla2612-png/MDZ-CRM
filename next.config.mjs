@@ -7,6 +7,11 @@ const nextConfig = {
     // Prevent ESLint from exhausting memory during production Docker builds
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "1024mb",
+    },
+  },
 };
 
 export default nextConfig;

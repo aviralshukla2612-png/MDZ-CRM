@@ -10,6 +10,9 @@ import {
 } from "@/lib/googleDrive";
 import { Readable } from "stream";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 300; // 5 minutes timeout for 500MB - 1GB uploads
+
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -41,14 +44,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Enforce centralized max file size limit
-    const maxMb = parseInt(process.env.MAX_MEDIA_FILE_SIZE_MB || "50", 10);
+    // Enforce centralized max file size limit (default 1024MB = 1GB)
+    const maxMb = parseInt(process.env.MAX_MEDIA_FILE_SIZE_MB || "1024", 10);
     const maxBytes = maxMb * 1024 * 1024;
     if (file.size > maxBytes) {
+      const limitDisplay = maxMb >= 1024 ? `${(maxMb / 1024).toFixed(1)}GB` : `${maxMb}MB`;
       return NextResponse.json(
         {
           success: false,
-          error: `File size exceeds the maximum allowed limit of ${maxMb}MB.`,
+          error: `File size exceeds the maximum allowed limit of ${limitDisplay}.`,
         },
         { status: 413 }
       );
