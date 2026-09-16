@@ -28,6 +28,9 @@ import {
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
+import { MediaUploader } from "@/components/ui/MediaUploader";
+import { MediaGallery } from "@/components/ui/MediaGallery";
+
 
 export default function ProjectWorkspacePage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
@@ -230,7 +233,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   };
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "workflow" | "tasks" | "updates" | "team" | "docs" | "notes" | "calls" | "changes" | "payments"
+    "overview" | "workflow" | "tasks" | "updates" | "team" | "docs" | "notes" | "calls" | "changes" | "payments" | "media"
   >("overview");
 
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
@@ -411,6 +414,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     { id: "calls", label: "Client Calls" },
     { id: "changes", label: `Change Requests (${project.changeRequests?.length || 0})` },
     { id: "payments", label: "Payment Milestones" },
+    { id: "media", label: "Drive Assets & Files" },
   ];
 
   return (
@@ -1157,6 +1161,39 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Tab: Google Drive Media & Assets */}
+      {activeTab === "media" && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                Project Drive Storage & Assets
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Upload briefs, design mockups, deliverables, and contracts stored directly in Google Drive.
+              </p>
+            </div>
+
+            <MediaUploader
+              entityType="PROJECT"
+              entityId={params.id}
+              category="ASSET"
+              onUploadSuccess={() => {
+                showToast("File uploaded to Google Drive!", "success");
+              }}
+            />
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+            <MediaGallery
+              entityType="PROJECT"
+              entityId={params.id}
+              allowDelete={true}
+            />
+          </div>
         </div>
       )}
 

@@ -47,6 +47,7 @@ model User {
   termsAcceptances     TermsAcceptanceLog[]
   approvedLeaves      LeaveRequest[]      @relation("LeaveApprover")
   pushTokens          UserPushToken[]
+  uploadedMedia       MediaFile[]         @relation("UserUploadedMedia")
 }
 
 model Role {
@@ -661,4 +662,26 @@ model Holiday {
   updatedAt   DateTime @updatedAt
 
   @@index([date])
+}
+
+model MediaFile {
+  id              String   @id @default(uuid())
+  driveFileId     String   @unique
+  storageProvider String   @default("GOOGLE_DRIVE")
+  fileName        String
+  originalName    String
+  mimeType        String
+  fileSize        Int
+  category        String   @default("GENERAL")
+  entityType      String
+  entityId        String
+  uploadedById    String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  uploadedBy      User     @relation("UserUploadedMedia", fields: [uploadedById], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([uploadedById])
+  @@index([category])
 }
