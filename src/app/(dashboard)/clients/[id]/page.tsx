@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   ArrowLeft,
   Building,
@@ -19,10 +21,14 @@ import {
   CheckCircle2,
   Clock,
   Send,
+  Trash2,
 } from "lucide-react";
 
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
+  const router = useRouter();
   const { showToast } = useToast();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [client, setClient] = useState<any>(null);
   const [linkedProjects, setLinkedProjects] = useState<any[]>([]);
@@ -87,6 +93,26 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
   if (loading) return <div className="p-12 text-center text-slate-400 animate-pulse">Loading Client Data...</div>;
   if (!client) return <div className="p-12 text-center text-rose-400">Client Not Found</div>;
 
+  const executeDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/mdz-crm/api/clients/${params.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || "Client deleted successfully", "success");
+        router.push("/clients");
+      } else {
+        showToast(json.error || "Failed to delete client", "error");
+        setIsDeleting(false);
+      }
+    } catch (e) {
+      showToast("Error deleting client", "error");
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-16">
       {/* Back Navigation Bar */}
@@ -128,6 +154,14 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsDeleteOpen(true)}
+              disabled={isDeleting}
+              className="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-rose-200/60 dark:border-rose-800/60 disabled:opacity-50 touch-target"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>{isDeleting ? "Deleting..." : "Delete Client"}</span>
+            </button>
             <Link
               href={`/portal/${client.portalToken}`}
               className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 touch-target"
@@ -344,6 +378,16 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           </button>
         </form>
       </BottomSheet>
+
+      <ConfirmModal
+        isOpen={isDeleteOpen}
+        onClose={() => setIsDeleteOpen(false)}
+        onConfirm={executeDelete}
+        title={`Delete Client "${client.companyName}"?`}
+        message="Are you sure you want to permanently delete this client? All associated projects, invoices, contacts, and records will be permanently removed."
+        confirmText={isDeleting ? "Deleting..." : "Delete Client"}
+        isDestructive={true}
+      />
     </div>
   );
 }

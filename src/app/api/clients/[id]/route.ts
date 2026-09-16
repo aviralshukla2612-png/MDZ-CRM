@@ -47,16 +47,56 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "SUB_ADMIN", "SALES"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
-    await prisma.client.delete({
-      where: { id: params.id },
+    const client = await prisma.client.findFirst({
+      where: { OR: [{ id: params.id }, { clientNumber: params.id }] },
+      select: { id: true, companyName: true },
     });
 
-    return NextResponse.json({ success: true, message: "Client deleted successfully" });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to delete client" }, { status: 500 });
+    if (!client) {
+      return NextResponse.json({ success: false, error: "Client not found" }, { status: 404 });
+    }
+
+    const clientId = client.id;
+
+    // Find and clean up all child records
+    const projects = await prisma.project.findMany({
+      where: { clientId },
+      select: { id: true },
+    });
+    const projectIds = projects.map((p) => p.id);
+
+    if (projectIds.length > 0) {
+      await prisma.task.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.projectMembership.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.projectDocument.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.projectNote.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.clientDiscussion.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.clientUpdate.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.changeRequest.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.paymentMilestone.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.projectStage.deleteMany({ where: { projectId: { in: projectIds } } });
+      await prisma.project.deleteMany({ where: { id: { in: projectIds } } });
+    }
+
+    await prisma.clientContact.deleteMany({ where: { clientId } });
+    await prisma.clientPortalToken.deleteMany({ where: { clientId } });
+    await prisma.invoice.deleteMany({ where: { clientId } });
+    await prisma.mediaFile.deleteMany({ where: { entityType: "CLIENT", entityId: clientId } });
+
+    await prisma.client.delete({
+      where: { id: clientId },
+    });
+
+    return NextResponse.json({ success: true, message: `Client "${client.companyName}" deleted successfully.` });
+  } catch (error: any) {
+    console.error("Failed to delete client:", error);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to delete client" },
+      { status: 500 }
+    );
   }
 }

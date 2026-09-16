@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { DataImportModal } from "@/components/ui/DataImportModal";
 import {
   Users,
@@ -15,12 +16,16 @@ import {
   ArrowRight,
   Sparkles,
   Building2,
+  Trash2,
 } from "lucide-react";
 
 export default function ClientsPage() {
   const { showToast } = useToast();
   const [clientsList, setClientsList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [companyName, setCompanyName] = useState("");
@@ -76,6 +81,28 @@ export default function ClientsPage() {
       }
     } catch (error) {
       showToast(`✕ Error creating client`, "error");
+    }
+  };
+
+  const executeDeleteClient = async () => {
+    if (!clientToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/mdz-crm/api/clients/${clientToDelete.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || `✓ Client "${clientToDelete.name}" deleted successfully`, "success");
+        setClientsList((prev) => prev.filter((c) => c.id !== clientToDelete.id));
+      } else {
+        showToast(`✕ Failed to delete client: ${json.error || "Unknown error"}`, "error");
+      }
+    } catch (e) {
+      showToast("✕ Network error deleting client", "error");
+    } finally {
+      setIsDeleting(false);
+      setClientToDelete(null);
     }
   };
 
@@ -174,13 +201,27 @@ export default function ClientsPage() {
                   <span className="font-bold font-mono text-slate-900 dark:text-slate-100">₹{(c.totalBilling || 400000).toLocaleString("en-IN")}</span>
                 </div>
 
-                <Link
-                  href={`/clients/${c.id}`}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all group-hover:translate-x-0.5"
-                >
-                  <span>Client 360°</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                </Link>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setClientToDelete({ id: c.id, name: c.companyName });
+                    }}
+                    title="Delete Client Account"
+                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+
+                  <Link
+                    href={`/clients/${c.id}`}
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all group-hover:translate-x-0.5"
+                  >
+                    <span>Client 360°</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  </Link>
+                </div>
               </div>
             </div>
           ))}
@@ -255,6 +296,16 @@ export default function ClientsPage() {
         onClose={() => setIsImportOpen(false)}
         onImport={handleImportData}
         title="Import Client Directory"
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(clientToDelete)}
+        onClose={() => setClientToDelete(null)}
+        onConfirm={executeDeleteClient}
+        title={`Delete Client "${clientToDelete?.name}"?`}
+        message="Are you sure you want to permanently delete this client? All associated projects, invoices, contacts, and records will be removed."
+        confirmText={isDeleting ? "Deleting..." : "Delete Client"}
+        isDestructive={true}
       />
     </div>
   );

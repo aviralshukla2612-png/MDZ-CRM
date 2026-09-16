@@ -7,6 +7,14 @@ import { AppShell } from "@/components/layout/AppShell";
 export const metadata = {
   title: "Millionaire Digital CRM — Master Business Operating System",
   description: "Centralized Operating System for Millionaire Digital CRM",
+  icons: {
+    icon: [
+      { url: "/mdz-crm/mdz-logo.jpg" },
+      { url: "/mdz-crm/favicon.ico" },
+    ],
+    shortcut: ["/mdz-crm/mdz-logo.jpg"],
+    apple: ["/mdz-crm/mdz-logo.jpg"],
+  },
 };
 
 import { PrototypeStoreProvider } from "@/lib/prototypeStore";
@@ -17,6 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        <link rel="icon" type="image/jpeg" href="/mdz-crm/mdz-logo.jpg" />
+        <link rel="shortcut icon" type="image/jpeg" href="/mdz-crm/mdz-logo.jpg" />
+        <link rel="apple-touch-icon" href="/mdz-crm/mdz-logo.jpg" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
