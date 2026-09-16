@@ -10,14 +10,14 @@ export async function POST(req: Request) {
     let title = "🚀 Live CRM Alert";
     let message = "This is a real-time notification sent via WebSocket & Firebase Push!";
     let urgency: "LOW" | "MEDIUM" | "HIGH" = "MEDIUM";
-    let linkUrl = "/mdz-crm";
+    let linkUrl = "/";
 
     try {
       const body = await req.json();
       if (body.title) title = body.title;
       if (body.message) message = body.message;
       if (body.urgency) urgency = body.urgency;
-      if (body.linkUrl) linkUrl = body.linkUrl;
+      if (body.linkUrl) linkUrl = body.linkUrl.replace(/^\/mdz-crm/, "") || "/";
     } catch {
       // Use defaults if empty body
     }

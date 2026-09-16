@@ -40,19 +40,23 @@ messaging.onBackgroundMessage((payload) => {
 // Handle notification click to focus or navigate
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data?.url || '/mdz-crm';
+  const rawUrl = event.notification.data?.url || '/';
+  const cleanUrl = rawUrl.startsWith('/mdz-crm') ? rawUrl : ('/mdz-crm' + (rawUrl.startsWith('/') ? rawUrl : '/' + rawUrl));
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window open with this URL and focus it
+      // Check if there is already a window open and focus + navigate it
       for (const client of windowClients) {
-        if (client.url.includes('/mdz-crm') && 'focus' in client) {
+        if (client.url && client.url.includes('/mdz-crm') && 'focus' in client) {
+          if ('navigate' in client) {
+            client.navigate(cleanUrl);
+          }
           return client.focus();
         }
       }
       // If no window is open, open a new tab
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(cleanUrl);
       }
     })
   );

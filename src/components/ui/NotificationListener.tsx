@@ -53,7 +53,8 @@ export function NotificationListener() {
       setActiveNotification(null);
       
       if (linkUrl) {
-        router.push(linkUrl);
+        const clean = linkUrl.replace(/^\/mdz-crm/, "") || "/";
+        router.push(clean);
       }
     } catch (error) {
       console.error("Failed to mark as read", error);

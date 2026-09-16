@@ -79,6 +79,14 @@ export function NotificationBell({ currentUserId }: Props) {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
+  // Helper to normalize link URLs and prevent double basePath (/mdz-crm/mdz-crm) 404s
+  const getCleanHref = (url?: string | null) => {
+    if (!url) return "/";
+    let clean = url.replace(/^\/mdz-crm/, "");
+    if (!clean.startsWith("/")) clean = "/" + clean;
+    return clean || "/";
+  };
+
   // Live incoming notification handler (from WebSocket or Firebase foreground)
   const handleLiveNotification = useCallback(
     (newNotif: any) => {
@@ -98,6 +106,52 @@ export function NotificationBell({ currentUserId }: Props) {
         audio.volume = 0.2;
         audio.play().catch(() => {});
       } catch {}
+
+      // Native Desktop & Another Tab Notification (Triggers when on another tab or minimized)
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        const cleanLink = getCleanHref(newNotif.linkUrl);
+        const fullUrl = `${window.location.origin}/mdz-crm${cleanLink}`;
+
+        try {
+          if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification(newNotif.title || "Millionaire Digital CRM", {
+                body: newNotif.message || "",
+                icon: "/mdz-crm/mdz-logo.jpg",
+                badge: "/mdz-crm/mdz-logo.jpg",
+                tag: newNotif.id || `notif-${Date.now()}`,
+                data: { url: fullUrl },
+              });
+            }).catch(() => {
+              const n = new Notification(newNotif.title || "Millionaire Digital CRM", {
+                body: newNotif.message || "",
+                icon: "/mdz-crm/mdz-logo.jpg",
+                data: { url: fullUrl },
+              });
+              n.onclick = (e) => {
+                e.preventDefault();
+                window.focus();
+                window.location.href = fullUrl;
+                n.close();
+              };
+            });
+          } else {
+            const n = new Notification(newNotif.title || "Millionaire Digital CRM", {
+              body: newNotif.message || "",
+              icon: "/mdz-crm/mdz-logo.jpg",
+              data: { url: fullUrl },
+            });
+            n.onclick = (e) => {
+              e.preventDefault();
+              window.focus();
+              window.location.href = fullUrl;
+              n.close();
+            };
+          }
+        } catch (e) {
+          console.warn("Desktop notification trigger error:", e);
+        }
+      }
     },
     [showToast]
   );
@@ -180,15 +234,16 @@ export function NotificationBell({ currentUserId }: Props) {
   const handleEnablePush = async () => {
     setIsEnablingPush(true);
     try {
+      if (typeof window !== "undefined" && "Notification" in window) {
+        const perm = await Notification.requestPermission();
+        setPushStatus(perm as any);
+        if (perm === "granted") {
+          showToast("✓ Desktop alerts enabled! You will now receive notifications on other tabs.", "success");
+        }
+      }
       const res = await requestPushNotificationPermission();
       if (res.success) {
         setPushStatus("granted");
-        showToast("✓ Web Push notifications enabled successfully!", "success");
-      } else {
-        if (typeof window !== "undefined" && "Notification" in window) {
-          setPushStatus(Notification.permission as any);
-        }
-        showToast(res.error || "Could not enable push notifications", "error");
       }
     } catch (err) {
       showToast("Error requesting push permission", "error");
@@ -208,7 +263,7 @@ export function NotificationBell({ currentUserId }: Props) {
           title: "⚡ Live Bell Notification",
           message: "Real-time WebSocket & Push notification verified successfully!",
           urgency: "HIGH",
-          linkUrl: "/mdz-crm",
+          linkUrl: "/",
         }),
       });
       const data = await res.json();
@@ -229,7 +284,12 @@ export function NotificationBell({ currentUserId }: Props) {
     <div className="relative shrink-0" ref={dropdownRef}>
       {/* Bell Button */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          setIsOpen(!isOpen);
+          if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission().then((perm) => setPushStatus(perm as any)).catch(() => {});
+          }
+        }}
         className="relative p-2 rounded-xl bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95 touch-target flex items-center justify-center group"
         title="Notifications"
         aria-label="View notifications"
@@ -381,7 +441,7 @@ export function NotificationBell({ currentUserId }: Props) {
                       {n.linkUrl && (
                         <div className="pt-1">
                           <Link
-                            href={n.linkUrl}
+                            href={getCleanHref(n.linkUrl)}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (!n.isRead) handleMarkSingleRead(n.id);
