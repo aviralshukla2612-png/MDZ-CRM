@@ -33,7 +33,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     }
 
     if (authRes.activeRole === "EMPLOYEE") {
-      const isAssigned = project.memberships.some(m => m.employeeId === authRes.employeeId && m.isActive);
+      const isAssigned = project.memberships.some(
+        (m) =>
+          ((authRes.employeeId && m.employeeId === authRes.employeeId) ||
+            m.employee?.userId === authRes.id) &&
+          m.isActive
+      );
       if (!isAssigned) {
         return NextResponse.json({ success: false, error: "Forbidden: You are not assigned to this project" }, { status: 403 });
       }
@@ -44,12 +49,35 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     const completedTasks = activeTasks.filter(
       (t) => t.status === "COMPLETED" || t.status === "DONE"
     ).length;
-    const calculatedProgress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
-    const projectWithProgress = {
+    let calculatedProgress = 0;
+    if (totalTasks > 0) {
+      calculatedProgress = Math.round((completedTasks / totalTasks) * 100);
+    } else if (project.status === "COMPLETED") {
+      calculatedProgress = 100;
+    } else if (project.clientUpdates && project.clientUpdates.length > 0) {
+      calculatedProgress = Math.min(100, project.clientUpdates.length * 25);
+    }
+
+    const projectWithProgress: any = {
       ...project,
       progressPercentage: calculatedProgress,
     };
+
+    // Strict privacy rule: employees cannot see client or project price, and can only see tasks assigned to them
+    if (authRes.activeRole === "EMPLOYEE") {
+      delete projectWithProgress.contractValue;
+      delete projectWithProgress.paidValue;
+      delete projectWithProgress.overdueValue;
+      delete projectWithProgress.invoices;
+      delete projectWithProgress.paymentMilestones;
+      const targetEmpId = authRes.employeeId || project.memberships.find(m => m.employee?.userId === authRes.id)?.employeeId;
+      if (targetEmpId) {
+        projectWithProgress.tasks = (project.tasks || []).filter(
+          (t: any) => t.assignedToId === targetEmpId || t.assignedTo?.id === targetEmpId
+        );
+      }
+    }
 
     return NextResponse.json({ success: true, data: projectWithProgress });
   } catch (error) {
@@ -58,20 +86,50 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"]);
   if (authRes instanceof NextResponse) return authRes;
+
+  if (authRes.activeRole === "EMPLOYEE") {
+    const isAssigned = await prisma.projectMembership.findFirst({
+      where: {
+        AND: [
+          {
+            OR: [
+              { projectId: params.id },
+              { project: { projectNumber: params.id } },
+            ],
+          },
+          {
+            OR: [
+              ...(authRes.employeeId ? [{ employeeId: authRes.employeeId }] : []),
+              { employee: { userId: authRes.id } },
+            ],
+          },
+          { isActive: true },
+        ],
+      },
+    });
+    if (!isAssigned) {
+      return NextResponse.json({ success: false, error: "Forbidden: You are not assigned to this project" }, { status: 403 });
+    }
+  }
 
   try {
     const body = await req.json();
+    const updateData: any = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.progressPercentage !== undefined) updateData.progressPercentage = body.progressPercentage;
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.priority !== undefined) updateData.priority = body.priority;
+    if (body.contractValue !== undefined) updateData.contractValue = body.contractValue;
+    if (body.deadline !== undefined || body.targetDeadline !== undefined) {
+      const deadlineVal = body.deadline !== undefined ? body.deadline : body.targetDeadline;
+      updateData.targetDeadline = deadlineVal ? new Date(deadlineVal) : null;
+    }
+
     const project = await prisma.project.update({
       where: { id: params.id },
-      data: {
-        name: body.name,
-        progressPercentage: body.progressPercentage,
-        status: body.status,
-        priority: body.priority,
-        contractValue: body.contractValue,
-      },
+      data: updateData,
     });
 
     return NextResponse.json({ success: true, data: project });
@@ -81,7 +139,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {

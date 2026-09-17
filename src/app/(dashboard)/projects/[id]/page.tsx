@@ -24,6 +24,7 @@ import {
   Trash2,
   UserPlus,
   Send,
+  Calendar,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -46,11 +47,28 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
 
   // Member Assignment & Removal state
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const DEFAULT_ROLES = [
+    "TM",
+    "Graphic Designer",
+    "Video editor",
+    "sales person",
+    "accounting",
+    "Web devloper",
+  ];
+
   const [availableEmployees, setAvailableEmployees] = useState<any[]>([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
-  const [selectedRoleInProject, setSelectedRoleInProject] = useState("DEVELOPER");
+  const [availableRoles, setAvailableRoles] = useState<string[]>(DEFAULT_ROLES);
+  const [selectedRoleInProject, setSelectedRoleInProject] = useState("TM");
+  const [isCustomRole, setIsCustomRole] = useState(false);
+  const [customRoleInput, setCustomRoleInput] = useState("");
   const [selectedCompensation, setSelectedCompensation] = useState("");
   const [assigningMember, setAssigningMember] = useState(false);
+
+  // Deadline modal state
+  const [isDeadlineModalOpen, setIsDeadlineModalOpen] = useState(false);
+  const [deadlineInputVal, setDeadlineInputVal] = useState("");
+  const [updatingDeadline, setUpdatingDeadline] = useState(false);
 
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<any>(null);
@@ -68,6 +86,8 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
 
   const openAssignModal = async () => {
     setIsAssignModalOpen(true);
+    setIsCustomRole(false);
+    setCustomRoleInput("");
     try {
       const res = await fetch(`/mdz-crm/api/projects/${params.id}/members`);
       const json = await res.json();
@@ -80,6 +100,16 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     } catch (e) {
       console.error("Failed to load employees for assignment:", e);
     }
+
+    try {
+      const rolesRes = await fetch("/mdz-crm/api/project-roles");
+      const rolesJson = await rolesRes.json();
+      if (rolesJson.success && Array.isArray(rolesJson.roles)) {
+        setAvailableRoles(rolesJson.roles);
+      }
+    } catch (e) {
+      console.error("Failed to load project roles:", e);
+    }
   };
 
   const handleAssignMember = async (e: React.FormEvent) => {
@@ -88,14 +118,38 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       showToast("Please select a team member", "error");
       return;
     }
+
+    const finalRole = isCustomRole ? customRoleInput.trim() : selectedRoleInProject;
+    if (!finalRole) {
+      showToast("Please enter custom role name", "error");
+      return;
+    }
+
     try {
       setAssigningMember(true);
+
+      // If a custom role was entered, persist it to /api/project-roles
+      if (isCustomRole && customRoleInput.trim()) {
+        try {
+          await fetch("/mdz-crm/api/project-roles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: customRoleInput.trim() }),
+          });
+          if (!availableRoles.includes(customRoleInput.trim())) {
+            setAvailableRoles((prev) => [...prev, customRoleInput.trim()]);
+          }
+        } catch (err) {
+          console.error("Error saving custom role:", err);
+        }
+      }
+
       const res = await fetch(`/mdz-crm/api/projects/${params.id}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: selectedEmployeeId,
-          roleInProject: selectedRoleInProject,
+          roleInProject: finalRole,
           compensationAmount: selectedCompensation ? Number(selectedCompensation) : undefined,
         }),
       });
@@ -103,6 +157,8 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       if (json.success) {
         showToast(json.message || "Developer assigned successfully!", "success");
         setIsAssignModalOpen(false);
+        setIsCustomRole(false);
+        setCustomRoleInput("");
         setSelectedCompensation("");
         fetchProject();
       } else {
@@ -145,6 +201,30 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       showToast("Network error removing member", "error");
     } finally {
       setRemovingMember(false);
+    }
+  };
+
+  const handleUpdateDeadline = async (dateVal: string | null) => {
+    try {
+      setUpdatingDeadline(true);
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deadline: dateVal }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(dateVal ? `✓ Deadline set to ${new Date(dateVal).toLocaleDateString()}` : "✓ Deadline cleared", "success");
+        setIsDeadlineModalOpen(false);
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to update deadline", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error updating project deadline", "error");
+    } finally {
+      setUpdatingDeadline(false);
     }
   };
 
@@ -199,6 +279,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           paidValue: p.paymentMilestones?.reduce((s: number, m: any) => s + m.paidAmount, 0) || 0,
           overdueValue: p.paymentMilestones?.filter((m: any) => m.status === 'OVERDUE').reduce((s: number, m: any) => s + m.amount, 0) || 0,
           deadline: p.targetDeadline ? new Date(p.targetDeadline).toLocaleDateString() : "No Deadline",
+          targetDeadline: p.targetDeadline || null,
           tmName: p.memberships?.find((m: any) => m.roleInProject === "TM" && m.isActive)?.employee?.user?.name || "Unassigned",
           teamMembers: p.memberships?.filter((m: any) => m.isActive).map((m: any) => ({
             id: m.id,
@@ -240,6 +321,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [taskTitle, setTaskTitle] = useState("");
   const [taskAssigneeId, setTaskAssigneeId] = useState("");
   const [taskPriority, setTaskPriority] = useState("MEDIUM");
+  const [taskStatus, setTaskStatus] = useState("PLANNING");
   const [submittingTask, setSubmittingTask] = useState(false);
 
   const handleCreateTask = async (e: React.FormEvent) => {
@@ -254,6 +336,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
         body: JSON.stringify({
           title: taskTitle.trim(),
           priority: taskPriority,
+          status: taskStatus,
           assignedToId: taskAssigneeId || undefined,
         }),
       });
@@ -403,19 +486,42 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   if (loading) return <div className="p-12 text-center text-slate-400 animate-pulse">Loading Workspace...</div>;
   if (!project) return <div className="p-12 text-center text-rose-400">Project Not Found or Access Denied</div>;
 
-  const tabs = [
+  const userRole = (session?.user as any)?.role;
+  const isEmployee = userRole === "EMPLOYEE";
+  const isAdminOrOwner = userRole === "OWNER" || userRole === "ADMIN" || userRole === "SUB_ADMIN" || userRole === "SALES";
+  const currentEmpId =
+    (session?.user as any)?.employeeId ||
+    project.memberships?.find(
+      (m: any) =>
+        m.employee?.userId === (session?.user as any)?.id ||
+        m.employee?.user?.email === session?.user?.email
+    )?.employee?.id;
+  const currentEmpName = session?.user?.name;
+
+  const visibleTasks = (project.tasks || []).filter((tsk: any) => {
+    if (tsk.status === "ARCHIVED") return false;
+    if (!isEmployee) return true;
+    return (
+      (currentEmpId && (tsk.assignedToId === currentEmpId || tsk.assignedTo?.id === currentEmpId)) ||
+      (currentEmpName && (tsk.assignee === currentEmpName || tsk.assignedTo?.name === currentEmpName))
+    );
+  });
+
+  const allTabs = [
     { id: "overview", label: "Overview & Scope" },
     { id: "workflow", label: "Workflow Playbook" },
-    { id: "tasks", label: `Task Stack (${project.tasks?.length || 0})` },
+    { id: "tasks", label: isEmployee ? `My Tasks (${visibleTasks.length})` : `Task Stack (${project.tasks?.length || 0})` },
     { id: "updates", label: `Daily Updates (${project.clientUpdates?.length || 0})` },
-    { id: "team", label: `Team & Removal History (${project.teamMembers?.length || 0})` },
+    { id: "team", label: isEmployee ? `Team Members (${project.teamMembers?.length || 0})` : `Team & Removal History (${project.teamMembers?.length || 0})` },
     { id: "docs", label: `Living Docs (${project.livingDocs?.length || 0})` },
     { id: "notes", label: "Work Notes" },
     { id: "calls", label: "Client Calls" },
-    { id: "changes", label: `Change Requests (${project.changeRequests?.length || 0})` },
-    { id: "payments", label: "Payment Milestones" },
+    { id: "changes", label: `Change Requests (${project.changeRequests?.length || 0})`, adminOnly: true },
+    { id: "payments", label: "Payment Milestones", adminOnly: true },
     { id: "media", label: "Drive Assets & Files" },
   ];
+
+  const tabs = allTabs.filter((t) => !t.adminOnly || !isEmployee);
 
   return (
     <div className="space-y-6 pb-16">
@@ -428,9 +534,23 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Projects Workspace</span>
         </Link>
-        <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-          {project.projectCode}
-        </span>
+        <div className="flex items-center gap-2">
+          {/* Distinct Role Badge for Admin vs Employee Layout */}
+          {isEmployee ? (
+            <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+              <span>👤</span>
+              <span>EMPLOYEE WORKSPACE</span>
+            </span>
+          ) : (
+            <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" />
+              <span>ADMIN / MANAGER</span>
+            </span>
+          )}
+          <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+            {project.projectCode}
+          </span>
+        </div>
       </div>
 
       {/* Project Hero Header */}
@@ -449,6 +569,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                   <option value="PLANNING">PLANNING</option>
                   <option value="IN_PROGRESS">IN_PROGRESS</option>
                   <option value="ON_HOLD">ON_HOLD</option>
+                  <option value="INCOMPLETE">INCOMPLETE</option>
                   <option value="COMPLETED">COMPLETED</option>
                   <option value="CANCELLED">CANCELLED</option>
                 </select>
@@ -509,7 +630,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               <span>•</span>
               <span className="flex items-center gap-1.5">
                 <span>TM: <strong className="text-slate-800 dark:text-slate-200">{project.tmName}</strong></span>
-                {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+                {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUB_ADMIN" || (session?.user as any)?.role === "SALES") && (
                   <button
                     onClick={openAssignModal}
                     className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 transition-colors"
@@ -521,12 +642,27 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                 )}
               </span>
               <span>•</span>
-              <span>Deadline: <strong className="text-slate-800 dark:text-slate-200">{project.deadline}</strong></span>
+              <span className="flex items-center gap-1.5">
+                <span>Deadline: <strong className="text-slate-800 dark:text-slate-200">{project.deadline || "No Deadline"}</strong></span>
+                {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SUB_ADMIN") && (
+                  <button
+                    onClick={() => {
+                      setDeadlineInputVal(project.targetDeadline ? new Date(project.targetDeadline).toISOString().slice(0, 10) : "");
+                      setIsDeadlineModalOpen(true);
+                    }}
+                    className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 transition-colors"
+                    title="Set or update deadline"
+                  >
+                    <Calendar className="w-3 h-3" />
+                    <span>{project.deadline && project.deadline !== "No Deadline" ? "Change Date" : "Add Date"}</span>
+                  </button>
+                )}
+              </span>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {((session?.user as any)?.role === "OWNER" || (session?.user as any)?.role === "SUB_ADMIN" || (session?.user as any)?.role === "ADMIN" || (session?.user as any)?.role === "SALES") && (
+            {isAdminOrOwner && (
               <button
                 onClick={openAssignModal}
                 className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs touch-target"
@@ -554,13 +690,15 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               <Send className="w-3.5 h-3.5" />
               <span>Post Daily Update</span>
             </button>
-            <Link
-              href="/portal/demo-token-abc"
-              className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors flex items-center gap-1.5"
-            >
-              <Eye className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Client Portal Preview</span>
-            </Link>
+            {!isEmployee && (
+              <Link
+                href="/portal/demo-token-abc"
+                className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors flex items-center gap-1.5"
+              >
+                <Eye className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Client Portal Preview</span>
+              </Link>
+            )}
           </div>
         </div>
 
@@ -589,13 +727,19 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
         )}
 
         {/* Progress Engine */}
-        <div className="space-y-1 pt-1">
+        <div className="space-y-1.5 pt-1">
           <div className="flex justify-between text-xs font-bold">
-            <span className="text-slate-600 dark:text-slate-400">WEIGHTED PLAYBOOK PROGRESS ∑(Stage × Weight)</span>
-            <span className="text-indigo-600 dark:text-indigo-400 font-mono text-sm">{project.progress}%</span>
+            <span className="text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
+              <span>📊</span>
+              <span>Project Completion Progress</span>
+            </span>
+            <span className="text-indigo-600 dark:text-indigo-400 font-mono text-sm font-extrabold">{project.progress || 0}%</span>
           </div>
-          <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-300" style={{ width: `${project.progress}%` }} />
+          <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-700/60">
+            <div
+              className="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(project.progress || 0, 2)}%` }}
+            />
           </div>
         </div>
       </div>
@@ -632,7 +776,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           </div>
 
           <div className="space-y-4">
-            {(session?.user as any)?.role !== "EMPLOYEE" && (
+            {!isEmployee && project.contractValue !== undefined && (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3 text-xs">
                 <h3 className="font-bold text-slate-900 dark:text-slate-100">Financial Contract Summary</h3>
                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
@@ -720,8 +864,14 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Project Task Stack</h3>
-              <p className="text-xs text-slate-500">Tasks directly compute the single-source-of-truth project progress.</p>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {isEmployee ? `My Assigned Tasks (${visibleTasks.length})` : "Project Task Stack"}
+              </h3>
+              <p className="text-xs text-slate-500">
+                {isEmployee
+                  ? "Tasks assigned specifically to you in this project workspace."
+                  : "Tasks directly compute the single-source-of-truth project progress."}
+              </p>
             </div>
             <button
               onClick={() => setIsTaskSheetOpen(true)}
@@ -731,12 +881,14 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
             </button>
           </div>
           <div className="space-y-3 text-xs">
-            {project.tasks?.filter((t: any) => t.status !== "ARCHIVED").length === 0 ? (
-              <div className="p-8 text-center text-slate-400">No active tasks. Click "+ Create Task" to add tasks.</div>
+            {visibleTasks.length === 0 ? (
+              <div className="p-8 text-center text-slate-400">
+                {isEmployee
+                  ? "No tasks currently assigned to you in this project workspace."
+                  : "No active tasks. Click '+ Create Task' to add tasks."}
+              </div>
             ) : (
-              project.tasks
-                ?.filter((t: any) => t.status !== "ARCHIVED")
-                .map((tsk: any) => {
+              visibleTasks.map((tsk: any) => {
                   const isDone = tsk.status === "COMPLETED" || tsk.status === "DONE";
                   const isInProgress = tsk.status === "IN_PROGRESS";
 
@@ -786,20 +938,47 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                         )}
 
                         <select
-                          value={tsk.status}
+                          value={
+                            tsk.status === "DONE" || tsk.status === "COMPLETED"
+                              ? "COMPLETED"
+                              : tsk.status === "REVISION" || tsk.status === "ON_HOLD"
+                              ? "REVISION"
+                              : tsk.status === "CURRENT" || tsk.status === "IN_PROGRESS"
+                              ? "CURRENT"
+                              : "PLANNING"
+                          }
                           onChange={(e) => handleToggleTaskStatus(tsk.id, e.target.value)}
-                          className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all cursor-pointer outline-hidden ${
+                          className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all cursor-pointer outline-none ${
                             isDone
                               ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border-emerald-200 dark:border-emerald-800"
-                              : isInProgress
+                              : tsk.status === "REVISION" || tsk.status === "ON_HOLD"
+                              ? "bg-purple-50 dark:bg-purple-950/60 text-purple-600 border-purple-200 dark:border-purple-800"
+                              : isInProgress || tsk.status === "CURRENT"
                               ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 border-amber-200 dark:border-amber-800"
-                              : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700"
+                              : "bg-blue-50 dark:bg-blue-950/60 text-blue-600 border-blue-200 dark:border-blue-800"
                           }`}
                         >
-                          <option value="TODO">☐ TODO</option>
-                          <option value="IN_PROGRESS">◐ IN PROGRESS</option>
-                          <option value="COMPLETED">✓ COMPLETED</option>
+                          <option value="PLANNING">📋 Planning</option>
+                          <option value="CURRENT">⚡ Current</option>
+                          <option value="REVISION">🔄 Revision</option>
+                          <option value="COMPLETED">✅ Complete</option>
                         </select>
+
+                        {!isDone ? (
+                          <button
+                            onClick={() => handleToggleTaskStatus(tsk.id, "COMPLETED")}
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5"
+                            title="Mark task complete"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Complete</span>
+                          </button>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Completed</span>
+                          </span>
+                        )}
 
                         <button
                           onClick={() => handleArchiveTask(tsk.id)}
@@ -1238,6 +1417,19 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               ))}
             </select>
           </div>
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Status</label>
+            <select
+              value={taskStatus}
+              onChange={(e) => setTaskStatus(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none"
+            >
+              <option value="PLANNING">📋 Planning</option>
+              <option value="CURRENT">⚡ Current</option>
+              <option value="REVISION">🔄 Revision</option>
+              <option value="COMPLETED">✅ Complete</option>
+            </select>
+          </div>
           <button
             type="submit"
             className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs touch-target mt-2"
@@ -1285,18 +1477,45 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               Project Role *
             </label>
             <select
-              value={selectedRoleInProject}
-              onChange={(e) => setSelectedRoleInProject(e.target.value)}
+              value={isCustomRole ? "__CUSTOM__" : selectedRoleInProject}
+              onChange={(e) => {
+                if (e.target.value === "__CUSTOM__") {
+                  setIsCustomRole(true);
+                } else {
+                  setIsCustomRole(false);
+                  setSelectedRoleInProject(e.target.value);
+                }
+              }}
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium"
             >
-              <option value="TM">TM (Tech Lead / Project Lead)</option>
-              <option value="DEVELOPER">DEVELOPER (Fullstack Developer)</option>
-              <option value="FRONTEND">FRONTEND DEVELOPER</option>
-              <option value="BACKEND">BACKEND DEVELOPER</option>
-              <option value="UI_UX">UI / UX DESIGNER</option>
-              <option value="QA">QA / TEST ENGINEER</option>
-              <option value="MEMBER">TEAM MEMBER</option>
+              {availableRoles.map((r) => (
+                <option key={r} value={r}>
+                  {r === "TM" ? "TM (Tech Lead / Project Lead)" : r}
+                </option>
+              ))}
+              <option value="__CUSTOM__">✨ + Create Custom Role...</option>
             </select>
+
+            {isCustomRole && (
+              <div className="mt-2 space-y-1">
+                <label className="text-slate-700 dark:text-slate-300 font-semibold block text-[11px]">
+                  Enter Custom Role Name *
+                </label>
+                <input
+                  type="text"
+                  value={customRoleInput}
+                  onChange={(e) => setCustomRoleInput(e.target.value)}
+                  placeholder="e.g. SEO Specialist, Consultant..."
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-indigo-300 dark:border-indigo-600 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium text-xs"
+                  autoFocus
+                  required
+                />
+                <p className="text-[10px] text-indigo-600 dark:text-indigo-400">
+                  This custom role will be created and saved for admin/sub-admin to use.
+                </p>
+              </div>
+            )}
+
             <p className="text-[11px] text-slate-400 mt-1">
               Selecting <strong>TM</strong> marks them as the Tech Lead shown in client & admin headers.
             </p>
@@ -1382,6 +1601,58 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           fetchProject();
         }}
       />
+
+      {/* Admin & Sub Admin Deadline Management Modal */}
+      <BottomSheet
+        isOpen={isDeadlineModalOpen}
+        onClose={() => setIsDeadlineModalOpen(false)}
+        title="Manage Project Target Deadline"
+        subtitle={`Set or update target deadline for ${project?.name || "Project"}`}
+      >
+        <div className="space-y-4 text-xs">
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">
+              Target Deadline Date
+            </label>
+            <input
+              type="date"
+              value={deadlineInputVal}
+              onChange={(e) => setDeadlineInputVal(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium text-sm"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Select a date and click Save, or click Clear Deadline to remove the deadline.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              disabled={updatingDeadline || !deadlineInputVal}
+              onClick={() => handleUpdateDeadline(deadlineInputVal)}
+              className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
+            >
+              {updatingDeadline ? "Saving..." : "Save Deadline"}
+            </button>
+            {project?.deadline && project?.deadline !== "No Deadline" && (
+              <button
+                type="button"
+                disabled={updatingDeadline}
+                onClick={() => handleUpdateDeadline(null)}
+                className="py-3 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold text-xs transition-all disabled:opacity-50"
+              >
+                Clear Deadline
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsDeadlineModalOpen(false)}
+              className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

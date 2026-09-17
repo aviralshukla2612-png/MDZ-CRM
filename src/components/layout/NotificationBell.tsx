@@ -115,7 +115,7 @@ export function NotificationBell({ currentUserId }: Props) {
         try {
           if ("serviceWorker" in navigator && navigator.serviceWorker.controller) {
             navigator.serviceWorker.ready.then((reg) => {
-              reg.showNotification(newNotif.title || "Millionaire Digital CRM", {
+              reg.showNotification(newNotif.title || "Millionaire Dizital CRM", {
                 body: newNotif.message || "",
                 icon: "/mdz-crm/mdz-logo.jpg",
                 badge: "/mdz-crm/mdz-logo.jpg",
@@ -123,7 +123,7 @@ export function NotificationBell({ currentUserId }: Props) {
                 data: { url: fullUrl },
               });
             }).catch(() => {
-              const n = new Notification(newNotif.title || "Millionaire Digital CRM", {
+              const n = new Notification(newNotif.title || "Millionaire Dizital CRM", {
                 body: newNotif.message || "",
                 icon: "/mdz-crm/mdz-logo.jpg",
                 data: { url: fullUrl },
@@ -136,7 +136,7 @@ export function NotificationBell({ currentUserId }: Props) {
               };
             });
           } else {
-            const n = new Notification(newNotif.title || "Millionaire Digital CRM", {
+            const n = new Notification(newNotif.title || "Millionaire Dizital CRM", {
               body: newNotif.message || "",
               icon: "/mdz-crm/mdz-logo.jpg",
               data: { url: fullUrl },

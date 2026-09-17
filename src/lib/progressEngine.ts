@@ -37,8 +37,24 @@ export async function recalculateProjectProgress(projectId: string): Promise<Pro
     (t) => t.status === "COMPLETED" || t.status === "DONE"
   ).length;
 
-  const progressPercentage =
-    totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+  let progressPercentage = 0;
+  if (totalTasks > 0) {
+    progressPercentage = Math.round((completedTasks / totalTasks) * 100);
+  } else {
+    // If no explicit tasks, check project status and client daily updates
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        status: true,
+        _count: { select: { clientUpdates: true } },
+      },
+    });
+    if (project?.status === "COMPLETED") {
+      progressPercentage = 100;
+    } else if (project && project._count.clientUpdates > 0) {
+      progressPercentage = Math.min(100, project._count.clientUpdates * 25);
+    }
+  }
 
   // Update Project derived cache in database
   await prisma.project.update({

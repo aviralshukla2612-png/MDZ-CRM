@@ -137,8 +137,8 @@ export function PrototypeStoreProvider({ children }: { children: React.ReactNode
 
       const canViewLeads = role === "OWNER" || role === "SALES";
       const canViewClients = role === "OWNER" || role === "SALES"; // Assume SALES can view clients too, or restrict to OWNER
-      const canViewEmployees = role === "OWNER";
-      const canViewProjects = role === "OWNER" || role === "SALES" || role === "EMPLOYEE";
+      const canViewEmployees = role === "OWNER" || role === "ADMIN" || role === "SUB_ADMIN";
+      const canViewProjects = role === "OWNER" || role === "ADMIN" || role === "SUB_ADMIN" || role === "SALES" || role === "EMPLOYEE";
 
       const [leadsRes, clientsRes, projectsRes, employeesRes] = await Promise.all([
         canViewLeads ? fetch("/mdz-crm/api/leads").catch(() => null) : Promise.resolve(null),

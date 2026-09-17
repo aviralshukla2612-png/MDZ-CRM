@@ -45,7 +45,13 @@ export async function GET(
 
   try {
     const tasks = await prisma.task.findMany({
-      where: { projectId, status: { not: "ARCHIVED" } },
+      where: {
+        projectId,
+        status: { not: "ARCHIVED" },
+        ...(authRes.activeRole === "EMPLOYEE" && authRes.employeeId
+          ? { assignedToId: authRes.employeeId }
+          : {}),
+      },
       orderBy: [{ isMostImportant: "desc" }, { orderInt: "asc" }, { createdAt: "asc" }],
       include: {
         assignedTo: {
@@ -139,11 +145,16 @@ export async function POST(
         title: body.title.trim(),
         description: body.description ? String(body.description).trim() : null,
         priority: body.priority || "MEDIUM",
-        status: body.status === "IN_PROGRESS" || body.status === "COMPLETED" ? body.status : "TODO",
-        assignedToId: body.assignedToId || null,
+        status: ["PLANNING", "CURRENT", "REVISION", "COMPLETED", "TODO", "IN_PROGRESS", "DONE"].includes(body.status)
+          ? body.status
+          : "PLANNING",
+        assignedToId:
+          body.assignedToId || (authRes.activeRole === "EMPLOYEE" ? authRes.employeeId : null),
         createdById: authRes.id,
         orderInt: typeof body.orderInt === "number" ? body.orderInt : taskCount + 1,
-        completedAt: body.status === "COMPLETED" ? new Date() : null,
+        completedAt: body.status === "COMPLETED" || body.status === "DONE" ? new Date() : null,
+        deadline: body.deadline ? new Date(body.deadline) : null,
+        startDate: body.startDate ? new Date(body.startDate) : null,
       },
       include: {
         assignedTo: {

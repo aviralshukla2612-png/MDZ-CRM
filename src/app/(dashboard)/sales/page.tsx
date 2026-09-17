@@ -102,46 +102,60 @@ export default function SalesDashboardPage() {
     }
   };
 
-  const handleCreateLead = (e: React.FormEvent) => {
-    e.preventDefault();
-    const createApi = async () => {
-      try {
-        const res = await fetch("/mdz-crm/api/leads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clientName: clientName,
-            contactPerson: contactPerson,
-            phone: phone || "+91 00000 00000",
-            email: email || "contact@prospect.com",
-            projectScope: projectScope || "General inquiry",
-            leadValue: Number(leadValue) || 250000,
-            expectedRevenue: Number(leadValue) || 250000,
-            stage: "NEW",
-            leadPriority: "HIGH",
-          }),
-        });
-        const json = await res.json();
-        if (json.success) {
-          showToast(`✓ Lead "${clientName || "New Lead"}" added to Pipeline`, "success");
-          fetchLeads();
-        } else {
-          showToast("Failed to add lead", "error");
-        }
-      } catch (e) {
-        showToast("Network error", "error");
-      }
-    };
-    createApi();
+  const handlePhoneChange = (val: string) => {
+    // Only numbers allowed (rejects words, alphabets, special characters)
+    let digits = val.replace(/\D/g, "");
+    // If pasted with leading 91 (e.g. 919876543210), remove prefix
+    if (digits.length > 10 && digits.startsWith("91")) {
+      digits = digits.slice(2);
+    }
+    // Strictly max 10 digits allowed
+    setPhone(digits.slice(0, 10));
+  };
 
-    setIsAddLeadOpen(false);
-    setClientName("");
-    setContactPerson("");
-    setEmail("");
-    setPhone("");
-    setLeadValue("");
-    setGstNo("");
-    setProjectScope("");
+  const handleCreateLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      showToast("Phone number must be exactly 10 digits. Words and extra numbers are not allowed.", "error");
+      return;
+    }
+
+    try {
+      const res = await fetch("/mdz-crm/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientName: clientName,
+          contactPerson: contactPerson,
+          phone: `+91 ${cleanPhone}`,
+          email: email || "contact@prospect.com",
+          projectScope: projectScope || "General inquiry",
+          leadValue: 0,
+          expectedRevenue: 0,
+          stage: "NEW",
+          leadPriority: "HIGH",
+          gstNo: gstNo ? gstNo.trim().toUpperCase() : undefined,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Lead "${clientName || "New Lead"}" added to Pipeline`, "success");
+        setIsAddLeadOpen(false);
+        setClientName("");
+        setContactPerson("");
+        setEmail("");
+        setPhone("");
+        setLeadValue("");
+        setGstNo("");
+        setProjectScope("");
+        fetchLeads();
+      } else {
+        showToast(json.error || "Failed to add lead", "error");
+      }
+    } catch (e) {
+      showToast("Network error", "error");
+    }
   };
 
   const handleImportData = async (data: any[]) => {
@@ -273,25 +287,66 @@ export default function SalesDashboardPage() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Phone Number</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98765 43210"
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none transition-all"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-slate-700 dark:text-slate-300 font-semibold">
+                  Phone Number <span className="text-red-500">*</span>
+                </label>
+                <span
+                  className={`text-[10px] font-mono font-bold ${
+                    phone.length === 10
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : phone.length > 0
+                      ? "text-amber-500"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {phone.length}/10 digits
+                </span>
+              </div>
+              <div className="relative flex items-center">
+                <span className="absolute left-3 text-xs font-bold text-slate-400 dark:text-slate-500 font-mono select-none pointer-events-none">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  required
+                  maxLength={10}
+                  value={phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  placeholder="9876543210"
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-xl p-3 pl-12 text-slate-900 dark:text-slate-100 outline-none transition-all font-mono tracking-wider text-xs ${
+                    phone.length === 10
+                      ? "border-emerald-500/60 focus:border-emerald-500"
+                      : phone.length > 0
+                      ? "border-amber-500/60 focus:border-amber-500"
+                      : "border-slate-200 dark:border-slate-800 focus:border-indigo-500"
+                  }`}
+                />
+              </div>
+              {phone.length > 0 && phone.length < 10 && (
+                <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                  Enter {10 - phone.length} more digit{10 - phone.length > 1 ? "s" : ""} (only 10 digits allowed, no letters).
+                </p>
+              )}
             </div>
             <div>
-              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">GST Number (Optional)</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-slate-700 dark:text-slate-300 font-semibold">GST Number (Optional)</label>
+                {gstNo && (
+                  <span className="text-[10px] font-mono text-slate-400 font-bold">{gstNo.length}/15</span>
+                )}
+              </div>
               <input
                 type="text"
+                maxLength={15}
                 value={gstNo}
-                onChange={(e) => setGstNo(e.target.value)}
+                onChange={(e) => setGstNo(e.target.value.toUpperCase().slice(0, 15))}
                 placeholder="27AADCB2230M1Z2"
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none transition-all uppercase font-mono tracking-wider text-xs"
               />
             </div>
           </div>
@@ -302,17 +357,6 @@ export default function SalesDashboardPage() {
               onChange={(e) => setProjectScope(e.target.value)}
               placeholder="e.g. E-Commerce website development..."
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none transition-all resize-none h-20"
-            />
-          </div>
-          <div>
-            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Estimated Deal Value (₹)</label>
-            <input
-              type="number"
-              required
-              value={leadValue}
-              onChange={(e) => setLeadValue(e.target.value)}
-              placeholder="350000"
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none transition-all"
             />
           </div>
           <button

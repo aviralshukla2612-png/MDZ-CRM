@@ -75,10 +75,6 @@ export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClie
                 </span>
               </div>
 
-              <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400 px-1 font-semibold">
-                Total: ₹{totalVal.toLocaleString("en-IN")}
-              </div>
-
               <div className="space-y-2.5">
                 {stageLeads.map((lead) => (
                   <div
@@ -130,9 +126,11 @@ export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClie
                       <p className="text-[11px] text-slate-500 dark:text-slate-400">{lead.contactPerson}</p>
                     </div>
 
-                    <div className="text-[11px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      ₹{lead.leadValue.toLocaleString("en-IN")}
-                    </div>
+                    {lead.phone && (
+                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                        {lead.phone}
+                      </div>
+                    )}
 
                     {(lead.stage === "WON" || lead.stage === "PENDING_SUPER_ADMIN_APPROVAL") && (
                       <div className="space-y-1.5 mt-2">

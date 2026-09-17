@@ -61,9 +61,9 @@ export default function LoginPage() {
       {/* Header theme toggle */}
       <div className="flex items-center justify-between max-w-md mx-auto w-full pt-2">
         <div className="flex items-center gap-2 font-bold text-base text-stone-900 dark:text-stone-100">
-          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire Digital Logo" className="w-8 h-8 object-contain rounded-lg ring-1 ring-amber-400/50 shadow-xs" />
+          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire Dizital Logo" className="w-8 h-8 object-contain rounded-lg ring-1 ring-amber-400/50 shadow-xs" />
           <span className="font-extrabold tracking-tight">
-            MILLIONAIRE DIGITAL <span className="bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">CRM</span>
+            MILLIONAIRE DIZITAL <span className="bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">CRM</span>
           </span>
         </div>
 
@@ -78,7 +78,7 @@ export default function LoginPage() {
               Welcome back
             </h1>
             <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400">
-              Sign in with your Millionaire Digital CRM credentials to access your workspace.
+              Sign in with your Millionaire Dizital CRM credentials to access your workspace.
             </p>
           </div>
 
@@ -265,7 +265,7 @@ export default function LoginPage() {
 
       {/* Footer */}
       <div className="text-center text-xs text-amber-600/80 dark:text-amber-400/80 pb-2 font-mono font-semibold">
-        Millionaire Digital CRM © 2026 • Enterprise Business OS
+        Millionaire Dizital CRM © 2026 • Enterprise Business OS
       </div>
     </div>
   );

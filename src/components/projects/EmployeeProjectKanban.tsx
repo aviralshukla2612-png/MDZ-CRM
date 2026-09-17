@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   FolderKanban,
   User,
@@ -24,15 +25,18 @@ import {
   Briefcase,
   ChevronDown,
   GripVertical,
+  Camera,
 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
+import { AvatarUploadModal } from "@/components/ui/AvatarUploadModal";
+import { ProjectTaskCalendar } from "./ProjectTaskCalendar";
 
 export interface ProjectCardItem {
   id: string;
   projectNumber: string;
   name: string;
-  status: "PLANNING" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | string;
+  status: "PLANNING" | "IN_PROGRESS" | "ON_HOLD" | "INCOMPLETE" | "COMPLETED" | string;
   priority: string;
   progress: number;
   progressPercentage: number;
@@ -48,11 +52,47 @@ export interface ProjectCardItem {
   tasks?: Array<{ id: string; title: string; status: string; priority: string }>;
 }
 
+function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardItem {
+  const totalTasks = p.tasks ? p.tasks.length : (p.totalTasks || 0);
+  const completedTasks = p.tasks
+    ? p.tasks.filter((t: any) => t.status === "COMPLETED" || t.status === "DONE").length
+    : (p.completedTasks || 0);
+  const calcProgress =
+    totalTasks > 0
+      ? Math.round((completedTasks / totalTasks) * 100)
+      : typeof p.progress === "number"
+      ? p.progress
+      : Number(p.progressPercentage) || 0;
+
+  return {
+    id: p.id,
+    projectNumber: p.projectCode || p.projectNumber || p.id,
+    name: p.name || "Untitled Project",
+    status: p.status || p.currentStage || "PLANNING",
+    priority: p.priority || "HIGH",
+    progress: calcProgress,
+    progressPercentage: calcProgress,
+    contractValue: Number(p.contractValue) || 0,
+    targetDeadline:
+      p.deadline ||
+      (p.targetDeadline ? new Date(p.targetDeadline).toLocaleDateString() : "") ||
+      "No Deadline",
+    roleInProject: p.roleInProject || (p.tmName && p.tmName !== "Unassigned" ? "TM" : "DEVELOPER"),
+    clientName: p.clientName || (p.client ? p.client.companyName : "Client"),
+    totalTasks,
+    completedTasks,
+    assignedEmployeeId: fallbackEmployeeId || p.assignedEmployeeId || p.tmId || undefined,
+    tasks: p.tasks || [],
+  };
+}
+
 export interface EmployeeWorkload {
   id: string;
+  userId?: string;
   employeeId: string;
   name: string;
   email: string;
+  avatarUrl?: string | null;
   role: string;
   designation: string;
   department: string;
@@ -98,6 +138,13 @@ const KANBAN_COLUMNS = [
     badgeBg: "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800",
   },
   {
+    id: "INCOMPLETE",
+    title: "Incomplete",
+    color: "rose",
+    borderHeader: "border-rose-500",
+    badgeBg: "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800",
+  },
+  {
     id: "COMPLETED",
     title: "Delivered / Won",
     color: "emerald",
@@ -112,12 +159,16 @@ export function EmployeeProjectKanban({
   onRefresh,
   initialSelectedEmployeeId,
 }: EmployeeProjectKanbanProps) {
+  const { data: session } = useSession();
+  const isEmployee = (session?.user as any)?.role === "EMPLOYEE";
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(
-    initialSelectedEmployeeId || (employees.length > 0 ? employees[0].id : "ALL")
+    initialSelectedEmployeeId || "ALL"
   );
+  // View mode: Kanban vs Calendar
+  const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
   // Hide left sidebar portion by default so Kanban columns take full 100% width
   const [showSidebar, setShowSidebar] = useState(false);
 
@@ -125,12 +176,60 @@ export function EmployeeProjectKanban({
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
   const [optimisticProjects, setOptimisticProjects] = useState<ProjectCardItem[] | null>(null);
 
+  // Quick Task update from Kanban card
+  const handleUpdateTaskFromKanban = async (
+    projectId: string,
+    taskId: string,
+    nextStatus: string
+  ) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${projectId}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Task updated to ${nextStatus}`, "success");
+        onRefresh();
+      } else {
+        showToast(json.error || "Failed to update task", "error");
+      }
+    } catch (e) {
+      showToast("Error updating task status", "error");
+    }
+  };
+
   // Modal to assign current employee to a project
+  const DEFAULT_ROLES = [
+    "TM",
+    "Graphic Designer",
+    "Video editor",
+    "sales person",
+    "accounting",
+    "Web devloper",
+  ];
+  const [availableRoles, setAvailableRoles] = useState<string[]>(DEFAULT_ROLES);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignProjectId, setAssignProjectId] = useState("");
-  const [assignRole, setAssignRole] = useState("DEVELOPER");
+  const [assignRole, setAssignRole] = useState("TM");
+  const [isCustomRole, setIsCustomRole] = useState(false);
+  const [customRoleInput, setCustomRoleInput] = useState("");
   const [assignCompensation, setAssignCompensation] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [avatarModalEmployee, setAvatarModalEmployee] = useState<EmployeeWorkload | null>(null);
+
+  useEffect(() => {
+    fetch("/mdz-crm/api/project-roles")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.roles)) {
+          setAvailableRoles(data.roles);
+        }
+      })
+      .catch((e) => console.error("Error loading project roles:", e));
+  }, []);
 
   // Departments list
   const departments = useMemo(() => {
@@ -154,33 +253,95 @@ export function EmployeeProjectKanban({
     });
   }, [employees, searchTerm, departmentFilter]);
 
+  // Auto-select logged-in employee if role is EMPLOYEE or if initialSelectedEmployeeId is provided
+  useEffect(() => {
+    if (initialSelectedEmployeeId) {
+      setSelectedEmployeeId(initialSelectedEmployeeId);
+    } else if (isEmployee && session?.user && employees.length > 0 && selectedEmployeeId === "ALL") {
+      const myEmp = employees.find(
+        (e) =>
+          ((session.user as any)?.employeeId && (e.id === (session.user as any).employeeId || e.employeeId === (session.user as any).employeeId)) ||
+          ((session.user as any)?.id && (e.id === (session.user as any).id || e.userId === (session.user as any).id)) ||
+          (session.user?.email && e.email && e.email.toLowerCase() === session.user.email.toLowerCase()) ||
+          (session.user?.name && e.name && e.name.toLowerCase().trim() === session.user.name.toLowerCase().trim())
+      );
+      if (myEmp) {
+        setSelectedEmployeeId(myEmp.id);
+      }
+    }
+  }, [initialSelectedEmployeeId, isEmployee, session, employees]);
+
   // Active selected employee
   const selectedEmployee = useMemo(() => {
     if (selectedEmployeeId === "ALL") return null;
-    return employees.find((e) => e.id === selectedEmployeeId) || employees[0] || null;
+    return (
+      employees.find(
+        (e) =>
+          e.id === selectedEmployeeId ||
+          e.employeeId === selectedEmployeeId ||
+          e.userId === selectedEmployeeId
+      ) || null
+    );
   }, [employees, selectedEmployeeId]);
 
   // Projects to display in the Kanban board
   const displayedProjects = useMemo(() => {
     let projs: ProjectCardItem[] = [];
+
     if (selectedEmployee) {
-      projs = (selectedEmployee.assignedProjects || []).map((p) => ({
-        ...p,
-        assignedEmployeeId: selectedEmployee.id,
-      }));
+      const empProjs = (selectedEmployee.assignedProjects || []).map((p) =>
+        normalizeProjectCard(p, selectedEmployee.id)
+      );
+
+      const additionalFromAll = (allProjects || [])
+        .filter((p) => {
+          if (empProjs.some((ep) => ep.id === p.id)) return false;
+          const isTm =
+            p.tmId === selectedEmployee.id ||
+            (selectedEmployee.userId && p.tmId === selectedEmployee.userId) ||
+            (selectedEmployee.employeeId && p.tmId === selectedEmployee.employeeId);
+
+          const isMember = p.teamMembers?.some((m: any) => {
+            if (m.active === false) return false;
+            const matchId = m.id === selectedEmployee.id || m.employeeId === selectedEmployee.id;
+            const matchUser = selectedEmployee.userId && (m.userId === selectedEmployee.userId || m.id === selectedEmployee.userId);
+            const matchCode = selectedEmployee.employeeId && (m.employeeIdCode === selectedEmployee.employeeId || m.employeeId === selectedEmployee.employeeId);
+            const matchEmail = selectedEmployee.email && m.email && m.email.toLowerCase() === selectedEmployee.email.toLowerCase();
+            const matchName = selectedEmployee.name && m.name && m.name.toLowerCase().trim() === selectedEmployee.name.toLowerCase().trim();
+            return matchId || matchUser || matchCode || matchEmail || matchName;
+          });
+          return isTm || isMember;
+        })
+        .map((p) => normalizeProjectCard(p, selectedEmployee.id));
+
+      projs = [...empProjs, ...additionalFromAll];
     } else {
       const map = new Map<string, ProjectCardItem>();
-      employees.forEach((emp) => {
+
+      // 1. Add all projects from allProjects
+      (allProjects || []).forEach((p) => {
+        map.set(p.id, normalizeProjectCard(p));
+      });
+
+      // 2. Supplement or merge with any assignedProjects from employees
+      (employees || []).forEach((emp) => {
         emp.assignedProjects?.forEach((p) => {
           if (!map.has(p.id)) {
-            map.set(p.id, { ...p, assignedEmployeeId: emp.id });
+            map.set(p.id, normalizeProjectCard(p, emp.id));
+          } else {
+            const existing = map.get(p.id)!;
+            if (!existing.assignedEmployeeId) {
+              existing.assignedEmployeeId = emp.id;
+            }
           }
         });
       });
+
       projs = Array.from(map.values());
     }
+
     return projs;
-  }, [selectedEmployee, employees]);
+  }, [selectedEmployee, employees, allProjects]);
 
   // Sync optimistic projects when displayedProjects changes
   useEffect(() => {
@@ -241,7 +402,7 @@ export function EmployeeProjectKanban({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: newEmployeeId,
-          roleInProject: "DEVELOPER",
+          roleInProject: "Web devloper",
         }),
       });
       const json = await res.json();
@@ -263,14 +424,36 @@ export function EmployeeProjectKanban({
       return;
     }
 
+    const finalRole = isCustomRole ? customRoleInput.trim() : assignRole;
+    if (!finalRole) {
+      showToast("Please specify a project role", "error");
+      return;
+    }
+
     try {
       setAssigning(true);
+
+      if (isCustomRole && customRoleInput.trim()) {
+        try {
+          await fetch("/mdz-crm/api/project-roles", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role: customRoleInput.trim() }),
+          });
+          if (!availableRoles.includes(customRoleInput.trim())) {
+            setAvailableRoles((prev) => [...prev, customRoleInput.trim()]);
+          }
+        } catch (err) {
+          console.error("Error saving custom role:", err);
+        }
+      }
+
       const res = await fetch(`/mdz-crm/api/projects/${assignProjectId}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: selectedEmployee.id,
-          roleInProject: assignRole,
+          roleInProject: finalRole,
           compensationAmount: assignCompensation ? Number(assignCompensation) : undefined,
         }),
       });
@@ -279,6 +462,8 @@ export function EmployeeProjectKanban({
       if (json.success) {
         showToast(json.message || "Assigned employee to project successfully!", "success");
         setIsAssignModalOpen(false);
+        setIsCustomRole(false);
+        setCustomRoleInput("");
         setAssignProjectId("");
         setAssignCompensation("");
         onRefresh();
@@ -337,8 +522,32 @@ export function EmployeeProjectKanban({
             </div>
           </div>
 
-          {/* Right: Sidebar Toggle Button + Assign Button */}
-          <div className="flex items-center gap-2 shrink-0 self-end lg:self-center">
+          {/* Right: Sidebar Toggle Button + Assign Button + Task Calendar Button */}
+          <div className="flex items-center gap-2 shrink-0 self-end lg:self-center flex-wrap">
+            {/* View Switcher: Kanban Cards vs Task Calendar */}
+            <button
+              type="button"
+              onClick={() => setViewMode(viewMode === "kanban" ? "calendar" : "kanban")}
+              className={`px-3.5 py-2.5 rounded-2xl text-xs font-bold border transition-all flex items-center gap-2 shadow-xs cursor-pointer active:scale-95 ${
+                viewMode === "calendar"
+                  ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/25"
+                  : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
+              title="Toggle between Kanban Project Board and Interactive Dated Task Calendar"
+            >
+              <Calendar className={`w-4 h-4 ${viewMode === "calendar" ? "text-white" : "text-indigo-600 dark:text-indigo-400"}`} />
+              <span>{viewMode === "calendar" ? "Project Kanban" : "Task Calendar"}</span>
+              <span
+                className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full font-black ${
+                  viewMode === "calendar"
+                    ? "bg-white/20 text-white"
+                    : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-2xs"
+                }`}
+              >
+                PREMIUM
+              </span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShowSidebar(!showSidebar)}
@@ -626,9 +835,35 @@ export function EmployeeProjectKanban({
           <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-5 sm:p-6 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 pb-4">
               <div className="flex items-center gap-3.5">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-600 to-indigo-800 text-white font-black text-xl flex items-center justify-center shadow-lg shadow-indigo-600/25">
-                  {selectedEmployee.name[0]?.toUpperCase()}
+                <div
+                  className="relative group cursor-pointer shrink-0"
+                  onClick={() => {
+                    setAvatarModalEmployee(selectedEmployee);
+                    setIsAvatarModalOpen(true);
+                  }}
+                  title="Click to change developer photo"
+                >
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-indigo-200 dark:border-indigo-800 shadow-md shadow-indigo-600/20 flex items-center justify-center bg-gradient-to-tr from-indigo-600 to-purple-600 group-hover:scale-105 transition-transform">
+                    {selectedEmployee.avatarUrl ? (
+                      <img
+                        src={selectedEmployee.avatarUrl}
+                        alt={selectedEmployee.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-xl sm:text-2xl font-black text-white">
+                        {selectedEmployee.name[0]?.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div
+                    className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-md border-2 border-white dark:border-slate-900 transition-transform active:scale-95"
+                    title="Change Photo"
+                  >
+                    <Camera className="w-3 h-3" />
+                  </div>
                 </div>
+
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-slate-100">
@@ -658,7 +893,7 @@ export function EmployeeProjectKanban({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 {/* Header Employee Selector Dropdown */}
                 <select
                   value={selectedEmployeeId}
@@ -672,6 +907,19 @@ export function EmployeeProjectKanban({
                     </option>
                   ))}
                 </select>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAvatarModalEmployee(selectedEmployee);
+                    setIsAvatarModalOpen(true);
+                  }}
+                  className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                  title="Add or update photo for this employee"
+                >
+                  <Camera className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>{selectedEmployee.avatarUrl ? "Photo" : "+ Add Photo"}</span>
+                </button>
 
                 <button
                   onClick={() => setIsAssignModalOpen(true)}
@@ -691,7 +939,7 @@ export function EmployeeProjectKanban({
             </div>
 
             {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
               <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
                 <div className="text-slate-500 text-[11px]">Total Projects</div>
                 <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 font-mono mt-0.5">
@@ -708,6 +956,15 @@ export function EmployeeProjectKanban({
                 <div className="text-blue-600 dark:text-blue-400 text-[11px] font-semibold">In Planning</div>
                 <div className="text-lg font-extrabold text-blue-700 dark:text-blue-300 font-mono mt-0.5">
                   {selectedEmployee.planningProjectsCount || selectedEmployee.assignedProjects?.filter(p => (p.status || '').toUpperCase() === 'PLANNING' || (p.status || '').toUpperCase() === 'DRAFT').length || 0}
+                </div>
+              </div>
+              <div className="p-3 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-800/60">
+                <div className="text-rose-600 dark:text-rose-400 text-[11px] font-semibold">Incomplete</div>
+                <div className="text-lg font-extrabold text-rose-700 dark:text-rose-300 font-mono mt-0.5">
+                  {selectedEmployee.assignedProjects?.filter(p => {
+                    const s = (p.status || '').toUpperCase();
+                    return s === 'INCOMPLETE' || s === 'DROPPED' || s === 'CANCELLED' || s.includes('INCOMPLETE');
+                  }).length || 0}
                 </div>
               </div>
               <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60">
@@ -748,12 +1005,22 @@ export function EmployeeProjectKanban({
           </div>
         )}
 
-        {/* DRAG AND DROP INSTRUCTION BANNER */}
-        <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-700 dark:text-indigo-300 font-medium">
+        {viewMode === "calendar" ? (
+          <ProjectTaskCalendar
+            allProjects={allProjects}
+            employees={employees}
+            onRefresh={onRefresh}
+            selectedEmployeeId={selectedEmployeeId}
+            onSelectEmployee={(empId) => setSelectedEmployeeId(empId)}
+          />
+        ) : (
+          <>
+            {/* DRAG AND DROP INSTRUCTION BANNER */}
+            <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-700 dark:text-indigo-300 font-medium">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <span>
-              <strong>Drag & Drop Enabled:</strong> Drag any project card between stages (Planning, In Progress, On Hold, Won) to instantly update its status.
+              <strong>Drag & Drop Enabled:</strong> Drag any project card between stages (Planning, In Progress, On Hold, Incomplete, Won) to instantly update its status.
             </span>
           </div>
           <span className="text-[10px] font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shrink-0 hidden sm:inline">
@@ -762,14 +1029,51 @@ export function EmployeeProjectKanban({
         </div>
 
         {/* KANBAN BOARD (Columns by Status with Drop Zones) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 items-start">
           {KANBAN_COLUMNS.map((col) => {
             const colProjects = projectsToRender.filter((p) => {
               const s = (p.status || "").toUpperCase();
-              if (col.id === "PLANNING") return s === "PLANNING" || s === "DRAFT" || s === "";
-              if (col.id === "IN_PROGRESS") return s === "IN_PROGRESS" || s === "ACTIVE";
-              if (col.id === "ON_HOLD") return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED";
-              if (col.id === "COMPLETED") return s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+              if (col.id === "PLANNING") {
+                const isOther =
+                  s === "IN_PROGRESS" ||
+                  s === "ACTIVE" ||
+                  s === "CURRENT" ||
+                  s.includes("PROGRESS") ||
+                  s === "ON_HOLD" ||
+                  s === "PAUSED" ||
+                  s === "BLOCKED" ||
+                  s === "REVISION" ||
+                  s === "INCOMPLETE" ||
+                  s === "DROPPED" ||
+                  s === "CANCELLED" ||
+                  s.includes("INCOMPLETE") ||
+                  s === "COMPLETED" ||
+                  s === "DONE" ||
+                  s === "DELIVERED" ||
+                  s === "WON";
+                return (
+                  s === "PLANNING" ||
+                  s === "DRAFT" ||
+                  s === "" ||
+                  s === "PENDING_SUB_ADMIN_ALLOCATION" ||
+                  s === "PENDING_ALLOCATION" ||
+                  s.includes("PENDING") ||
+                  s.includes("ALLOCATION") ||
+                  !isOther
+                );
+              }
+              if (col.id === "IN_PROGRESS") {
+                return s === "IN_PROGRESS" || s === "ACTIVE" || s === "CURRENT" || s.includes("PROGRESS");
+              }
+              if (col.id === "ON_HOLD") {
+                return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED" || s === "REVISION";
+              }
+              if (col.id === "INCOMPLETE") {
+                return s === "INCOMPLETE" || s === "DROPPED" || s === "CANCELLED" || s.includes("INCOMPLETE");
+              }
+              if (col.id === "COMPLETED") {
+                return s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+              }
               return s === col.id;
             });
             const totalVal = colProjects.reduce((acc, curr) => acc + (curr.contractValue || 0), 0);
@@ -820,6 +1124,8 @@ export function EmployeeProjectKanban({
                         ? "bg-emerald-500"
                         : col.id === "ON_HOLD"
                         ? "bg-amber-500"
+                        : col.id === "INCOMPLETE"
+                        ? "bg-rose-500"
                         : "bg-blue-500"
                     }`} />
                     <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200">
@@ -833,7 +1139,7 @@ export function EmployeeProjectKanban({
                 </div>
 
                 {/* Total Value Summary for column */}
-                {totalVal > 0 && (
+                {!isEmployee && totalVal > 0 && (
                   <div className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 px-1">
                     Value: ₹{totalVal.toLocaleString("en-IN")}
                   </div>
@@ -842,21 +1148,26 @@ export function EmployeeProjectKanban({
                 {/* Cards Container */}
                 <div className="space-y-3 flex-1 overflow-y-auto max-h-[620px] pr-1">
                   {colProjects.length === 0 ? (
-                    <div className="h-40 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800/80 flex flex-col items-center justify-center text-center p-4 text-slate-400 text-xs space-y-1">
-                      <span>No projects in this stage</span>
-                      <span className="text-[10px] text-slate-400/80">Drop cards here to change stage</span>
+                    <div className="h-40 rounded-2xl border-2 border-dashed border-slate-300/80 dark:border-slate-700/80 flex flex-col items-center justify-center text-center p-4 text-slate-500 dark:text-slate-400 text-xs space-y-1">
+                      <span className="font-semibold">No projects in this stage</span>
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">Drop cards here to change stage</span>
                     </div>
                   ) : (
                     colProjects.map((proj) => {
                       const priorityColor =
                         proj.priority === "URGENT"
-                          ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200"
+                          ? "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700"
                           : proj.priority === "HIGH"
-                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200";
+                          ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
+                          : "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700";
 
                       const isLeadRole = proj.roleInProject === "TM";
                       const isBeingDragged = draggedProjectId === proj.id;
+                      const isProjComplete =
+                        proj.status === "COMPLETED" ||
+                        proj.status === "DONE" ||
+                        proj.status === "DELIVERED" ||
+                        proj.status === "WON";
 
                       return (
                         <div
@@ -868,26 +1179,36 @@ export function EmployeeProjectKanban({
                             e.dataTransfer.effectAllowed = "move";
                           }}
                           onDragEnd={() => setDraggedProjectId(null)}
-                          className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-4 shadow-2xs hover:shadow-md hover:border-indigo-500/50 transition-all space-y-3 group cursor-grab active:cursor-grabbing ${
+                          className={`bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-300 dark:border-slate-700 p-4 shadow-md hover:shadow-xl hover:border-indigo-500/80 transition-all space-y-3.5 group cursor-grab active:cursor-grabbing relative ${
+                            col.id === "IN_PROGRESS"
+                              ? "border-l-4 border-l-indigo-600 dark:border-l-indigo-500"
+                              : col.id === "COMPLETED"
+                              ? "border-l-4 border-l-emerald-600 dark:border-l-emerald-500"
+                              : col.id === "ON_HOLD"
+                              ? "border-l-4 border-l-amber-500 dark:border-l-amber-500"
+                              : col.id === "INCOMPLETE"
+                              ? "border-l-4 border-l-rose-500 dark:border-l-rose-500"
+                              : "border-l-4 border-l-blue-500 dark:border-l-blue-500"
+                          } ${
                             isBeingDragged ? "opacity-30 scale-95 border-dashed border-indigo-500" : ""
                           }`}
                         >
                           {/* Top Badges & Drag Handle */}
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
-                              <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 transition-colors" />
+                              <GripVertical className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
                               <span
-                                className={`text-[9px] font-extrabold font-mono px-2 py-0.5 rounded-md border ${priorityColor}`}
+                                className={`text-[10px] font-extrabold font-mono px-2.5 py-0.5 rounded-md border shadow-2xs ${priorityColor}`}
                               >
                                 {proj.priority}
                               </span>
                             </div>
 
                             <span
-                              className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md ${
+                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border shadow-2xs ${
                                 isLeadRole
-                                  ? "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
-                                  : "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                                  ? "bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700"
+                                  : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700"
                               }`}
                             >
                               {isLeadRole ? "⭐ TECH LEAD (TM)" : proj.roleInProject || "DEVELOPER"}
@@ -895,35 +1216,35 @@ export function EmployeeProjectKanban({
                           </div>
 
                           {/* Project Name & Code */}
-                          <div className="space-y-1">
-                            <div className="text-[10px] font-mono text-slate-400 font-bold">
+                          <div className="space-y-1.5">
+                            <div className="inline-block text-[11px] font-mono font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 px-2 py-0.5 rounded border border-indigo-200/80 dark:border-indigo-800">
                               {proj.projectNumber || proj.id.slice(0, 8)}
                             </div>
                             <Link
                               href={`/projects/${proj.id}`}
-                              className="font-bold text-xs text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors block line-clamp-2"
+                              className="font-black text-sm text-slate-950 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors block line-clamp-2 leading-snug"
                             >
                               {proj.name}
                             </Link>
                           </div>
 
                           {/* Client Company */}
-                          <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 font-medium truncate">
-                            <Building className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                          <div className="flex items-center gap-2 text-xs text-slate-800 dark:text-slate-200 font-bold truncate">
+                            <Building className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                             <span className="truncate">{proj.clientName}</span>
                           </div>
 
                           {/* Progress bar */}
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-[10px] font-mono font-bold">
-                              <span className="text-slate-500">Progress</span>
-                              <span className="text-indigo-600 dark:text-indigo-400">
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between text-xs font-mono font-extrabold">
+                              <span className="text-slate-800 dark:text-slate-200">Progress</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-black">
                                 {proj.progress || proj.progressPercentage || 0}%
                               </span>
                             </div>
-                            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border border-slate-300/80 dark:border-slate-600">
                               <div
-                                className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all"
+                                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all"
                                 style={{
                                   width: `${proj.progress || proj.progressPercentage || 0}%`,
                                 }}
@@ -931,17 +1252,63 @@ export function EmployeeProjectKanban({
                             </div>
                           </div>
 
+                          {/* Quick Stage Dropdown & Quick Complete Button */}
+                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs gap-2">
+                            <span className="text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 shrink-0">
+                              <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                              <span>Stage:</span>
+                            </span>
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+                              <select
+                                value={
+                                  proj.status === "IN_PROGRESS" || proj.status === "ACTIVE" || proj.status === "CURRENT"
+                                    ? "IN_PROGRESS"
+                                    : proj.status === "ON_HOLD" || proj.status === "PAUSED" || proj.status === "BLOCKED" || proj.status === "REVISION"
+                                    ? "ON_HOLD"
+                                    : proj.status === "INCOMPLETE" || proj.status === "DROPPED" || proj.status === "CANCELLED"
+                                    ? "INCOMPLETE"
+                                    : proj.status === "COMPLETED" || proj.status === "DONE" || proj.status === "WON" || proj.status === "DELIVERED"
+                                    ? "COMPLETED"
+                                    : "PLANNING"
+                                }
+                                onChange={(e) => handleDropProject(proj.id, e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 rounded-xl px-2 py-1 text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer truncate max-w-[130px] shadow-2xs"
+                                title="Change project stage"
+                              >
+                                <option value="PLANNING">📋 Planning</option>
+                                <option value="IN_PROGRESS">⚡ Current</option>
+                                <option value="ON_HOLD">🔄 Revision</option>
+                                <option value="INCOMPLETE">⚠️ Incomplete</option>
+                                <option value="COMPLETED">✅ Complete</option>
+                              </select>
+                              {!isProjComplete && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDropProject(proj.id, "COMPLETED");
+                                  }}
+                                  className="px-2 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-2xs transition-all shrink-0 flex items-center gap-1"
+                                  title="Mark project stage as Complete"
+                                >
+                                  <span>✓ Complete</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
                           {/* Assignee Selection Dropdown on Project Card */}
-                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px] gap-2">
-                            <span className="text-slate-500 font-semibold text-[10px] flex items-center gap-1 shrink-0">
-                              <User className="w-3 h-3 text-indigo-500" />
+                          <div className="flex items-center justify-between text-xs gap-2">
+                            <span className="text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 shrink-0">
+                              <User className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                               <span>Assign:</span>
                             </span>
                             <select
                               value={proj.assignedEmployeeId || selectedEmployee?.id || ""}
                               onChange={(e) => handleReassignProject(proj.id, e.target.value)}
                               onClick={(e) => e.stopPropagation()}
-                              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-800 dark:text-slate-200 outline-none cursor-pointer max-w-[140px] truncate"
+                              className="bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 rounded-xl px-2 py-1 text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer max-w-[145px] truncate shadow-2xs"
                               title="Reassign to developer"
                             >
                               <option value="" disabled>-- Developer --</option>
@@ -954,23 +1321,103 @@ export function EmployeeProjectKanban({
                           </div>
 
                           {/* Tasks summary & Deadline */}
-                          <div className="flex items-center justify-between text-[10px] font-mono text-slate-500">
-                            <span className="flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                          <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-800 dark:text-slate-200 bg-slate-100/90 dark:bg-slate-800/90 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                            <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-extrabold">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                               <span>{proj.completedTasks}/{proj.totalTasks} Tasks</span>
                             </span>
 
-                            <span>{proj.targetDeadline || "No Deadline"}</span>
+                            <span className="text-slate-700 dark:text-slate-300 font-semibold">{proj.targetDeadline || "No Deadline"}</span>
                           </div>
+
+                          {/* Project Tasks Quick List (If tasks exist and assigned to employee) */}
+                          {(() => {
+                            const currentEmpId = (session?.user as any)?.employeeId;
+                            const currentEmpName = session?.user?.name;
+                            const cardTasks = isEmployee
+                              ? (proj.tasks || []).filter((tsk: any) => {
+                                  return (
+                                    (currentEmpId && (tsk.assignedToId === currentEmpId || tsk.assignedTo?.id === currentEmpId)) ||
+                                    (currentEmpName && (tsk.assignee === currentEmpName || tsk.assignedTo?.name === currentEmpName))
+                                  );
+                                })
+                              : (proj.tasks || []);
+
+                            if (cardTasks.length === 0) return null;
+
+                            return (
+                              <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 space-y-1.5">
+                                <div className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                                  {isEmployee ? "My Tasks:" : "Quick Tasks:"}
+                                </div>
+                                <div className="space-y-1 max-h-32 overflow-y-auto pr-0.5">
+                                  {cardTasks.slice(0, 5).map((tsk: any) => {
+                                  const tskDone = tsk.status === "COMPLETED" || tsk.status === "DONE";
+                                  return (
+                                    <div
+                                      key={tsk.id}
+                                      className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-1.5 text-xs font-semibold"
+                                    >
+                                      <span
+                                        className={`truncate font-bold flex-1 ${
+                                          tskDone ? "line-through text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"
+                                        }`}
+                                      >
+                                        {tsk.title}
+                                      </span>
+                                      <div className="flex items-center gap-1.5 shrink-0">
+                                        <select
+                                          value={
+                                            tskDone
+                                              ? "COMPLETED"
+                                              : tsk.status === "INCOMPLETE"
+                                              ? "INCOMPLETE"
+                                              : tsk.status === "REVISION" || tsk.status === "ON_HOLD"
+                                              ? "REVISION"
+                                              : tsk.status === "CURRENT" || tsk.status === "IN_PROGRESS"
+                                              ? "CURRENT"
+                                              : "PLANNING"
+                                          }
+                                          onChange={(e) => handleUpdateTaskFromKanban(proj.id, tsk.id, e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-1.5 py-0.5 text-[10px] font-bold outline-none cursor-pointer text-slate-900 dark:text-white"
+                                        >
+                                          <option value="PLANNING">Planning</option>
+                                          <option value="CURRENT">Current</option>
+                                          <option value="REVISION">Revision</option>
+                                          <option value="INCOMPLETE">Incomplete</option>
+                                          <option value="COMPLETED">Complete</option>
+                                        </select>
+                                        {!tskDone && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleUpdateTaskFromKanban(proj.id, tsk.id, "COMPLETED");
+                                            }}
+                                            className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-2xs hover:bg-emerald-500 active:scale-95 transition-all"
+                                            title="Mark task complete"
+                                          >
+                                            ✓
+                                          </button>
+                                        )}
+                                      </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Action Footer */}
                           <div className="pt-1">
                             <Link
                               href={`/projects/${proj.id}`}
-                              className="w-full py-1.5 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-300 font-bold text-[11px] transition-colors flex items-center justify-center gap-1.5"
+                              className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-98 text-white font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
                             >
                               <span>Open Workspace</span>
-                              <ArrowRight className="w-3 h-3" />
+                              <ArrowRight className="w-3.5 h-3.5" />
                             </Link>
                           </div>
                         </div>
@@ -982,6 +1429,8 @@ export function EmployeeProjectKanban({
             );
           })}
         </div>
+          </>
+        )}
       </div>
 
       {/* Assign Developer Modal */}
@@ -1017,32 +1466,60 @@ export function EmployeeProjectKanban({
                 Role in Project *
               </label>
               <select
-                value={assignRole}
-                onChange={(e) => setAssignRole(e.target.value)}
+                value={isCustomRole ? "__CUSTOM__" : assignRole}
+                onChange={(e) => {
+                  if (e.target.value === "__CUSTOM__") {
+                    setIsCustomRole(true);
+                  } else {
+                    setIsCustomRole(false);
+                    setAssignRole(e.target.value);
+                  }
+                }}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium"
               >
-                <option value="TM">TM (Tech Lead / Project Lead)</option>
-                <option value="DEVELOPER">DEVELOPER (Fullstack Developer)</option>
-                <option value="FRONTEND">FRONTEND DEVELOPER</option>
-                <option value="BACKEND">BACKEND DEVELOPER</option>
-                <option value="UI_UX">UI / UX DESIGNER</option>
-                <option value="QA">QA / TEST ENGINEER</option>
-                <option value="MEMBER">TEAM MEMBER</option>
+                {availableRoles.map((r) => (
+                  <option key={r} value={r}>
+                    {r === "TM" ? "TM (Tech Lead / Project Lead)" : r}
+                  </option>
+                ))}
+                <option value="__CUSTOM__">✨ + Create Custom Role...</option>
               </select>
+
+              {isCustomRole && (
+                <div className="mt-2 space-y-1">
+                  <label className="text-slate-700 dark:text-slate-300 font-semibold block text-[11px]">
+                    Enter Custom Role Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={customRoleInput}
+                    onChange={(e) => setCustomRoleInput(e.target.value)}
+                    placeholder="e.g. SEO Specialist, Consultant..."
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-indigo-300 dark:border-indigo-600 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium text-xs"
+                    autoFocus
+                    required
+                  />
+                  <p className="text-[10px] text-indigo-600 dark:text-indigo-400">
+                    This custom role will be created and saved for admin/sub-admin to use.
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div>
-              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">
-                Compensation (₹ INR, Optional)
-              </label>
-              <input
-                type="number"
-                value={assignCompensation}
-                onChange={(e) => setAssignCompensation(e.target.value)}
-                placeholder="e.g. 20000"
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
-              />
-            </div>
+            {!isEmployee && (
+              <div>
+                <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">
+                  Compensation (₹ INR, Optional)
+                </label>
+                <input
+                  type="number"
+                  value={assignCompensation}
+                  onChange={(e) => setAssignCompensation(e.target.value)}
+                  placeholder="e.g. 20000"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
+                />
+              </div>
+            )}
 
             <button
               type="submit"
@@ -1053,6 +1530,25 @@ export function EmployeeProjectKanban({
             </button>
           </form>
         </BottomSheet>
+      )}
+
+      {avatarModalEmployee && (
+        <AvatarUploadModal
+          isOpen={isAvatarModalOpen}
+          onClose={() => {
+            setIsAvatarModalOpen(false);
+            setAvatarModalEmployee(null);
+          }}
+          currentAvatarUrl={avatarModalEmployee.avatarUrl}
+          userName={avatarModalEmployee.name}
+          targetUserId={avatarModalEmployee.userId}
+          targetEmployeeId={avatarModalEmployee.id}
+          onSuccess={(newUrl) => {
+            avatarModalEmployee.avatarUrl = newUrl;
+            onRefresh();
+          }}
+          title={`Update Profile Photo for ${avatarModalEmployee.name}`}
+        />
       )}
     </div>
     </div>

@@ -70,7 +70,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES", "SUB_ADMIN"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -89,16 +89,41 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ success: false, error: "Project not found" }, { status: 404 });
     }
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
+    let employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id: employeeId },
+          { userId: employeeId },
+          { employeeIdCode: employeeId },
+        ],
+      },
       include: { user: true },
     });
+
+    if (!employee) {
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [{ id: employeeId }, { email: employeeId }],
+        },
+      });
+      if (user) {
+        const code = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
+        employee = await prisma.employee.create({
+          data: {
+            userId: user.id,
+            employeeIdCode: code,
+            skillsJson: "[]",
+          },
+          include: { user: true },
+        });
+      }
+    }
 
     if (!employee) {
       return NextResponse.json({ success: false, error: "Employee not found" }, { status: 404 });
     }
 
-    const role = roleInProject || "DEVELOPER";
+    const role = roleInProject || "Web devloper";
 
     // Check if membership already exists
     const existing = await prisma.projectMembership.findFirst({
@@ -136,8 +161,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       });
     }
 
-    // If project was awaiting Sub Admin team allocation, activate it to IN_PROGRESS
-    if (project.status === "PENDING_SUB_ADMIN_ALLOCATION") {
+    // If project was awaiting Sub Admin team allocation or in DRAFT/PLANNING, activate it to IN_PROGRESS
+    if (
+      project.status === "PENDING_SUB_ADMIN_ALLOCATION" ||
+      project.status === "PENDING_ALLOCATION" ||
+      project.status === "DRAFT" ||
+      project.status === "PLANNING"
+    ) {
       await prisma.project.update({
         where: { id: project.id },
         data: { status: "IN_PROGRESS" },

@@ -20,7 +20,7 @@ export default function OwnerDashboardPage() {
       {/* Executive Page Header */}
       <PageHeader
         title="Good morning, Rahul"
-        description="Here's what needs your attention across Millionaire Digital CRM today."
+        description="Here's what needs your attention across Millionaire Dizital CRM today."
         badge="EXECUTIVE MODE"
         icon={<Crown className="w-7 h-7 text-amber-500 dark:text-amber-400" />}
         actions={

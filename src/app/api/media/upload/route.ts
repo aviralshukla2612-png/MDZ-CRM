@@ -44,15 +44,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Enforce centralized max file size limit (default 1024MB = 1GB)
-    const maxMb = parseInt(process.env.MAX_MEDIA_FILE_SIZE_MB || "1024", 10);
+    // 1. Enforce per-file upload limit (10 GB = 10240 MB)
+    const maxMb = parseInt(process.env.MAX_MEDIA_FILE_SIZE_MB || "10240", 10);
     const maxBytes = maxMb * 1024 * 1024;
     if (file.size > maxBytes) {
-      const limitDisplay = maxMb >= 1024 ? `${(maxMb / 1024).toFixed(1)}GB` : `${maxMb}MB`;
+      const limitDisplay = maxMb >= 1024 ? `${(maxMb / 1024).toFixed(0)} GB` : `${maxMb} MB`;
       return NextResponse.json(
         {
           success: false,
-          error: `File size exceeds the maximum allowed limit of ${limitDisplay}.`,
+          error: `File size exceeds the maximum allowed upload limit of ${limitDisplay}.`,
+        },
+        { status: 413 }
+      );
+    }
+
+    // 2. Enforce 10 GB Total Drive Storage Quota across all files
+    const TOTAL_DRIVE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB (10,737,418,240 bytes)
+    const currentStorage = await prisma.mediaFile.aggregate({
+      _sum: { fileSize: true },
+    });
+    const currentTotalBytes = currentStorage._sum.fileSize || 0;
+
+    if (currentTotalBytes + file.size > TOTAL_DRIVE_QUOTA_BYTES) {
+      const usedGb = (currentTotalBytes / (1024 * 1024 * 1024)).toFixed(2);
+      const incomingGb = (file.size / (1024 * 1024 * 1024)).toFixed(2);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Google Drive storage quota exceeded! Total drive capacity is limited to 10.0 GB (Currently using ${usedGb} GB, Uploading: ${incomingGb} GB). Please delete older files to free up space.`,
         },
         { status: 413 }
       );

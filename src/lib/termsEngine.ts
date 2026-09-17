@@ -7,7 +7,7 @@ export const DEFAULT_CLIENT_TERMS_VERSION = "v1.0";
 
 export const DEFAULT_EMPLOYEE_TERMS_CONTENT = `
 1. ACCEPTANCE OF TERMS
-By accessing and using MDZ OS as an employee of Millionaire Digital, you agree to comply with all company operational policies, data security guidelines, and internal governance rules set forth in this agreement.
+By accessing and using MDZ OS as an employee of Millionaire Dizital, you agree to comply with all company operational policies, data security guidelines, and internal governance rules set forth in this agreement.
 
 2. CONFIDENTIALITY AND DATA PROTECTION
 Employees must maintain strict confidentiality regarding all client details, financial figures, lead sources, and intellectual property stored within MDZ OS. Unauthorized export or disclosure of system data is strictly prohibited.
@@ -21,16 +21,16 @@ Employees are responsible for maintaining the confidentiality of their login cre
 
 export const DEFAULT_CLIENT_TERMS_CONTENT = `
 1. ACCEPTANCE OF SERVICE TERMS
-By accessing the Millionaire Digital CRM Client Portal, you confirm authorization to act on behalf of your organization and agree to these terms governing project tracking, milestone reviews, and digital deliverables.
+By accessing the Millionaire Dizital CRM Client Portal, you confirm authorization to act on behalf of your organization and agree to these terms governing project tracking, milestone reviews, and digital deliverables.
 
 2. INTELLECTUAL PROPERTY & DELIVERABLES
-All software source code, designs, and technical documentation generated during project execution remain the property of Millionaire Digital until applicable contract milestones and payment terms are fully satisfied.
+All software source code, designs, and technical documentation generated during project execution remain the property of Millionaire Dizital until applicable contract milestones and payment terms are fully satisfied.
 
 3. COMMUNICATION & REVISION SCOPE
 Project requests, change requests, and discussion feedback submitted through MDZ OS will serve as official project records. Change requests outside original contract scope may incur timeline and budget adjustments.
 
 4. TERMINATION AND PORTAL ACCESS
-Millionaire Digital reserves the right to suspend or terminate portal access in the event of contractual breach or unpaid invoices.
+Millionaire Dizital reserves the right to suspend or terminate portal access in the event of contractual breach or unpaid invoices.
 `.trim();
 
 /**

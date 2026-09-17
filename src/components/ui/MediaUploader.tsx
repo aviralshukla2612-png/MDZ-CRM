@@ -32,7 +32,7 @@ export function MediaUploader({
   category = "GENERAL",
   onUploadSuccess,
   allowedExtensions,
-  maxSizeMb = 1024, // Default 1GB (1024MB)
+  maxSizeMb = 10240, // Default 10GB (10240MB)
 }: MediaUploaderProps) {
   const { showToast } = useToast();
   const [isDragging, setIsDragging] = useState(false);

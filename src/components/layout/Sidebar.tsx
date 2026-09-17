@@ -52,9 +52,8 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Sales & Leads", href: "/leads", icon: <Target className="w-4 h-4" /> },
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
-          { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Project Kanban", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
-          { title: "Workload Kanban", href: "/workload", icon: <Layers className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Team", href: "/employees", icon: <UserCheck className="w-4 h-4" /> },
           { title: "Attendance", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
@@ -72,9 +71,8 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
         return [
           { title: "Overview", href: "/owner", icon: <LayoutDashboard className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
-          { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Project Kanban", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
-          { title: "Workload Kanban", href: "/workload", icon: <Layers className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Team", href: "/employees", icon: <UserCheck className="w-4 h-4" /> },
           { title: "Attendance", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
@@ -102,7 +100,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "EMPLOYEE":
         return [
           { title: "My Desk", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
-          { title: "My Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Project Kanban", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "My Finance", href: "/employee/finance", icon: <IndianRupee className="w-4 h-4" /> },
@@ -216,7 +214,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
         <div className="bg-gradient-to-br from-amber-50/80 to-stone-50 dark:from-amber-950/30 dark:to-stone-900/40 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 text-xs space-y-1.5 backdrop-blur-xl shadow-xs dark:shadow-xl">
           <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300">
             <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
-            <span className="font-extrabold tracking-tight">Millionaire Digital CRM</span>
+            <span className="font-extrabold tracking-tight">Millionaire Dizital CRM</span>
           </div>
           <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed font-normal">
             Enterprise CRM & Business Operating System.

@@ -23,10 +23,12 @@ import {
   HardDrive,
   Film,
   Sparkles,
+  Camera,
 } from "lucide-react";
 import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
 import { MediaUploader } from "@/components/ui/MediaUploader";
 import { MediaGallery } from "@/components/ui/MediaGallery";
+import { AvatarUploadModal } from "@/components/ui/AvatarUploadModal";
 
 export default function EmployeeDeskPage() {
   const { data: session } = useSession();
@@ -37,9 +39,19 @@ export default function EmployeeDeskPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
 
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (session?.user) {
+      setPhotoUrl((session.user as any)?.avatarUrl || null);
+    }
+  }, [session]);
+
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("MEDIUM");
+  const [newTaskStatus, setNewTaskStatus] = useState("PLANNING");
   const [submittingTask, setSubmittingTask] = useState(false);
 
   // Daily Progress Update Modal state
@@ -82,24 +94,47 @@ export default function EmployeeDeskPage() {
     return "Good evening";
   };
 
-  // Derived Task Metrics across all assigned projects
+  // Derived Task Metrics across all assigned projects - strictly filtered to tasks assigned to this employee
+  const currentEmpId = (session?.user as any)?.employeeId;
+  const currentEmpName = session?.user?.name;
+
   const allTasks = projects.flatMap((p) =>
-    (p.tasks || []).map((t: any) => ({ ...t, projectId: p.id, projectName: p.name }))
+    (p.tasks || [])
+      .filter((t: any) => {
+        if (!currentEmpId && !currentEmpName) return true;
+        return (
+          (currentEmpId && (t.assignedToId === currentEmpId || t.assignedTo?.id === currentEmpId)) ||
+          (currentEmpName && (t.assignee === currentEmpName || t.assignedTo?.name === currentEmpName))
+        );
+      })
+      .map((t: any) => ({ ...t, projectId: p.id, projectName: p.name }))
   );
   const activeTasks = allTasks.filter((t) => t.status !== "ARCHIVED");
   const completedCount = activeTasks.filter((t) => t.status === "COMPLETED" || t.status === "DONE").length;
-  const inProgressCount = activeTasks.filter((t) => t.status === "IN_PROGRESS").length;
-  const todoCount = activeTasks.filter((t) => t.status === "TODO").length;
+  const inProgressCount = activeTasks.filter((t) => t.status === "IN_PROGRESS" || t.status === "CURRENT").length;
+  const revisionCount = activeTasks.filter((t) => t.status === "REVISION" || t.status === "ON_HOLD").length;
+  const planningCount = activeTasks.filter((t) => t.status === "PLANNING" || t.status === "TODO").length;
   const totalTasksCount = activeTasks.length;
   const overallPercentage = totalTasksCount === 0 ? 0 : Math.round((completedCount / totalTasksCount) * 100);
 
-  const activeWorkTask = activeTasks.find((t) => t.status === "IN_PROGRESS") || activeTasks[0] || null;
+  const activeWorkTask = activeTasks.find((t) => t.status === "IN_PROGRESS" || t.status === "CURRENT") || activeTasks[0] || null;
 
-  const handleToggleStatus = async (projectId: string, taskId: string, currentStatus: string) => {
-    let nextStatus = "IN_PROGRESS";
-    if (currentStatus === "TODO") nextStatus = "IN_PROGRESS";
-    else if (currentStatus === "IN_PROGRESS") nextStatus = "COMPLETED";
-    else if (currentStatus === "COMPLETED" || currentStatus === "DONE") nextStatus = "TODO";
+  const handleToggleStatus = async (projectId: string, taskId: string, explicitStatusOrCurrent: string) => {
+    let nextStatus = explicitStatusOrCurrent;
+    const s = explicitStatusOrCurrent.toUpperCase();
+
+    // If passed current status rather than target status, cycle forward
+    if (s === "TODO" || s === "PLANNING") {
+      nextStatus = "CURRENT";
+    } else if (s === "CURRENT" || s === "IN_PROGRESS") {
+      nextStatus = "REVISION";
+    } else if (s === "REVISION" || s === "ON_HOLD") {
+      nextStatus = "COMPLETED";
+    } else if (s === "COMPLETED" || s === "DONE") {
+      nextStatus = "PLANNING";
+    } else {
+      nextStatus = explicitStatusOrCurrent;
+    }
 
     try {
       const res = await fetch(`/mdz-crm/api/projects/${projectId}/tasks/${taskId}`, {
@@ -110,6 +145,26 @@ export default function EmployeeDeskPage() {
       const json = await res.json();
       if (json.success) {
         showToast(`✓ Task updated to ${nextStatus}`, "success");
+        fetchEmployeeProjects();
+      } else {
+        showToast(json.error || "Failed to update task", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error updating task status", "error");
+    }
+  };
+
+  const handleSetTaskStatus = async (projectId: string, taskId: string, targetStatus: string) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/projects/${projectId}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: targetStatus }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Task moved to ${targetStatus}`, "success");
         fetchEmployeeProjects();
       } else {
         showToast(json.error || "Failed to update task", "error");
@@ -132,13 +187,14 @@ export default function EmployeeDeskPage() {
         body: JSON.stringify({
           title: newTaskTitle.trim(),
           priority: newTaskPriority,
-          status: "TODO",
+          status: newTaskStatus,
         }),
       });
       const json = await res.json();
       if (json.success) {
         showToast(`✓ Task added to project stack`, "success");
         setNewTaskTitle("");
+        setNewTaskStatus("PLANNING");
         setIsTaskSheetOpen(false);
         fetchEmployeeProjects();
       } else {
@@ -206,6 +262,64 @@ export default function EmployeeDeskPage() {
           </div>
         }
       />
+
+      {/* Employee Profile Quick Bar with Photo Upload */}
+      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div
+            className="relative group cursor-pointer shrink-0"
+            onClick={() => setIsPhotoModalOpen(true)}
+            title="Click to change your profile photo"
+          >
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-indigo-200 dark:border-indigo-800 shadow-md flex items-center justify-center bg-gradient-to-tr from-indigo-600 to-purple-600 group-hover:scale-105 transition-transform">
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt={session?.user?.name || "Employee"}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-xl sm:text-2xl font-black text-white">
+                  {(session?.user?.name || "E")[0]?.toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div
+              className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-md border-2 border-white dark:border-slate-900 transition-transform active:scale-95"
+              title="Change Photo"
+            >
+              <Camera className="w-3 h-3" />
+            </div>
+          </div>
+
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                {session?.user?.name || "Employee Desk"}
+              </h2>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                {(session?.user as any)?.employeeId || "ACTIVE"}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+              {session?.user?.email}
+            </p>
+            <div className="text-[11px] text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1">
+              <span>●</span>
+              <span>Engineering Workspace Desk</span>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsPhotoModalOpen(true)}
+          className="px-4 py-2.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 font-bold text-xs transition-all flex items-center justify-center gap-2 self-start sm:self-auto shadow-xs active:scale-95 cursor-pointer"
+        >
+          <Camera className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          <span>{photoUrl ? "Change Photo" : "Add Profile Photo"}</span>
+        </button>
+      </div>
 
       {/* Summary Metrics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -390,12 +504,14 @@ export default function EmployeeDeskPage() {
           ) : (
             activeTasks.map((task) => {
               const isDone = task.status === "COMPLETED" || task.status === "DONE";
-              const isInProgress = task.status === "IN_PROGRESS";
+              const isInProgress = task.status === "IN_PROGRESS" || task.status === "CURRENT";
+              const isRevision = task.status === "REVISION" || task.status === "ON_HOLD";
+              const isPlanning = !isDone && !isInProgress && !isRevision;
 
               return (
                 <div
                   key={task.id}
-                  className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center justify-between gap-3"
+                  className="p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                 >
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
@@ -419,9 +535,19 @@ export default function EmployeeDeskPage() {
                           ? "Q3: Distraction"
                           : "Q4: Down Time"}
                       </span>
+                      {isPlanning && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 font-mono">
+                          PLANNING
+                        </span>
+                      )}
                       {isInProgress && (
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-mono">
-                          IN PROGRESS
+                          CURRENT
+                        </span>
+                      )}
+                      {isRevision && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-mono">
+                          REVISION
                         </span>
                       )}
                       {isDone && (
@@ -436,33 +562,49 @@ export default function EmployeeDeskPage() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => handleToggleStatus(task.projectId, task.id, task.status)}
-                      className={`p-2 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 ${
+                    <select
+                      value={
                         isDone
-                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 border-emerald-200 dark:border-emerald-800"
+                          ? "COMPLETED"
+                          : isRevision
+                          ? "REVISION"
                           : isInProgress
-                          ? "bg-amber-50 dark:bg-amber-950/60 text-amber-600 border-amber-200 dark:border-amber-800"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 border-slate-200 dark:border-slate-700"
+                          ? "CURRENT"
+                          : "PLANNING"
+                      }
+                      onChange={(e) => handleSetTaskStatus(task.projectId, task.id, e.target.value)}
+                      className={`px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer outline-none ${
+                        isDone
+                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 border-emerald-200 dark:border-emerald-800"
+                          : isRevision
+                          ? "bg-purple-50 dark:bg-purple-950/60 text-purple-700 border-purple-200 dark:border-purple-800"
+                          : isInProgress
+                          ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 border-amber-200 dark:border-amber-800"
+                          : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 border-blue-200 dark:border-blue-800"
                       }`}
                     >
-                      {isDone ? (
-                        <>
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                          <span>✓ COMPLETED</span>
-                        </>
-                      ) : isInProgress ? (
-                        <>
-                          <Clock3 className="w-4 h-4 text-amber-600 animate-spin" />
-                          <span>IN PROGRESS</span>
-                        </>
-                      ) : (
-                        <>
-                          <Circle className="w-4 h-4 text-slate-400" />
-                          <span>TODO</span>
-                        </>
-                      )}
-                    </button>
+                      <option value="PLANNING">📋 Planning</option>
+                      <option value="CURRENT">⚡ Current</option>
+                      <option value="REVISION">🔄 Revision</option>
+                      <option value="COMPLETED">✅ Complete</option>
+                    </select>
+
+                    {!isDone ? (
+                      <button
+                        type="button"
+                        onClick={() => handleSetTaskStatus(task.projectId, task.id, "COMPLETED")}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5"
+                        title="Mark task complete"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Complete</span>
+                      </button>
+                    ) : (
+                      <span className="px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Completed</span>
+                      </span>
+                    )}
                   </div>
                 </div>
               );
@@ -563,6 +705,20 @@ export default function EmployeeDeskPage() {
             </select>
           </div>
 
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">Initial Stage</label>
+            <select
+              value={newTaskStatus}
+              onChange={(e) => setNewTaskStatus(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none font-semibold text-xs"
+            >
+              <option value="PLANNING">📋 Planning</option>
+              <option value="CURRENT">⚡ Current</option>
+              <option value="REVISION">🔄 Revision</option>
+              <option value="COMPLETED">✅ Complete</option>
+            </select>
+          </div>
+
           <button
             type="submit"
             disabled={submittingTask}
@@ -655,6 +811,15 @@ export default function EmployeeDeskPage() {
           }}
         />
       )}
+
+      <AvatarUploadModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        currentAvatarUrl={photoUrl}
+        userName={session?.user?.name || "Employee"}
+        onSuccess={(newUrl) => setPhotoUrl(newUrl)}
+        title="Update Your Profile Photo"
+      />
     </div>
   );
 }

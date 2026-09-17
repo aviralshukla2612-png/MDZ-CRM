@@ -69,8 +69,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           companyName: company,
           email: lead.email || `contact-${Date.now()}@client.com`,
           phone: lead.mobile || "+91 98000 11111",
-          totalBusiness: lead.expectedValue || lead.estimatedBudget || 400000,
-          outstandingBalance: lead.expectedValue || lead.estimatedBudget || 400000,
+          totalBusiness: lead.expectedValue || lead.estimatedBudget || 0,
+          outstandingBalance: lead.expectedValue || lead.estimatedBudget || 0,
           createdById: actorId,
           contacts: {
             create: [
@@ -98,7 +98,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           projectNumber: uniquePrjCode,
           name: `${company} Core Platform Solution`,
           clientId: newClient.id,
-          contractValue: lead.expectedValue || lead.estimatedBudget || 400000,
+          contractValue: lead.expectedValue || lead.estimatedBudget || 0,
           status: "PENDING_SUB_ADMIN_ALLOCATION",
           priority: lead.priority || "MEDIUM",
           progressPercentage: 0,

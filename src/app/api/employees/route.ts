@@ -4,10 +4,28 @@ import { requireRole } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
 export async function GET() {
-  const authRes = await requireRole(["OWNER"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
+    // 1. Ensure all active users with activeRole EMPLOYEE, SUB_ADMIN, or SALES have an employee profile
+    const unlinkedUsers = await prisma.user.findMany({
+      where: {
+        activeRole: { in: ["EMPLOYEE", "SUB_ADMIN", "SALES"] },
+        employeeProfile: null,
+      },
+    });
+    for (const u of unlinkedUsers) {
+      const code = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
+      await prisma.employee.create({
+        data: {
+          userId: u.id,
+          employeeIdCode: code,
+          skillsJson: "[]",
+        },
+      });
+    }
+
     const employees = await prisma.employee.findMany({
       where: {
         user: {
@@ -47,7 +65,7 @@ export async function GET() {
       const isPunchedIn = todayAtt.some((a) => a.punchIn && !a.punchOut);
       const isShiftCompleted = todayAtt.some((a) => a.punchIn && a.punchOut);
 
-      const activeMemberships = e.memberships || [];
+      const activeMemberships = (e.memberships || []).filter((m) => m.project != null);
       const assignedProjects = activeMemberships.map((m) => {
         const p = m.project;
         const totalTasks = p.tasks?.filter((t: any) => t.status !== "ARCHIVED").length || 0;
@@ -82,12 +100,14 @@ export async function GET() {
 
       return {
         id: e.id,
+        userId: e.userId,
         employeeId: e.employeeIdCode,
-        name: e.user.name,
-        email: e.user.email,
-        role: e.user.activeRole,
-        designation: e.user.designation,
-        department: e.user.department,
+        name: e.user?.name || "Employee",
+        email: e.user?.email || "",
+        avatarUrl: e.user?.avatarUrl || null,
+        role: e.user?.activeRole || "EMPLOYEE",
+        designation: e.user?.designation || "Developer",
+        department: e.user?.department || "Engineering",
         phone: "+91 98980 000" + (e.employeeIdCode.length > 3 ? e.employeeIdCode.slice(-2) : "01"),
         punchedIn: isPunchedIn,
         shiftCompleted: isShiftCompleted,
@@ -96,10 +116,19 @@ export async function GET() {
         currentProject: assignedProjects[0]?.name || e.workSessions[0]?.project?.name || "General Workspace",
         currentTask: e.workSessions[0]?.notes || "Focusing on active tasks",
         totalProjects: assignedProjects.length,
-        activeProjectsCount: assignedProjects.filter((p) => p.status === "IN_PROGRESS").length,
-        planningProjectsCount: assignedProjects.filter((p) => p.status === "PLANNING").length,
-        completedProjectsCount: assignedProjects.filter((p) => p.status === "COMPLETED").length,
-        onHoldProjectsCount: assignedProjects.filter((p) => p.status === "ON_HOLD").length,
+        activeProjectsCount: assignedProjects.filter((p) => (p.status || "").toUpperCase() === "IN_PROGRESS").length,
+        planningProjectsCount: assignedProjects.filter((p) => {
+          const s = (p.status || "").toUpperCase();
+          return s === "PLANNING" || s === "DRAFT" || s.includes("PENDING") || s.includes("ALLOCATION");
+        }).length,
+        completedProjectsCount: assignedProjects.filter((p) => {
+          const s = (p.status || "").toUpperCase();
+          return s === "COMPLETED" || s === "DONE" || s === "DELIVERED";
+        }).length,
+        onHoldProjectsCount: assignedProjects.filter((p) => {
+          const s = (p.status || "").toUpperCase();
+          return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED";
+        }).length,
         assignedProjects: assignedProjects,
         todayTimeline: e.workSessions.map((w) => ({
           id: w.id,

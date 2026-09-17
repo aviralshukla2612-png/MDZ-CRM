@@ -43,7 +43,7 @@ export function AIOwnerAssistant() {
             <Bot className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-extrabold text-stone-900 dark:text-stone-100 tracking-tight">MILLIONAIRE DIGITAL AI ASSISTANT</h2>
+            <h2 className="text-base font-extrabold text-stone-900 dark:text-stone-100 tracking-tight">MILLIONAIRE DIZITAL AI ASSISTANT</h2>
             <p className="text-xs text-stone-500 dark:text-stone-400">Natural language intelligence operating over company data.</p>
           </div>
         </div>
@@ -69,7 +69,7 @@ export function AIOwnerAssistant() {
           <div className="p-4 rounded-xl bg-gradient-to-br from-amber-50/90 to-yellow-50/40 dark:from-amber-950/50 dark:to-stone-900/60 border border-amber-200 dark:border-amber-800/60 text-xs text-stone-800 dark:text-stone-200 leading-relaxed font-sans shadow-xs">
             <div className="font-bold text-amber-900 dark:text-amber-300 mb-1 flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>Millionaire Digital AI Executive Brief</span>
+              <span>Millionaire Dizital AI Executive Brief</span>
             </div>
             {response}
           </div>
@@ -86,7 +86,7 @@ export function AIOwnerAssistant() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ask Millionaire Digital AI (e.g. 'What should I focus on today?', 'Who is working on ABC?')"
+            placeholder="Ask Millionaire Dizital AI (e.g. 'What should I focus on today?', 'Who is working on ABC?')"
             className="flex-1 bg-stone-50 dark:bg-stone-900/80 border border-amber-200/80 dark:border-amber-900/40 rounded-lg px-3.5 py-2 text-xs text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none focus:border-amber-500 transition-all"
           />
           <button

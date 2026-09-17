@@ -58,14 +58,14 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
           contactPerson: c.contacts?.[0]?.name || "Primary Contact",
           email: c.email,
           phone: c.phone,
-          industry: "E-Commerce & Technology", // Placeholder until added to DB
-          totalBilling: c.totalBusiness || 0,
-          paidBilling: c.totalBusiness - c.outstandingBalance,
-          pendingBilling: c.outstandingBalance || 0,
-          status: "ACTIVE",
-          portalToken: `token-${c.id}`, // Placeholder until Portal token model is joined
-          invoices: c.invoices || [],
-          notes: c.notes ? [{ id: "n1", author: "Rahul MDZ", text: c.notes, time: "Aug 1" }] : [],
+          industry: c.industry || "General Client",
+          totalBilling: Number(c.totalBusiness) || 0,
+          paidBilling: Math.max(0, (Number(c.totalBusiness) || 0) - (Number(c.outstandingBalance) || 0)),
+          pendingBilling: Number(c.outstandingBalance) || 0,
+          status: c.status || "ACTIVE",
+          portalToken: c.portalTokens?.[0]?.token || c.id,
+          invoices: Array.isArray(c.invoices) ? c.invoices : [],
+          notes: c.notes ? [{ id: "n1", author: "Account Note", text: c.notes, time: "Initial Note" }] : [],
         };
         setClient(formattedClient);
         setLinkedProjects(c.projects || []);
@@ -260,73 +260,120 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
       {/* Tab 2: Linked Projects */}
       {activeTab === "projects" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {linkedProjects.map((proj) => (
-              <div
-                key={proj.id}
-                className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 flex flex-col justify-between"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold text-slate-400">{proj.id}</span>
-                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                      {proj.status}
-                    </span>
+          {linkedProjects.length === 0 ? (
+            <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
+              <FolderKanban className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No linked projects found</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Projects created for this client will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {linkedProjects.map((proj) => (
+                <div
+                  key={proj.id}
+                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 flex flex-col justify-between"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono font-bold text-slate-400">{proj.projectNumber || proj.id}</span>
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        {proj.status}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-base text-slate-900 dark:text-slate-100">{proj.name}</h4>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">TM: <strong className="text-slate-800 dark:text-slate-200">{proj.tmName || "Unassigned"}</strong></div>
                   </div>
-                  <h4 className="font-bold text-base text-slate-900 dark:text-slate-100">{proj.name}</h4>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">TM: <strong className="text-slate-800 dark:text-slate-200">{proj.tmName}</strong></div>
-                </div>
 
-                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <div className="flex justify-between text-xs font-bold">
-                    <span className="text-slate-600 dark:text-slate-400">Weighted Progress</span>
-                    <span className="text-indigo-600 dark:text-indigo-400 font-mono">{proj.progress}%</span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full" style={{ width: `${proj.progress}%` }} />
-                  </div>
-                  <div className="pt-2 flex justify-end">
-                    <Link
-                      href={`/projects/${proj.id}`}
-                      className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs touch-target"
-                    >
-                      <span>Open Workspace</span>
-                      <FolderKanban className="w-3.5 h-3.5" />
-                    </Link>
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-slate-600 dark:text-slate-400">Weighted Progress</span>
+                      <span className="text-indigo-600 dark:text-indigo-400 font-mono">{proj.progressPercentage || proj.progress || 0}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full" style={{ width: `${proj.progressPercentage || proj.progress || 0}%` }} />
+                    </div>
+                    <div className="pt-2 flex justify-end">
+                      <Link
+                        href={`/projects/${proj.id}`}
+                        className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs touch-target"
+                      >
+                        <span>Open Workspace</span>
+                        <FolderKanban className="w-3.5 h-3.5" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Tab 3: Invoices */}
       {activeTab === "invoices" && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Issued Invoices Ledger</h3>
-          <div className="space-y-3 text-xs">
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">INV-2026-001 (Advance Payment)</div>
-                <div className="text-[11px] text-slate-500 dark:text-slate-400">Issued: Jul 01, 2026 • Paid via Bank Transfer</div>
-              </div>
-              <div className="text-right font-mono">
-                <div className="font-bold text-slate-900 dark:text-slate-100">₹1,00,000</div>
-                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">PAID</span>
-              </div>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">INV-2026-002 (Milestone 2 Signoff)</div>
-                <div className="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">Due: Jul 28, 2026 • 5 Days Overdue</div>
-              </div>
-              <div className="text-right font-mono">
-                <div className="font-bold text-slate-900 dark:text-slate-100">₹1,00,000</div>
-                <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">OVERDUE</span>
-              </div>
-            </div>
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Issued Invoices Ledger</h3>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+              {client.invoices?.length || 0} Invoices
+            </span>
           </div>
+
+          {(!client.invoices || client.invoices.length === 0) ? (
+            <div className="p-8 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-2">
+              <FileText className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto" />
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No invoices issued yet</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Invoices generated for this client will appear here with live payment statuses.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3 text-xs">
+              {client.invoices.map((inv: any) => {
+                const status = (inv.status || "UNPAID").toUpperCase();
+                const isPaid = status === "PAID";
+                const isOverdue = status === "OVERDUE";
+                const amount = Number(inv.grandTotal ?? inv.totalAmount ?? 0);
+                const issueDate = inv.issueDate ? new Date(inv.issueDate).toLocaleDateString() : (inv.createdAt ? new Date(inv.createdAt).toLocaleDateString() : "");
+                const dueDate = inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "";
+
+                return (
+                  <div
+                    key={inv.id}
+                    className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                        {inv.invoiceNumber}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        {issueDate && <span>Issued: {issueDate}</span>}
+                        {dueDate && <span> • Due: {dueDate}</span>}
+                      </div>
+                    </div>
+                    <div className="text-right font-mono">
+                      <div className="font-bold text-slate-900 dark:text-slate-100">
+                        ₹{amount.toLocaleString("en-IN")}
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold ${
+                          isPaid
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : isOverdue
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-amber-600 dark:text-amber-400"
+                        }`}
+                      >
+                        {status}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

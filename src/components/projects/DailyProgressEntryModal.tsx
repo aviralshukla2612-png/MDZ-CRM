@@ -110,6 +110,7 @@ export default function DailyProgressEntryModal({
         body: JSON.stringify({
           title: title.trim(),
           content: fullContent,
+          tasks: validPoints,
         }),
       });
 

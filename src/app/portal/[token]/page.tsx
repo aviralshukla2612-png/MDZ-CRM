@@ -95,8 +95,8 @@ export default async function ClientPortalPage({ params }: { params: { token: st
             E
           </div>
           <div>
-            <h1 className="text-lg font-black tracking-tight text-amber-600 dark:text-amber-400">MILLIONAIRE DIGITAL CLIENT PORTAL</h1>
-            <p className="text-xs text-stone-500 dark:text-stone-400">Millionaire Digital CRM • Verified Safe Token Session</p>
+            <h1 className="text-lg font-black tracking-tight text-amber-600 dark:text-amber-400">MILLIONAIRE DIZITAL CLIENT PORTAL</h1>
+            <p className="text-xs text-stone-500 dark:text-stone-400">Millionaire Dizital CRM • Verified Safe Token Session</p>
           </div>
         </div>
 

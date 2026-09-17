@@ -75,16 +75,22 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           role: user.activeRole,
           employeeId: user.employeeProfile?.id || undefined,
+          avatarUrl: user.avatarUrl || null,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.employeeId = user.employeeId;
+        token.avatarUrl = (user as any).avatarUrl || null;
+      }
+      if (trigger === "update" && session) {
+        if (session.avatarUrl !== undefined) token.avatarUrl = session.avatarUrl;
+        if (session.name !== undefined) token.name = session.name;
       }
       return token;
     },
@@ -93,6 +99,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.employeeId = token.employeeId as string | undefined;
+        (session.user as any).avatarUrl = token.avatarUrl as string | undefined;
       }
       return session;
     },

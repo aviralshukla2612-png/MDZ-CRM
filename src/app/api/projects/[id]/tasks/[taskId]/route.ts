@@ -114,6 +114,12 @@ export async function PATCH(
     if (typeof body.orderInt === "number") {
       updateData.orderInt = body.orderInt;
     }
+    if (body.deadline !== undefined) {
+      updateData.deadline = body.deadline ? new Date(body.deadline) : null;
+    }
+    if (body.startDate !== undefined) {
+      updateData.startDate = body.startDate ? new Date(body.startDate) : null;
+    }
 
     updateData.isMostImportant = finalIsMostImportant;
 

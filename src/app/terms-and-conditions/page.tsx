@@ -53,7 +53,7 @@ export default function TermsAndConditionsPage() {
             <section className="space-y-2">
               <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">2. Intellectual Property & Deliverables</h2>
               <p>
-                All software source code, designs, and documentation generated during project development remain the property of Millionaire Digital until applicable contract milestones and payment terms are fully satisfied.
+                All software source code, designs, and documentation generated during project development remain the property of Millionaire Dizital until applicable contract milestones and payment terms are fully satisfied.
               </p>
             </section>
 

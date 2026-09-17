@@ -36,9 +36,25 @@ export default function DriveStoragePage() {
   const [galleryScope, setGalleryScope] = useState<"ALL" | "GENERAL" | "PROJECT">("ALL");
   const [filterProjectId, setFilterProjectId] = useState<string>("");
 
+  // 10 GB Storage stats
+  const [storageStats, setStorageStats] = useState<any>(null);
+
+  const fetchStorageStats = async () => {
+    try {
+      const res = await fetch("/mdz-crm/api/media/stats");
+      const json = await res.json();
+      if (json.success && json.stats) {
+        setStorageStats(json.stats);
+      }
+    } catch (e) {
+      console.error("Failed to load storage statistics:", e);
+    }
+  };
+
   useEffect(() => {
     fetchUserProjects();
-  }, []);
+    fetchStorageStats();
+  }, [refreshKey]);
 
   const fetchUserProjects = async () => {
     try {
@@ -70,34 +86,82 @@ export default function DriveStoragePage() {
         icon={<Cloud className="w-7 h-7 text-indigo-600 dark:text-indigo-400 animate-pulse" />}
       />
 
-      {/* Cloud Storage Highlights Banner */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-amber-500/10 border border-indigo-200/60 dark:border-indigo-800/40 backdrop-blur-xl flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
-            <HardDrive className="w-6 h-6" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
-                Google Drive Storage Active
-              </h3>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-mono font-bold text-[10px]">
-                UP TO 1 GB / FILE
-              </span>
+      {/* Cloud Storage Highlights Banner & 10GB Quota Meter */}
+      <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-amber-500/10 border border-indigo-200/60 dark:border-indigo-800/40 backdrop-blur-xl space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <HardDrive className="w-6 h-6" />
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-              Supports <strong className="text-slate-800 dark:text-slate-200">Videos (MP4, MOV)</strong>, <strong className="text-slate-800 dark:text-slate-200">Images (PNG, JPG, SVG)</strong>, and <strong className="text-slate-800 dark:text-slate-200">Documents</strong> streamed directly to your company Drive root folder.
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+                  Google Drive Storage Active
+                </h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-bold text-[10px] border border-indigo-200 dark:border-indigo-800">
+                  10 GB TOTAL LIMIT
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-mono font-bold text-[10px] border border-emerald-200 dark:border-emerald-800">
+                  UP TO 10 GB / FILE
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                Supports <strong className="text-slate-800 dark:text-slate-200">Videos (MP4, MOV)</strong>, <strong className="text-slate-800 dark:text-slate-200">Images (PNG, JPG, SVG)</strong>, and <strong className="text-slate-800 dark:text-slate-200">Documents</strong> streamed directly to your company Drive root folder.
+              </p>
+            </div>
           </div>
+
+          <button
+            onClick={() => setShowUploader(!showUploader)}
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 flex items-center gap-2 transition-all active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{showUploader ? "Hide Uploader" : "Upload File / Video / Image"}</span>
+          </button>
         </div>
 
-        <button
-          onClick={() => setShowUploader(!showUploader)}
-          className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 flex items-center gap-2 transition-all active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>{showUploader ? "Hide Uploader" : "Upload File / Video / Image"}</span>
-        </button>
+        {/* Live 10 GB Storage Quota Meter */}
+        {storageStats && (
+          <div className="p-4 rounded-2xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
+            <div className="flex flex-wrap items-center justify-between text-xs font-mono font-bold">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500 dark:text-slate-400">Total Storage Used:</span>
+                <span className="text-indigo-600 dark:text-indigo-400 text-sm">
+                  {storageStats.usedGb} GB
+                </span>
+                <span className="text-slate-400">/ 10.0 GB Limit ({storageStats.percentageUsed}%)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-emerald-600 dark:text-emerald-400">
+                  {storageStats.remainingGb} GB Free
+                </span>
+                <span className="text-slate-400 text-[11px] font-sans">
+                  ({storageStats.fileCount} Files Stored)
+                </span>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  storageStats.isLimitReached
+                    ? "bg-rose-500"
+                    : storageStats.isNearLimit
+                    ? "bg-amber-500"
+                    : "bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500"
+                }`}
+                style={{ width: `${Math.max(2, storageStats.percentageUsed)}%` }}
+              />
+            </div>
+
+            {storageStats.isNearLimit && (
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold pt-1">
+                ⚠️ Warning: Drive storage is at {storageStats.percentageUsed}% of the 10 GB limit. Consider deleting unused large deliverables or files.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Dedicated Upload Drawer / Form */}
@@ -266,6 +330,7 @@ export default function DriveStoragePage() {
           entityType={galleryScope === "ALL" ? "ALL" : galleryScope}
           entityId={galleryScope === "PROJECT" && filterProjectId ? filterProjectId : "ALL"}
           allowDelete={true}
+          onDeleteSuccess={() => setRefreshKey((k) => k + 1)}
         />
       </div>
     </div>

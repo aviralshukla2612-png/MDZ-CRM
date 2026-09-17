@@ -47,6 +47,7 @@ interface MediaGalleryProps {
   initialCategory?: string;
   allowDelete?: boolean;
   className?: string;
+  onDeleteSuccess?: () => void;
 }
 
 export function MediaGallery({
@@ -55,6 +56,7 @@ export function MediaGallery({
   initialCategory = "ALL",
   allowDelete = true,
   className = "",
+  onDeleteSuccess,
 }: MediaGalleryProps) {
   const { showToast } = useToast();
   const [files, setFiles] = useState<MediaFileItem[]>([]);
@@ -110,6 +112,7 @@ export function MediaGallery({
         showToast("File permanently deleted from Google Drive.", "success");
         setFiles((prev) => prev.filter((f) => f.id !== file.id));
         if (previewFile?.id === file.id) setPreviewFile(null);
+        if (onDeleteSuccess) onDeleteSuccess();
       } else {
         throw new Error(data.error || "Failed to delete file.");
       }

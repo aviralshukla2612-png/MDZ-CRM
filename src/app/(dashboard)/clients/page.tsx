@@ -54,8 +54,22 @@ export default function ClientsPage() {
     }
   };
 
+  const handlePhoneChange = (val: string) => {
+    let digits = val.replace(/\D/g, "");
+    if (digits.length > 10 && digits.startsWith("91")) {
+      digits = digits.slice(2);
+    }
+    setPhone(digits.slice(0, 10));
+  };
+
   const handleCreateClient = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      showToast("✕ Phone number must be exactly 10 digits. Words and extra numbers are not allowed.", "error");
+      return;
+    }
+
     try {
       const res = await fetch("/mdz-crm/api/clients", {
         method: "POST",
@@ -64,7 +78,7 @@ export default function ClientsPage() {
           companyName,
           contactPerson,
           email,
-          phone,
+          phone: `+91 ${cleanPhone}`,
         }),
       });
       const json = await res.json();
@@ -115,7 +129,7 @@ export default function ClientsPage() {
         const contact = row["Contact Person"] || row["contactPerson"] || row["Contact"] || row["Name"];
         const rowEmail = row["Email"] || row["email"];
         const rowPhone = row["Phone"] || row["phone"] || row["Mobile"];
-        const billing = row["Total Billing"] || row["totalBilling"] || row["Billing"] || 500000;
+        const billing = row["Total Billing"] || row["totalBilling"] || row["Billing"] || 0;
 
         if (!company) continue;
 
@@ -127,7 +141,7 @@ export default function ClientsPage() {
             contactPerson: contact || "Unknown Contact",
             email: rowEmail || "client@company.com",
             phone: rowPhone || "+91 00000 00000",
-            totalBilling: Number(billing) || 500000,
+            totalBilling: Number(billing) || 0,
           }),
         });
         
@@ -198,7 +212,7 @@ export default function ClientsPage() {
               <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-xs">
                 <div>
                   <span className="text-slate-400 text-[10px] block font-sans uppercase font-semibold">Total Billing</span>
-                  <span className="font-bold font-mono text-slate-900 dark:text-slate-100">₹{(c.totalBilling || 400000).toLocaleString("en-IN")}</span>
+                  <span className="font-bold font-mono text-slate-900 dark:text-slate-100">₹{(c.totalBilling || 0).toLocaleString("en-IN")}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -271,15 +285,44 @@ export default function ClientsPage() {
               />
             </div>
             <div>
-              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Phone</label>
-              <input
-                type="text"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+91 98222 11000"
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all"
-              />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-slate-700 dark:text-slate-300 font-semibold">
+                  Phone <span className="text-red-500">*</span>
+                </label>
+                <span
+                  className={`text-[10px] font-mono font-bold ${
+                    phone.length === 10
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : phone.length > 0
+                      ? "text-amber-500"
+                      : "text-slate-400"
+                  }`}
+                >
+                  {phone.length}/10 digits
+                </span>
+              </div>
+              <div className="relative flex items-center">
+                <span className="absolute left-3 text-xs font-bold text-slate-400 dark:text-slate-500 font-mono select-none pointer-events-none">
+                  +91
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  required
+                  maxLength={10}
+                  value={phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  placeholder="9822211000"
+                  className={`w-full bg-slate-50 dark:bg-slate-950 border rounded-xl p-3 pl-12 text-slate-900 dark:text-slate-100 outline-none transition-all font-mono tracking-wider text-xs ${
+                    phone.length === 10
+                      ? "border-emerald-500/60 focus:border-emerald-500"
+                      : phone.length > 0
+                      ? "border-amber-500/60 focus:border-amber-500"
+                      : "border-slate-200 dark:border-slate-800 focus:border-indigo-500"
+                  }`}
+                />
+              </div>
             </div>
           </div>
           <button

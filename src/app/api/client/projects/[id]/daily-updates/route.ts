@@ -119,6 +119,50 @@ export async function POST(
       },
     });
 
+    // Auto-sync task highlights into Project tasks so progress bar and task stack update immediately
+    try {
+      const taskItems: string[] = [];
+      if (Array.isArray(body.tasks)) {
+        body.tasks.forEach((t: any) => {
+          if (typeof t === "string" && t.trim()) taskItems.push(t.trim());
+        });
+      }
+      if (taskItems.length === 0 && content) {
+        const lines = content.split("\n");
+        for (const line of lines) {
+          const match = line.match(/^\d+\.\s*(.+)$/);
+          if (match && match[1]?.trim() && !match[1].toLowerCase().startsWith("note:")) {
+            taskItems.push(match[1].trim());
+          }
+        }
+      }
+
+      if (taskItems.length > 0) {
+        const employee = await prisma.employee.findFirst({
+          where: { userId: userOrRes.id },
+        });
+
+        for (const taskText of taskItems) {
+          await prisma.task.create({
+            data: {
+              projectId,
+              title: taskText,
+              status: "COMPLETED",
+              completedAt: new Date(),
+              priority: "MEDIUM",
+              assignedToId: employee?.id || null,
+              createdById: userOrRes.id,
+            },
+          });
+        }
+      }
+
+      const { recalculateProjectProgress } = await import("@/lib/progressEngine");
+      await recalculateProjectProgress(projectId);
+    } catch (taskErr) {
+      console.error("[DailyUpdate] Error syncing tasks:", taskErr);
+    }
+
     // Notify Admins & Sub-Admins in real-time
     try {
       const project = await prisma.project.findUnique({

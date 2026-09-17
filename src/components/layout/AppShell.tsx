@@ -68,6 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           role: currentRole,
           designation: "Employee",
           employeeId: session?.user?.employeeId || undefined,
+          avatarUrl: (session?.user as any)?.avatarUrl || (session?.user as any)?.image || null,
           icon: null,
         }}
         onOpenSearch={() => setIsSearchOpen(true)}

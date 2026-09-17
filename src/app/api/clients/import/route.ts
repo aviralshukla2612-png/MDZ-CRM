@@ -24,8 +24,8 @@ export async function POST(req: Request) {
             companyName: item.companyName,
             email: item.email || "import@example.com",
             phone: item.phone || "0000000000",
-            totalBusiness: 250000,
-            outstandingBalance: 250000,
+            totalBusiness: Number(item.totalBusiness) || 0,
+            outstandingBalance: Number(item.outstandingBalance) || 0,
             createdById: authRes.id,
             contacts: {
               create: [

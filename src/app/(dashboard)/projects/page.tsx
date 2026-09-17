@@ -11,6 +11,7 @@ import {
   Trash2,
   Users,
   LayoutGrid,
+  Calendar,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -18,6 +19,7 @@ import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmployeeProjectKanban } from "@/components/projects/EmployeeProjectKanban";
+import { ProjectTaskCalendar } from "@/components/projects/ProjectTaskCalendar";
 
 export default function ProjectsDirectoryPage() {
   const { showToast } = useToast();
@@ -29,8 +31,13 @@ export default function ProjectsDirectoryPage() {
   const [clientName, setClientName] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState("HIGH");
+  const [deadline, setDeadline] = useState("");
+  const [editingDeadlineProject, setEditingDeadlineProject] = useState<any | null>(null);
+  const [newDeadlineVal, setNewDeadlineVal] = useState("");
+  const [updatingDeadline, setUpdatingDeadline] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [activeView, setActiveView] = useState<"kanban" | "directory">("kanban");
+  const [existingClients, setExistingClients] = useState<any[]>([]);
+  const [activeView, setActiveView] = useState<"directory" | "kanban" | "calendar">("directory");
   const [initialEmployeeId, setInitialEmployeeId] = useState<string | undefined>(undefined);
   const { data: session } = useSession();
 
@@ -39,19 +46,36 @@ export default function ProjectsDirectoryPage() {
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get("view");
       const empParam = params.get("employeeId");
-      if (viewParam === "directory") {
-        setActiveView("directory");
+      if (viewParam === "calendar") {
+        setActiveView("calendar");
       } else if (viewParam === "kanban" || viewParam === "workload") {
         setActiveView("kanban");
-      }
-      if (empParam) {
+      } else if (viewParam === "directory") {
+        setActiveView("directory");
+      } else if (empParam) {
         setInitialEmployeeId(empParam);
         setActiveView("kanban");
+      } else {
+        // By default in admin view, all company projects will come
+        setActiveView("directory");
       }
     }
     fetchProjects();
     fetchEmployees();
+    fetchClients();
   }, []);
+
+  const fetchClients = async () => {
+    try {
+      const res = await fetch("/mdz-crm/api/clients");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        setExistingClients(json.data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const fetchEmployees = async () => {
     try {
@@ -119,6 +143,31 @@ export default function ProjectsDirectoryPage() {
     }
   };
 
+  const handleSaveDeadline = async (dateVal: string | null) => {
+    if (!editingDeadlineProject) return;
+    try {
+      setUpdatingDeadline(true);
+      const res = await fetch(`/mdz-crm/api/projects/${editingDeadlineProject.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deadline: dateVal }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(dateVal ? `✓ Deadline set to ${new Date(dateVal).toLocaleDateString()}` : "✓ Deadline cleared", "success");
+        setEditingDeadlineProject(null);
+        fetchProjects();
+      } else {
+        showToast(json.error || "Failed to update deadline", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error updating project deadline", "error");
+    } finally {
+      setUpdatingDeadline(false);
+    }
+  };
+
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -131,16 +180,19 @@ export default function ProjectsDirectoryPage() {
           contractValue: 450000,
           priority,
           assigneeId: assigneeId || undefined,
+          deadline: deadline || undefined,
         }),
       });
       const json = await res.json();
       if (json.success) {
         showToast(`✓ Project "${projectName || "New Project"}" created successfully`, "success");
         fetchProjects();
+        fetchClients();
         setIsAddOpen(false);
         setProjectName("");
         setClientName("");
         setAssigneeId("");
+        setDeadline("");
         setPriority("HIGH");
       } else {
         showToast(json.error || "Failed to create project", "error");
@@ -154,13 +206,14 @@ export default function ProjectsDirectoryPage() {
   const pendingAllocationProjects = projectsList.filter(
     (p) => p.status === "PENDING_SUB_ADMIN_ALLOCATION" || p.status === "PENDING_ALLOCATION"
   );
-  const isAdminOrSubAdmin = session?.user?.role === "OWNER" || session?.user?.role === "SUB_ADMIN";
+  const isAdminOrSubAdmin = session?.user?.role === "OWNER" || session?.user?.role === "ADMIN" || session?.user?.role === "SUB_ADMIN";
+  const isEmployee = (session?.user as any)?.role === "EMPLOYEE";
 
   return (
     <div className="space-y-8 pb-16">
       <PageHeader
-        title="Projects Workspace"
-        description="Master directory of client projects, weighted execution progress, TMs, and health statuses."
+        title="Project Kanban"
+        description="Unified workspace for client project execution, developer workloads, TMs, and stage Kanban."
         badge={`${projectsList.length} ACTIVE PROJECTS`}
         icon={<FolderKanban className="w-7 h-7 text-indigo-600 dark:text-indigo-400 animate-pulse" />}
         actions={
@@ -217,9 +270,11 @@ export default function ProjectsDirectoryPage() {
                   <div className="text-[11px] text-slate-500 mt-0.5">
                     Client: <strong>{p.clientName}</strong>
                   </div>
-                  <div className="text-[11px] font-mono font-bold text-emerald-600 mt-0.5">
-                    ₹{Number(p.contractValue || 0).toLocaleString("en-IN")}
-                  </div>
+                  {!isEmployee && p.contractValue !== undefined && (
+                    <div className="text-[11px] font-mono font-bold text-emerald-600 mt-0.5">
+                      ₹{Number(p.contractValue || 0).toLocaleString("en-IN")}
+                    </div>
+                  )}
                 </div>
 
                 <Link
@@ -240,6 +295,18 @@ export default function ProjectsDirectoryPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-3">
         <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl">
           <button
+            onClick={() => setActiveView("directory")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeView === "directory"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <FolderKanban className="w-4 h-4" />
+            <span>All Company Projects ({projectsList.length})</span>
+          </button>
+
+          <button
             onClick={() => setActiveView("kanban")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeView === "kanban"
@@ -255,20 +322,25 @@ export default function ProjectsDirectoryPage() {
           </button>
 
           <button
-            onClick={() => setActiveView("directory")}
+            onClick={() => setActiveView("calendar")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeView === "directory"
+              activeView === "calendar"
                 ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
                 : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
             }`}
           >
-            <FolderKanban className="w-4 h-4" />
-            <span>All Projects Directory ({projectsList.length})</span>
+            <Calendar className="w-4 h-4" />
+            <span>Task Calendar</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-extrabold">
+              PREMIUM
+            </span>
           </button>
         </div>
 
         <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-          {activeView === "kanban" ? (
+          {activeView === "calendar" ? (
+            <span>Interactive calendar grid showing dated tasks, execution deadlines, and daily agenda.</span>
+          ) : activeView === "kanban" ? (
             <span>Select any developer on the left sidebar to inspect and manage their assigned projects.</span>
           ) : (
             <span>Showing all company project workspaces and live weighted execution progress.</span>
@@ -295,15 +367,98 @@ export default function ProjectsDirectoryPage() {
             />
           </div>
           <div>
-            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Client Company</label>
-            <input
-              type="text"
-              required
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="e.g. Zenith Tech Labs"
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all"
-            />
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-slate-700 dark:text-slate-300 font-semibold block">
+                Client Company *
+              </label>
+              {existingClients.length > 0 && (
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold font-mono">
+                  {existingClients.length} Existing Clients
+                </span>
+              )}
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                required
+                list="client-suggestions-list"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Select from client suggestions or type extra new client..."
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all pr-10 font-medium"
+              />
+              <datalist id="client-suggestions-list">
+                {existingClients.map((c) => (
+                  <option key={c.id} value={c.companyName}>
+                    {c.companyName} {c.clientCode ? `(${c.clientCode})` : ""}
+                  </option>
+                ))}
+              </datalist>
+              {clientName && (
+                <button
+                  type="button"
+                  onClick={() => setClientName("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold"
+                  title="Clear client name"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Existing Clients Suggestion Chips */}
+            {existingClients.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <span>Suggestions:</span>
+                  <span className="text-slate-500 font-normal lowercase">(click to select)</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                  {existingClients.map((c) => {
+                    const isSelected = clientName.trim().toLowerCase() === c.companyName.toLowerCase();
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => setClientName(c.companyName)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-all flex items-center gap-1.5 ${
+                          isSelected
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs scale-95"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-slate-200/80"
+                        }`}
+                      >
+                        <span className="text-xs">🏢</span>
+                        <span>{c.companyName}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Extra Client Creation Indicator */}
+            {clientName.trim() && (
+              <div className="mt-2">
+                {existingClients.some(
+                  (c) => c.companyName.toLowerCase() === clientName.trim().toLowerCase()
+                ) ? (
+                  <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 font-medium">
+                    <span>✓</span>
+                    <span>
+                      Existing Client: Linked to <strong>{clientName.trim()}</strong>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-[11px] text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 font-medium">
+                    <span>✨</span>
+                    <span>
+                      Extra / New Client: A new client record for &ldquo;<strong>{clientName.trim()}</strong>&rdquo; will be created automatically.
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div>
             <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Productivity Matrix Quadrant</label>
@@ -317,6 +472,21 @@ export default function ProjectsDirectoryPage() {
               <option value="MEDIUM">Q3: Distraction (Urgent & Not Important)</option>
               <option value="LOW">Q4: Down Time (Not Urgent & Not Important)</option>
             </select>
+          </div>
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5 flex items-center justify-between">
+              <span>Target Deadline</span>
+              <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500">Optional (Admin / Sub Admin)</span>
+            </label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Leave blank if no deadline is set yet. Automatic deadlines will not be selected.
+            </p>
           </div>
           {(session?.user as any)?.role !== "EMPLOYEE" && (
             <div>
@@ -344,8 +514,18 @@ export default function ProjectsDirectoryPage() {
         </form>
       </BottomSheet>
 
-      {/* Main Content: Either Odoo Kanban Split View or Directory List */}
-      {activeView === "kanban" ? (
+      {/* Main Content: Either Calendar, Odoo Kanban Split View or Directory List */}
+      {activeView === "calendar" ? (
+        <ProjectTaskCalendar
+          allProjects={projectsList}
+          employees={employees}
+          onRefresh={() => {
+            fetchProjects();
+            fetchEmployees();
+          }}
+          selectedEmployeeId={initialEmployeeId}
+        />
+      ) : activeView === "kanban" ? (
         <EmployeeProjectKanban
           employees={employees}
           allProjects={projectsList}
@@ -445,9 +625,30 @@ export default function ProjectsDirectoryPage() {
               </div>
 
               {/* Row 2: TM info, Deadline & Navigation Arrow */}
-              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1 font-medium">
-                <div>
-                  TM: <strong className="text-slate-800 dark:text-slate-200">{p.tmName || "Unassigned"}</strong> • Deadline <strong className="text-slate-800 dark:text-slate-200">{p.deadline || "TBD"}</strong>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400 pt-1 font-medium">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span>TM: <strong className="text-slate-800 dark:text-slate-200">{p.tmName || "Unassigned"}</strong></span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1.5">
+                    <span>Deadline:</span>
+                    <strong className="text-slate-800 dark:text-slate-200">{p.deadline || "No Deadline"}</strong>
+                    {isAdminOrSubAdmin && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setEditingDeadlineProject(p);
+                          setNewDeadlineVal(p.targetDeadline ? p.targetDeadline.slice(0, 10) : "");
+                        }}
+                        className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 transition-colors flex items-center gap-1"
+                        title="Set or update deadline"
+                      >
+                        <Calendar className="w-3 h-3" />
+                        <span>{p.deadline ? "Edit" : "Add Date"}</span>
+                      </button>
+                    )}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400 group-hover:translate-x-1 transition-transform">
@@ -469,6 +670,58 @@ export default function ProjectsDirectoryPage() {
         confirmText="Yes, delete project"
         isDestructive={true}
       />
+
+      {/* Admin & Sub Admin Quick Deadline Edit Modal */}
+      <BottomSheet
+        isOpen={!!editingDeadlineProject}
+        onClose={() => setEditingDeadlineProject(null)}
+        title="Manage Project Deadline"
+        subtitle={`Set or update target deadline for ${editingDeadlineProject?.name || "Project"}`}
+      >
+        <div className="space-y-4 text-xs">
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">
+              Target Deadline Date
+            </label>
+            <input
+              type="date"
+              value={newDeadlineVal}
+              onChange={(e) => setNewDeadlineVal(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium text-sm"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Select a date and click Save, or Clear to remove the deadline completely.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="button"
+              disabled={updatingDeadline || !newDeadlineVal}
+              onClick={() => handleSaveDeadline(newDeadlineVal)}
+              className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
+            >
+              {updatingDeadline ? "Saving..." : "Save Deadline"}
+            </button>
+            {editingDeadlineProject?.deadline && (
+              <button
+                type="button"
+                disabled={updatingDeadline}
+                onClick={() => handleSaveDeadline(null)}
+                className="py-3 px-4 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold text-xs transition-all disabled:opacity-50"
+              >
+                Clear Deadline
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setEditingDeadlineProject(null)}
+              className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 }

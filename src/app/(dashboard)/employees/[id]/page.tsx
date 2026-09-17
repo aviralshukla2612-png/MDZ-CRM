@@ -44,7 +44,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
   const [holidays, setHolidays] = useState<any[]>([]);
 
   React.useEffect(() => {
-    fetch(`/mdz-crm/api/holidays?year=${selectedYear}`)
+    fetch(`/mdz-crm/api/holidays?year=${selectedYear}`, { cache: "no-store" })
       .then((res) => res.json())
       .then((json) => {
         if (json.success) setHolidays(json.data || []);
@@ -103,21 +103,34 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
     const halfDaysCount = monthlyAtts.filter((a: any) => a.status === "HALF_DAY" || (a.totalMinutes > 0 && a.totalMinutes < 240)).length;
 
     const daysInMonthCount = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-    let weekendsCount = 0;
+    
+    // Only Sunday is weekly day off (Saturday is a working day)
+    const sundayDaysSet = new Set<number>();
     for (let day = 1; day <= daysInMonthCount; day++) {
       const dayOfWeek = new Date(selectedYear, selectedMonth, day).getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        weekendsCount++;
+      if (dayOfWeek === 0) {
+        sundayDaysSet.add(day);
       }
     }
+    const sundaysCount = sundayDaysSet.size;
 
+    // Filter official company holidays dynamically for selected month and year
     const monthlyHolidays = holidays.filter((h: any) => {
+      if (!h.date) return false;
       const d = new Date(h.date);
       return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
     });
 
-    const daysOffStr = `${weekendsCount + monthlyHolidays.length} Days Off`;
-    const daysOffSubtext = `${monthlyHolidays.length} Official Holidays + ${weekendsCount} Weekends`;
+    // Merge Sundays and Official Holidays into a unique set (prevents double-counting if a holiday falls on a Sunday)
+    const uniqueDaysOffSet = new Set<number>(sundayDaysSet);
+    monthlyHolidays.forEach((h: any) => {
+      const d = new Date(h.date);
+      uniqueDaysOffSet.add(d.getDate());
+    });
+
+    const totalDaysOff = uniqueDaysOffSet.size;
+    const daysOffStr = `${totalDaysOff} Day${totalDaysOff === 1 ? "" : "s"} Off`;
+    const daysOffSubtext = `${monthlyHolidays.length} Official Holiday${monthlyHolidays.length === 1 ? "" : "s"} + ${sundaysCount} Sunday${sundaysCount === 1 ? "" : "s"}`;
 
     let sumPunchInMins = 0;
     let cntPunchIn = 0;
@@ -230,7 +243,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
     }
 
     return cells;
-  }, [employee, selectedMonth, selectedYear]);
+  }, [employee, selectedMonth, selectedYear, holidays]);
 
   // Project Compensation Modal State
   const [isCompModalOpen, setIsCompModalOpen] = useState(false);

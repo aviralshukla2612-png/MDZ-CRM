@@ -11,6 +11,7 @@ import {
   Clock,
   Building,
   Plus,
+  Calendar,
 } from "lucide-react";
 
 export function OwnerWorkloadSection() {
@@ -56,10 +57,17 @@ export function OwnerWorkloadSection() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/workload"
+            href="/projects?view=calendar"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors border border-slate-200/80 dark:border-slate-700/80"
+          >
+            <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Task Calendar</span>
+          </Link>
+          <Link
+            href="/projects?view=kanban"
             className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors"
           >
-            <span>Open Workload Kanban</span>
+            <span>Open Project Kanban</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -156,11 +164,11 @@ export function OwnerWorkloadSection() {
                     {emp.punchedIn ? "🟢 Working Now" : "⚪ Offline"}
                   </span>
                   <Link
-                    href={`/workload`}
+                    href={`/projects?view=kanban&employeeId=${emp.id}`}
                     className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                   >
                     <span>View Kanban</span>
-                    <ArrowRight className="w-3 h-3" />
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
               </div>

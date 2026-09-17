@@ -6,8 +6,10 @@ import { clientSchema } from "@/lib/validations";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"]);
   if (authRes instanceof NextResponse) return authRes;
+
+  const isEmployee = authRes.activeRole === "EMPLOYEE";
 
   try {
     const clients = await prisma.client.findMany({
@@ -26,16 +28,16 @@ export async function GET() {
       contactPerson: c.contacts[0]?.name || "Primary Contact",
       email: c.email,
       phone: c.phone,
-      industry: "E-Commerce & Technology",
-      totalBilling: c.totalBusiness,
-      paidBilling: c.totalBusiness - c.outstandingBalance,
-      pendingBilling: c.outstandingBalance,
+      industry: (c as any).industry || "Client Account",
+      totalBilling: isEmployee ? undefined : (Number(c.totalBusiness) || 0),
+      paidBilling: isEmployee ? undefined : Math.max(0, (Number(c.totalBusiness) || 0) - (Number(c.outstandingBalance) || 0)),
+      pendingBilling: isEmployee ? undefined : (Number(c.outstandingBalance) || 0),
       status: "ACTIVE",
-      portalToken: `token-${c.id}`,
+      portalToken: isEmployee ? undefined : `token-${c.id}`,
       activeProjects: c.projects.map((p) => p.id),
       completedProjects: [],
-      invoices: c.invoices.map((i) => i.id),
-      notes: c.notes ? [{ id: "n1", author: "Rahul MDZ", text: c.notes, time: "Aug 1" }] : [],
+      invoices: isEmployee ? [] : c.invoices.map((i) => i.id),
+      notes: isEmployee ? [] : (c.notes ? [{ id: "n1", author: "Rahul MDZ", text: c.notes, time: "Aug 1" }] : []),
     }));
 
     return NextResponse.json({ success: true, data: formatted });
@@ -45,7 +47,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
