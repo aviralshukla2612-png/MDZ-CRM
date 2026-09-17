@@ -1029,7 +1029,7 @@ export function EmployeeProjectKanban({
         </div>
 
         {/* KANBAN BOARD (Columns by Status with Drop Zones) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5 items-start">
+        <div className="flex overflow-x-auto gap-4 items-start pb-4 scrollbar-thin max-w-full">
           {KANBAN_COLUMNS.map((col) => {
             const colProjects = projectsToRender.filter((p) => {
               const s = (p.status || "").toUpperCase();
@@ -1112,7 +1112,7 @@ export function EmployeeProjectKanban({
                     handleDropProject(pId, col.id);
                   }
                 }}
-                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3.5 space-y-3 flex flex-col min-h-[440px] transition-all"
+                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3.5 space-y-3 flex flex-col min-h-[440px] transition-all w-[280px] sm:w-[310px] min-w-[270px] shrink-0"
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/80 dark:border-slate-800">
@@ -1195,17 +1195,17 @@ export function EmployeeProjectKanban({
                         >
                           {/* Top Badges & Drag Handle */}
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <GripVertical className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors" />
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <GripVertical className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors shrink-0" />
                               <span
-                                className={`text-[10px] font-extrabold font-mono px-2.5 py-0.5 rounded-md border shadow-2xs ${priorityColor}`}
+                                className={`text-[10px] font-extrabold font-mono px-2.5 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 ${priorityColor}`}
                               >
                                 {proj.priority}
                               </span>
                             </div>
 
                             <span
-                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border shadow-2xs ${
+                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 ${
                                 isLeadRole
                                   ? "bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700"
                                   : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700"
@@ -1217,7 +1217,7 @@ export function EmployeeProjectKanban({
 
                           {/* Project Name & Code */}
                           <div className="space-y-1.5">
-                            <div className="inline-block text-[11px] font-mono font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 px-2 py-0.5 rounded border border-indigo-200/80 dark:border-indigo-800">
+                            <div className="inline-block text-[11px] font-mono font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 px-2 py-0.5 rounded border border-indigo-200/80 dark:border-indigo-800 whitespace-nowrap shrink-0">
                               {proj.projectNumber || proj.id.slice(0, 8)}
                             </div>
                             <Link
