@@ -4,7 +4,7 @@ import { requireAuth, requireRole } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export const BASE_PROJECT_ROLES = [
+const BASE_PROJECT_ROLES = [
   "TM",
   "Graphic Designer",
   "Video editor",
