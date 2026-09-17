@@ -16,6 +16,7 @@ import {
   HardDrive,
   FolderKanban,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import { MediaUploader } from "@/components/ui/MediaUploader";
 import { MediaGallery } from "@/components/ui/MediaGallery";
@@ -98,9 +99,6 @@ export default function DriveStoragePage() {
                 <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
                   Google Drive Storage Active
                 </h3>
-                <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-bold text-[10px] border border-indigo-200 dark:border-indigo-800">
-                  10 GB TOTAL LIMIT
-                </span>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-mono font-bold text-[10px] border border-emerald-200 dark:border-emerald-800">
                   UP TO 10 GB / FILE
                 </span>
@@ -120,46 +118,22 @@ export default function DriveStoragePage() {
           </button>
         </div>
 
-        {/* Live 10 GB Storage Quota Meter */}
+        {/* Live Storage Summary Meter */}
         {storageStats && (
           <div className="p-4 rounded-2xl bg-white/70 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800/80 space-y-2">
             <div className="flex flex-wrap items-center justify-between text-xs font-mono font-bold">
               <div className="flex items-center gap-2">
                 <span className="text-slate-500 dark:text-slate-400">Total Storage Used:</span>
-                <span className="text-indigo-600 dark:text-indigo-400 text-sm">
+                <span className="text-indigo-600 dark:text-indigo-400 text-sm font-extrabold">
                   {storageStats.usedGb} GB
                 </span>
-                <span className="text-slate-400">/ 10.0 GB Limit ({storageStats.percentageUsed}%)</span>
+                <span className="text-slate-400">({storageStats.fileCount} Files Stored)</span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-emerald-600 dark:text-emerald-400">
-                  {storageStats.remainingGb} GB Free
-                </span>
-                <span className="text-slate-400 text-[11px] font-sans">
-                  ({storageStats.fileCount} Files Stored)
-                </span>
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-sans text-xs">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Max File Size: 10 GB / File</span>
               </div>
             </div>
-
-            {/* Progress Bar */}
-            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-200 dark:border-slate-700">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  storageStats.isLimitReached
-                    ? "bg-rose-500"
-                    : storageStats.isNearLimit
-                    ? "bg-amber-500"
-                    : "bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-500"
-                }`}
-                style={{ width: `${Math.max(2, storageStats.percentageUsed)}%` }}
-              />
-            </div>
-
-            {storageStats.isNearLimit && (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold pt-1">
-                ⚠️ Warning: Drive storage is at {storageStats.percentageUsed}% of the 10 GB limit. Consider deleting unused large deliverables or files.
-              </p>
-            )}
           </div>
         )}
       </div>

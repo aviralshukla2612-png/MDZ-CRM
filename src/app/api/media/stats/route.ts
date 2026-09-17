@@ -4,8 +4,6 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-const TOTAL_DRIVE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB limit (10,737,418,240 bytes)
-
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -20,11 +18,7 @@ export async function GET(req: NextRequest) {
 
     const usedBytes = aggregation._sum.fileSize || 0;
     const fileCount = aggregation._count.id || 0;
-    const remainingBytes = Math.max(0, TOTAL_DRIVE_QUOTA_BYTES - usedBytes);
-
     const usedGb = (usedBytes / (1024 * 1024 * 1024)).toFixed(2);
-    const remainingGb = (remainingBytes / (1024 * 1024 * 1024)).toFixed(2);
-    const percentageUsed = Math.min(100, Math.round((usedBytes / TOTAL_DRIVE_QUOTA_BYTES) * 100));
 
     // Category breakdown
     const categoryStats = await prisma.mediaFile.groupBy({
@@ -33,19 +27,17 @@ export async function GET(req: NextRequest) {
       _count: { id: true },
     });
 
+    const maxFileMb = parseInt(process.env.MAX_MEDIA_FILE_SIZE_MB || "10240", 10);
+    const maxFileGb = maxFileMb >= 1024 ? maxFileMb / 1024 : 10;
+
     return NextResponse.json({
       success: true,
       stats: {
-        totalQuotaBytes: TOTAL_DRIVE_QUOTA_BYTES,
-        totalQuotaGb: 10,
+        maxFileMb,
+        maxFileGb,
         usedBytes,
         usedGb,
-        remainingBytes,
-        remainingGb,
-        percentageUsed,
         fileCount,
-        isNearLimit: percentageUsed >= 80,
-        isLimitReached: usedBytes >= TOTAL_DRIVE_QUOTA_BYTES,
         categoryBreakdown: categoryStats.map((c) => ({
           category: c.category,
           bytes: c._sum.fileSize || 0,
