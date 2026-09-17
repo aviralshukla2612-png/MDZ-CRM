@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export const TOTAL_DRIVE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB limit (10,737,418,240 bytes)
+const TOTAL_DRIVE_QUOTA_BYTES = 10 * 1024 * 1024 * 1024; // 10 GB limit (10,737,418,240 bytes)
 
 export async function GET(req: NextRequest) {
   try {
