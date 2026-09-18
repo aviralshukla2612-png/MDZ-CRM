@@ -12,6 +12,7 @@ export async function GET(
 
   const projectId = params.id;
 
+  const internalRoles = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"];
   if (authRes.activeRole === "CLIENT") {
     const isAuthorized = await verifyClientProjectAccess(authRes.email, projectId);
     if (!isAuthorized) {
@@ -20,7 +21,7 @@ export async function GET(
         { status: 403 }
       );
     }
-  } else if (authRes.activeRole !== "OWNER") {
+  } else if (!internalRoles.includes(authRes.activeRole)) {
     return NextResponse.json(
       { success: false, error: "Forbidden: Access denied." },
       { status: 403 }
@@ -70,6 +71,7 @@ export async function POST(
 
   const projectId = params.id;
 
+  const internalRoles = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"];
   if (authRes.activeRole === "CLIENT") {
     const isAuthorized = await verifyClientProjectAccess(authRes.email, projectId);
     if (!isAuthorized) {
@@ -78,7 +80,7 @@ export async function POST(
         { status: 403 }
       );
     }
-  } else if (authRes.activeRole !== "OWNER") {
+  } else if (!internalRoles.includes(authRes.activeRole)) {
     return NextResponse.json(
       { success: false, error: "Forbidden: Access denied." },
       { status: 403 }

@@ -112,7 +112,7 @@ export async function GET() {
             id: m.id,
             name: m.employee?.user?.name || "Unknown User",
             role: m.roleInProject,
-            removedDate: m.removedAt ? new Date(m.removedAt).toLocaleDateString() : "Jul 20, 2026",
+            removedDate: m.removedAt ? new Date(m.removedAt).toLocaleDateString() : (m.assignedAt ? new Date(m.assignedAt).toLocaleDateString() : new Date().toLocaleDateString()),
             reason: m.removalReason || "Reassigned to another project",
           })),
         tasks: (isEmployee && authRes.employeeId
@@ -174,7 +174,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -301,6 +301,37 @@ export async function POST(req: Request) {
             },
           ],
         };
+      }
+    }
+
+    // Auto-assign the creating employee if not designated
+    if (!assignedEmp) {
+      let creatorEmpId = authRes.employeeId;
+      if (!creatorEmpId && authRes.activeRole === "EMPLOYEE") {
+        const creatorEmp = await prisma.employee.findFirst({
+          where: { userId: authRes.id },
+        });
+        creatorEmpId = creatorEmp?.id;
+      }
+
+      if (creatorEmpId) {
+        assignedEmp = await prisma.employee.findUnique({
+          where: { id: creatorEmpId },
+          include: { user: true },
+        });
+
+        if (assignedEmp) {
+          data.memberships = {
+            create: [
+              {
+                employeeId: assignedEmp.id,
+                roleInProject: body.roleInProject || "DEVELOPER",
+                isActive: true,
+                assignedById: authRes.id,
+              },
+            ],
+          };
+        }
       }
     }
 
