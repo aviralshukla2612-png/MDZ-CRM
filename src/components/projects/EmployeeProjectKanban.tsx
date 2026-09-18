@@ -50,7 +50,16 @@ export interface ProjectCardItem {
   completedTasks: number;
   assignedEmployeeId?: string;
   assignedEmployeeName?: string;
-  teamMembers?: Array<{ id: string; name: string; role: string; email?: string }>;
+  teamMembers?: Array<{
+    id: string;
+    employeeId?: string;
+    employeeIdCode?: string;
+    userId?: string;
+    name: string;
+    role: string;
+    email?: string;
+    active?: boolean;
+  }>;
   tasks?: Array<{ id: string; title: string; status: string; priority: string }>;
 }
 
@@ -66,7 +75,8 @@ function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardI
       ? p.progress
       : Number(p.progressPercentage) || 0;
 
-  const activeMembers = (p.teamMembers || []).filter((m: any) => m.active !== false);
+  const rawMembers: any[] = Array.isArray(p.teamMembers) ? p.teamMembers : [];
+  const activeMembers = rawMembers.filter((m: any) => m.active !== false);
   const primaryMember = activeMembers[0];
 
   const assignedEmpName =
@@ -101,7 +111,7 @@ function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardI
     completedTasks,
     assignedEmployeeId: assignedEmpId,
     assignedEmployeeName: assignedEmpName,
-    teamMembers: p.teamMembers || [],
+    teamMembers: rawMembers,
     tasks: p.tasks || [],
   };
 }
@@ -306,35 +316,50 @@ export function EmployeeProjectKanban({
 
   // Projects to display in the Kanban board
   const displayedProjects = useMemo(() => {
-    let projs: ProjectCardItem[] = [];
+    // Lookup map of all raw projects
+    const allMap = new Map<string, any>();
+    (allProjects || []).forEach((p) => {
+      allMap.set(p.id, p);
+    });
 
     if (selectedEmployee) {
-      const empProjs = (selectedEmployee.assignedProjects || []).map((p) =>
-        normalizeProjectCard(p, selectedEmployee.id)
-      );
+      const matchedMap = new Map<string, ProjectCardItem>();
 
-      const additionalFromAll = (allProjects || [])
-        .filter((p) => {
-          if (empProjs.some((ep) => ep.id === p.id)) return false;
-          const isTm =
-            p.tmId === selectedEmployee.id ||
-            (selectedEmployee.userId && p.tmId === selectedEmployee.userId) ||
-            (selectedEmployee.employeeId && p.tmId === selectedEmployee.employeeId);
+      // 1. Scan allProjects for any active membership or role matching selectedEmployee
+      (allProjects || []).forEach((p) => {
+        const isTm =
+          p.tmId === selectedEmployee.id ||
+          (selectedEmployee.userId && p.tmId === selectedEmployee.userId) ||
+          (selectedEmployee.employeeId && p.tmId === selectedEmployee.employeeId);
 
-          const isMember = p.teamMembers?.some((m: any) => {
-            if (m.active === false) return false;
-            const matchId = m.id === selectedEmployee.id || m.employeeId === selectedEmployee.id;
-            const matchUser = selectedEmployee.userId && (m.userId === selectedEmployee.userId || m.id === selectedEmployee.userId);
-            const matchCode = selectedEmployee.employeeId && (m.employeeIdCode === selectedEmployee.employeeId || m.employeeId === selectedEmployee.employeeId);
-            const matchEmail = selectedEmployee.email && m.email && m.email.toLowerCase() === selectedEmployee.email.toLowerCase();
-            const matchName = selectedEmployee.name && m.name && m.name.toLowerCase().trim() === selectedEmployee.name.toLowerCase().trim();
-            return matchId || matchUser || matchCode || matchEmail || matchName;
-          });
-          return isTm || isMember;
-        })
-        .map((p) => normalizeProjectCard(p, selectedEmployee.id));
+        const isMember = (p.teamMembers || []).some((m: any) => {
+          if (m.active === false) return false;
+          const matchId = m.id === selectedEmployee.id || m.employeeId === selectedEmployee.id;
+          const matchUser = selectedEmployee.userId && (m.userId === selectedEmployee.userId || m.id === selectedEmployee.userId);
+          const matchCode = selectedEmployee.employeeId && (m.employeeIdCode === selectedEmployee.employeeId || m.employeeId === selectedEmployee.employeeId);
+          const matchEmail = selectedEmployee.email && m.email && m.email.toLowerCase() === selectedEmployee.email.toLowerCase();
+          const matchName = selectedEmployee.name && m.name && m.name.toLowerCase().trim() === selectedEmployee.name.toLowerCase().trim();
+          return matchId || matchUser || matchCode || matchEmail || matchName;
+        });
 
-      projs = [...empProjs, ...additionalFromAll];
+        const isAssignedDirectly =
+          p.assignedEmployeeId === selectedEmployee.id ||
+          (selectedEmployee.userId && p.assignedEmployeeId === selectedEmployee.userId);
+
+        if (isTm || isMember || isAssignedDirectly) {
+          matchedMap.set(p.id, normalizeProjectCard(p, selectedEmployee.id));
+        }
+      });
+
+      // 2. Also check selectedEmployee.assignedProjects
+      (selectedEmployee.assignedProjects || []).forEach((p: any) => {
+        if (!matchedMap.has(p.id)) {
+          const fullP = allMap.get(p.id);
+          matchedMap.set(p.id, normalizeProjectCard(fullP || p, selectedEmployee.id));
+        }
+      });
+
+      return Array.from(matchedMap.values());
     } else {
       const map = new Map<string, ProjectCardItem>();
 
@@ -348,19 +373,12 @@ export function EmployeeProjectKanban({
         emp.assignedProjects?.forEach((p) => {
           if (!map.has(p.id)) {
             map.set(p.id, normalizeProjectCard(p, emp.id));
-          } else {
-            const existing = map.get(p.id)!;
-            if (!existing.assignedEmployeeId) {
-              existing.assignedEmployeeId = emp.id;
-            }
           }
         });
       });
 
-      projs = Array.from(map.values());
+      return Array.from(map.values());
     }
-
-    return projs;
   }, [selectedEmployee, employees, allProjects]);
 
   // Sync optimistic projects when displayedProjects changes
@@ -414,29 +432,33 @@ export function EmployeeProjectKanban({
     }
   };
 
-  // Handle reassigning developer directly from project card dropdown
-  const handleReassignProject = async (projectId: string, newEmployeeId: string) => {
+  // Quick Add / Assign member to project without removing existing members
+  const handleQuickAddMemberToProject = async (projectId: string, newEmployeeId: string) => {
     const newEmp = employees.find((e) => e.id === newEmployeeId);
+    if (!newEmp) return;
 
-    // Optimistically update local project card assignedEmployeeId
+    const defaultRole = newEmp.designation || "Web devloper";
+
+    // Optimistically update local project card
     setOptimisticProjects((prev) => {
       const current = prev || displayedProjects;
       return current.map((p) => {
         if (p.id === projectId) {
+          const existingMembers = (p.teamMembers || []).filter((m) => m.id !== newEmployeeId && m.employeeId !== newEmployeeId);
+          const updatedMembers = [
+            ...existingMembers,
+            {
+              id: newEmployeeId,
+              employeeId: newEmployeeId,
+              name: newEmp.name,
+              role: defaultRole,
+              email: newEmp.email,
+              active: true,
+            },
+          ];
           return {
             ...p,
-            assignedEmployeeId: newEmployeeId,
-            assignedEmployeeName: newEmp?.name || p.assignedEmployeeName,
-            roleInProject: newEmp?.name || p.roleInProject,
-            teamMembers: [
-              {
-                id: newEmployeeId,
-                employeeId: newEmployeeId,
-                name: newEmp?.name || "Assigned Developer",
-                active: true,
-                role: "Web devloper",
-              },
-            ],
+            teamMembers: updatedMembers,
           };
         }
         return p;
@@ -449,22 +471,26 @@ export function EmployeeProjectKanban({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeId: newEmployeeId,
-          roleInProject: "Web devloper",
-          replaceOthers: true,
+          roleInProject: defaultRole,
         }),
       });
       const json = await res.json();
       if (json.success) {
-        showToast(json.message || `✓ Reassigned to ${newEmp?.name || "developer"}`, "success");
+        showToast(json.message || `✓ Assigned ${newEmp.name} to project`, "success");
         onRefresh();
       } else {
-        showToast(json.error || "Failed to assign developer", "error");
+        showToast(json.error || "Failed to assign member", "error");
         onRefresh();
       }
     } catch (e) {
       showToast("Network error assigning developer", "error");
       onRefresh();
     }
+  };
+
+  // Handle reassigning developer directly from project card dropdown
+  const handleReassignProject = async (projectId: string, newEmployeeId: string) => {
+    handleQuickAddMemberToProject(projectId, newEmployeeId);
   };
 
   const handleAssignSubmit = async (e: React.FormEvent) => {
@@ -1219,6 +1245,9 @@ export function EmployeeProjectKanban({
                         proj.status === "DELIVERED" ||
                         proj.status === "WON";
 
+                      const rawMembers = Array.isArray(proj.teamMembers) ? proj.teamMembers : [];
+                      const activeTeamMembers = rawMembers.filter((m: any) => m.active !== false);
+
                       const assignedEmp = employees.find(
                         (e) =>
                           e.id === proj.assignedEmployeeId ||
@@ -1227,11 +1256,19 @@ export function EmployeeProjectKanban({
                       );
 
                       const assignedDisplayName =
-                        proj.assignedEmployeeName ||
-                        assignedEmp?.name ||
-                        selectedEmployee?.name ||
-                        (proj.teamMembers && proj.teamMembers.length > 0 ? proj.teamMembers.map((m: any) => m.name).join(", ") : null) ||
-                        (isEmployee && session?.user?.name ? session.user.name : null);
+                        activeTeamMembers.length > 1
+                          ? `👥 ${activeTeamMembers.length} Members: ${activeTeamMembers.slice(0, 2).map((m: any) => m.name).join(", ")}${activeTeamMembers.length > 2 ? ` +${activeTeamMembers.length - 2}` : ""}`
+                          : activeTeamMembers.length === 1
+                          ? `👤 ${activeTeamMembers[0].name}`
+                          : proj.assignedEmployeeName ||
+                            assignedEmp?.name ||
+                            selectedEmployee?.name ||
+                            (isEmployee && session?.user?.name ? session.user.name : null);
+
+                      const teamTooltip =
+                        activeTeamMembers.length > 0
+                          ? activeTeamMembers.map((m: any) => `${m.name} (${m.role || "Developer"})`).join(" • ")
+                          : assignedDisplayName || "No team members assigned";
 
                       return (
                         <div
@@ -1269,14 +1306,14 @@ export function EmployeeProjectKanban({
                             </div>
 
                             <span
-                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 max-w-[150px] truncate ${
+                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 max-w-[180px] truncate ${
                                 isLeadRole
                                   ? "bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700"
                                   : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700"
                               }`}
-                              title={assignedDisplayName ? `${assignedDisplayName} (${proj.roleInProject || "Member"})` : proj.roleInProject || "DEVELOPER"}
+                              title={teamTooltip}
                             >
-                              {assignedDisplayName ? `👤 ${assignedDisplayName}` : isLeadRole ? "⭐ TECH LEAD (TM)" : proj.roleInProject || "DEVELOPER"}
+                              {assignedDisplayName ? assignedDisplayName : isLeadRole ? "⭐ TECH LEAD (TM)" : proj.roleInProject || "DEVELOPER"}
                             </span>
                           </div>
 
@@ -1363,31 +1400,58 @@ export function EmployeeProjectKanban({
                             </div>
                           </div>
 
-                          {/* Assignee Selection / Display on Project Card */}
-                          <div className="flex items-center justify-between text-xs gap-2">
-                            <span className="text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 shrink-0">
-                              <User className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                              <span>Assign:</span>
-                            </span>
-                            {isEmployee ? (
-                              <span className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[145px]" title={assignedDisplayName || "Assigned Developer"}>
-                                👤 {assignedDisplayName || "Assigned Developer"}
+                          {/* Assigned Team Members Section */}
+                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 shrink-0">
+                                <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                <span>Assigned Team ({activeTeamMembers.length}):</span>
                               </span>
-                            ) : (
-                              <select
-                                value={proj.assignedEmployeeId || selectedEmployee?.id || ""}
-                                onChange={(e) => handleReassignProject(proj.id, e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 rounded-xl px-2 py-1 text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer max-w-[145px] truncate shadow-2xs"
-                                title="Reassign to developer"
-                              >
-                                <option value="" disabled>-- Developer --</option>
-                                {employees.map((emp) => (
-                                  <option key={emp.id} value={emp.id}>
-                                    {emp.name}
-                                  </option>
+                            </div>
+
+                            {/* Active Member Pills */}
+                            {activeTeamMembers.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-0.5">
+                                {activeTeamMembers.map((m: any, idx: number) => (
+                                  <span
+                                    key={m.id || idx}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800/80 text-[11px] font-bold text-indigo-900 dark:text-indigo-200 shadow-2xs"
+                                    title={`${m.name} — ${m.role || "Member"}${m.email ? ` (${m.email})` : ""}`}
+                                  >
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                                    <span className="truncate max-w-[100px]">{m.name}</span>
+                                    <span className="text-[9px] font-mono opacity-75 shrink-0">({m.role || "Dev"})</span>
+                                  </span>
                                 ))}
-                              </select>
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-slate-400 italic">No team members assigned yet</div>
+                            )}
+
+                            {/* Admin / Sub-Admin Quick Add Member Dropdown */}
+                            {!isEmployee && (
+                              <div className="flex items-center gap-1.5 pt-1">
+                                <select
+                                  value=""
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleQuickAddMemberToProject(proj.id, e.target.value);
+                                    }
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 hover:border-indigo-500 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer truncate shadow-2xs transition-colors"
+                                  title="Assign another team member to this project"
+                                >
+                                  <option value="">+ Assign Team Member...</option>
+                                  {employees
+                                    .filter((emp) => !activeTeamMembers.some((m: any) => m.id === emp.id || m.employeeId === emp.id || m.userId === emp.userId))
+                                    .map((emp) => (
+                                      <option key={emp.id} value={emp.id}>
+                                        👤 {emp.name} ({emp.designation || "Developer"})
+                                      </option>
+                                    ))}
+                                </select>
+                              </div>
                             )}
                           </div>
 

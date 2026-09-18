@@ -48,6 +48,14 @@ export async function GET() {
               include: {
                 client: true,
                 tasks: true,
+                memberships: {
+                  where: { isActive: true },
+                  include: {
+                    employee: {
+                      include: { user: true },
+                    },
+                  },
+                },
               },
             },
           },
@@ -88,6 +96,16 @@ export async function GET() {
           clientName: p.client?.companyName || "Unknown Client",
           totalTasks,
           completedTasks,
+          teamMembers: (p.memberships || []).map((pm: any) => ({
+            id: pm.employee?.id || pm.employeeId || "unknown",
+            employeeId: pm.employeeId || pm.employee?.id,
+            employeeIdCode: pm.employee?.employeeIdCode,
+            userId: pm.employee?.userId,
+            name: pm.employee?.user?.name || "Unknown User",
+            email: pm.employee?.user?.email,
+            role: pm.roleInProject,
+            active: pm.isActive,
+          })),
           tasks: (p.tasks || []).map((t: any) => ({
             id: t.id,
             title: t.title,

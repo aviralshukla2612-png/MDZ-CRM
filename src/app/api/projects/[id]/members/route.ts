@@ -133,23 +133,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       },
     });
 
-    // If replaceOthers is requested (e.g. from card reassign dropdown), deactivate previous active members
-    if (body.replaceOthers) {
-      await prisma.projectMembership.updateMany({
-        where: {
-          projectId: project.id,
-          employeeId: { not: employee.id },
-          isActive: true,
-        },
-        data: {
-          isActive: false,
-          removedAt: new Date(),
-          removedById: authRes.id,
-          removalReason: `Reassigned to ${employee.user?.name || "another team member"}`,
-        },
-      });
-    }
-
+    // Always maintain existing active team members when adding or updating assignments
     let membership;
     if (existing) {
       membership = await prisma.projectMembership.update({
