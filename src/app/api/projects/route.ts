@@ -75,7 +75,10 @@ export async function GET() {
         calculatedProgress = Math.min(100, p.clientUpdates.length * 25);
       }
 
-      const tmMembership = p.memberships.find((m) => m.roleInProject === "TM" && m.isActive);
+      const activeMembers = p.memberships.filter((m) => m.isActive);
+      const tmMembership = activeMembers.find((m) => m.roleInProject === "TM") || activeMembers[0];
+      const primaryMember = activeMembers[0];
+
       return {
         id: p.id,
         projectCode: p.projectNumber,
@@ -83,7 +86,9 @@ export async function GET() {
         clientId: p.clientId,
         clientName: p.client ? p.client.companyName : "Client Account",
         tmId: tmMembership?.employee?.id || "UNASSIGNED",
-        tmName: tmMembership?.employee?.user?.name ? `${tmMembership.employee.user.name} (Tech Lead)` : "Unassigned",
+        tmName: tmMembership?.employee?.user?.name ? `${tmMembership.employee.user.name}${tmMembership.roleInProject === "TM" ? " (Tech Lead)" : ""}` : "Unassigned",
+        assignedEmployeeId: primaryMember?.employee?.id || primaryMember?.employeeId || null,
+        assignedEmployeeName: primaryMember?.employee?.user?.name || null,
         progress: calculatedProgress,
         progressPercentage: calculatedProgress,
         currentStage: p.status,

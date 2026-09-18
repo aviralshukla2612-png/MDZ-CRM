@@ -66,11 +66,21 @@ function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardI
       ? p.progress
       : Number(p.progressPercentage) || 0;
 
+  const activeMembers = (p.teamMembers || []).filter((m: any) => m.active !== false);
+  const primaryMember = activeMembers[0];
+
   const assignedEmpName =
+    primaryMember?.name ||
     p.assignedEmployeeName ||
     p.employeeName ||
-    p.teamMembers?.find((m: any) => m.active !== false)?.name ||
     (p.tmName && p.tmName !== "Unassigned" ? p.tmName.replace(" (Tech Lead)", "") : undefined);
+
+  const assignedEmpId =
+    primaryMember?.employeeId ||
+    primaryMember?.id ||
+    p.assignedEmployeeId ||
+    (p.tmId && p.tmId !== "UNASSIGNED" ? p.tmId : undefined) ||
+    fallbackEmployeeId;
 
   return {
     id: p.id,
@@ -85,11 +95,11 @@ function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardI
       p.deadline ||
       (p.targetDeadline ? new Date(p.targetDeadline).toLocaleDateString() : "") ||
       "No Deadline",
-    roleInProject: p.roleInProject || (p.tmName && p.tmName !== "Unassigned" ? "TM" : "DEVELOPER"),
+    roleInProject: primaryMember?.role || p.roleInProject || (p.tmName && p.tmName !== "Unassigned" ? "TM" : "DEVELOPER"),
     clientName: p.clientName || (p.client ? p.client.companyName : "Client"),
     totalTasks,
     completedTasks,
-    assignedEmployeeId: fallbackEmployeeId || p.assignedEmployeeId || p.tmId || undefined,
+    assignedEmployeeId: assignedEmpId,
     assignedEmployeeName: assignedEmpName,
     teamMembers: p.teamMembers || [],
     tasks: p.tasks || [],
@@ -406,6 +416,33 @@ export function EmployeeProjectKanban({
 
   // Handle reassigning developer directly from project card dropdown
   const handleReassignProject = async (projectId: string, newEmployeeId: string) => {
+    const newEmp = employees.find((e) => e.id === newEmployeeId);
+
+    // Optimistically update local project card assignedEmployeeId
+    setOptimisticProjects((prev) => {
+      const current = prev || displayedProjects;
+      return current.map((p) => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            assignedEmployeeId: newEmployeeId,
+            assignedEmployeeName: newEmp?.name || p.assignedEmployeeName,
+            roleInProject: newEmp?.name || p.roleInProject,
+            teamMembers: [
+              {
+                id: newEmployeeId,
+                employeeId: newEmployeeId,
+                name: newEmp?.name || "Assigned Developer",
+                active: true,
+                role: "Web devloper",
+              },
+            ],
+          };
+        }
+        return p;
+      });
+    });
+
     try {
       const res = await fetch(`/mdz-crm/api/projects/${projectId}/members`, {
         method: "POST",
@@ -413,17 +450,20 @@ export function EmployeeProjectKanban({
         body: JSON.stringify({
           employeeId: newEmployeeId,
           roleInProject: "Web devloper",
+          replaceOthers: true,
         }),
       });
       const json = await res.json();
       if (json.success) {
-        showToast(json.message || "Assigned developer to project successfully!", "success");
+        showToast(json.message || `✓ Reassigned to ${newEmp?.name || "developer"}`, "success");
         onRefresh();
       } else {
         showToast(json.error || "Failed to assign developer", "error");
+        onRefresh();
       }
     } catch (e) {
       showToast("Network error assigning developer", "error");
+      onRefresh();
     }
   };
 
