@@ -32,8 +32,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ success: false, error: "Employee not found" }, { status: 404 });
     }
 
-    // IDOR Protection: Only OWNER or the employee themselves can access this profile
-    if (authRes.activeRole !== "OWNER" && authRes.employeeId !== employee.id) {
+    // IDOR Protection: Only OWNER/ADMIN/SUB_ADMIN or the employee themselves can access this profile
+    if (authRes.activeRole !== "OWNER" && authRes.activeRole !== "ADMIN" && authRes.activeRole !== "SUB_ADMIN" && authRes.employeeId !== employee.id) {
       return NextResponse.json({ success: false, error: "Forbidden: You cannot access another employee's profile" }, { status: 403 });
     }
 
@@ -52,7 +52,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -103,7 +103,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {

@@ -36,15 +36,30 @@ export async function middleware(req: any) {
     return NextResponse.redirect(new URL("/mdz-crm/login", req.url));
   }
 
-  // OWNER only routes
-  const ownerOnlyRoutes = ["/owner", "/finance", "/audit", "/attendance-requests", "/employees"];
-  if (ownerOnlyRoutes.some(r => pathname.startsWith(r)) && token?.role !== "OWNER") {
+  const role = token?.role;
+  const relPath = pathname.replace(/^\/mdz-crm/, "") || "/";
+
+  // OWNER & ADMIN only routes
+  const ownerOnlyRoutes = ["/finance"];
+  if (ownerOnlyRoutes.some(r => relPath.startsWith(r)) && role !== "OWNER" && role !== "ADMIN") {
     return NextResponse.redirect(new URL("/mdz-crm/login", req.url));
   }
 
-  // SALES or OWNER routes
-  const salesRoutes = ["/leads", "/clients", "/sales", "/quotes"];
-  if (salesRoutes.some(r => pathname.startsWith(r)) && token?.role !== "OWNER" && token?.role !== "SALES") {
+  // Management routes: OWNER, ADMIN, SUB_ADMIN
+  const managementRoutes = ["/owner", "/audit", "/attendance-requests", "/employees", "/leave-requests"];
+  if (managementRoutes.some(r => relPath.startsWith(r)) && role !== "OWNER" && role !== "ADMIN" && role !== "SUB_ADMIN") {
+    return NextResponse.redirect(new URL("/mdz-crm/login", req.url));
+  }
+
+  // Sales routes: OWNER, ADMIN, SALES
+  const salesRoutes = ["/leads", "/sales", "/quotes"];
+  if (salesRoutes.some(r => relPath.startsWith(r)) && role !== "OWNER" && role !== "ADMIN" && role !== "SALES") {
+    return NextResponse.redirect(new URL("/mdz-crm/login", req.url));
+  }
+
+  // Clients routes: OWNER, ADMIN, SUB_ADMIN, SALES
+  const clientsRoutes = ["/clients"];
+  if (clientsRoutes.some(r => relPath.startsWith(r)) && role !== "OWNER" && role !== "ADMIN" && role !== "SUB_ADMIN" && role !== "SALES") {
     return NextResponse.redirect(new URL("/mdz-crm/login", req.url));
   }
 

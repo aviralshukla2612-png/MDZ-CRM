@@ -6,7 +6,7 @@ export async function GET(
   req: Request,
   { params }: { params: { employeeId: string } }
 ) {
-  const authRes = await requireRole(["OWNER"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {

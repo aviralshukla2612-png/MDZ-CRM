@@ -7,7 +7,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (authRes instanceof NextResponse) return authRes;
   const user = authRes;
 
-  if (user.activeRole !== "OWNER") {
+  if (user.activeRole !== "OWNER" && user.activeRole !== "ADMIN" && user.activeRole !== "SUB_ADMIN") {
     return NextResponse.json({ success: false, error: "Unauthorized: Only Admin/Owner can delete holidays" }, { status: 403 });
   }
 

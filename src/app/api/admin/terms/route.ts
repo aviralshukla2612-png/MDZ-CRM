@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getPublishedTerms } from "@/lib/termsEngine";
 
 export async function GET() {
-  const authRes = await requireRole(["OWNER"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -52,7 +52,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authRes = await requireRole(["OWNER"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {

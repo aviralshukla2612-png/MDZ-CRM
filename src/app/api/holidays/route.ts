@@ -83,7 +83,7 @@ export async function POST(req: Request) {
   if (authRes instanceof NextResponse) return authRes;
   const user = authRes;
 
-  if (user.activeRole !== "OWNER") {
+  if (user.activeRole !== "OWNER" && user.activeRole !== "ADMIN" && user.activeRole !== "SUB_ADMIN") {
     return NextResponse.json({ success: false, error: "Unauthorized: Only Admin/Owner can create official holidays" }, { status: 403 });
   }
 

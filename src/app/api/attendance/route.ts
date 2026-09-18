@@ -9,7 +9,7 @@ export async function GET() {
     const user = authResult;
 
     let whereClause = {};
-    if (user.activeRole !== "OWNER") {
+    if (user.activeRole !== "OWNER" && user.activeRole !== "ADMIN" && user.activeRole !== "SUB_ADMIN") {
       if (!user.employeeId) {
         return NextResponse.json({ success: false, data: [] });
       }

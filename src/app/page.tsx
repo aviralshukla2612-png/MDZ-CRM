@@ -11,7 +11,7 @@ export default async function HomePage() {
 
   const role = session.user.role;
 
-  if (role === "OWNER") {
+  if (role === "OWNER" || role === "ADMIN" || role === "SUB_ADMIN") {
     redirect("/owner");
   } else if (role === "SALES") {
     redirect("/sales");
