@@ -43,6 +43,7 @@ model User {
   userRoles           UserRole[]
   termsAcceptedVersion String?
   termsAcceptedAt      DateTime?
+  reviewedTimeModifications TimeModificationRequest[] @relation("TimeModificationReviewer")
   termsPublished       Terms[]             @relation("TermsPublisher")
   termsAcceptances     TermsAcceptanceLog[]
   approvedLeaves      LeaveRequest[]      @relation("LeaveApprover")
@@ -445,6 +446,7 @@ model Employee {
   memberships        ProjectMembership[]
   workSessions       WorkSession[]
   leaveRequests      LeaveRequest[]
+  timeModificationRequests TimeModificationRequest[]
 }
 
 model Attendance {
@@ -460,8 +462,34 @@ model Attendance {
   punchOutRequestedAt   DateTime?
   punchOutApprovedById  String?
   employee              Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  timeModificationRequests TimeModificationRequest[]
 
   @@index([employeeId, date])
+}
+
+model TimeModificationRequest {
+  id                 String      @id @default(uuid())
+  employeeId         String
+  attendanceId       String?
+  targetDate         DateTime
+  originalPunchIn    DateTime?
+  originalPunchOut   DateTime?
+  requestedPunchIn   DateTime
+  requestedPunchOut  DateTime
+  reason             String
+  status             String      @default("PENDING")
+  reviewedById       String?
+  reviewedAt         DateTime?
+  reviewNotes        String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  employee           Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  attendance         Attendance? @relation(fields: [attendanceId], references: [id], onDelete: SetNull)
+  reviewedBy         User?       @relation("TimeModificationReviewer", fields: [reviewedById], references: [id])
+
+  @@index([employeeId, targetDate])
+  @@index([status])
 }
 
 model EmployeeStatusEvent {

@@ -29,7 +29,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Employee not found" }, { status: 404 });
     }
 
-    if (authRes.activeRole !== "OWNER" && authRes.employeeId !== employee.id) {
+    const isManagement = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole);
+    if (!isManagement && authRes.employeeId !== employee.id) {
       return NextResponse.json({ success: false, error: "Forbidden: You cannot view another employee's status" }, { status: 403 });
     }
 
@@ -38,6 +39,46 @@ export async function GET(req: NextRequest) {
 
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
+
+    // Proactively clean up / auto-logout dangling open records from previous days at 12:00 AM
+    try {
+      const danglingPrevious = await prisma.attendance.findMany({
+        where: {
+          employeeId: employee.id,
+          punchOut: null,
+          date: { lt: startOfDay },
+        },
+      });
+
+      for (const dangling of danglingPrevious) {
+        const autoPunchOut = new Date(dangling.date);
+        autoPunchOut.setHours(23, 59, 59, 0);
+        const punchInMs = new Date(dangling.punchIn).getTime();
+        const totalMinutes = Math.max(0, Math.floor((autoPunchOut.getTime() - punchInMs) / 60000));
+
+        await prisma.$transaction([
+          prisma.attendance.update({
+            where: { id: dangling.id },
+            data: {
+              punchOut: autoPunchOut,
+              totalMinutes,
+              status: "PRESENT",
+              punchOutReason: "Mispunch / Auto-logout at 12:00 AM",
+            },
+          }),
+          prisma.employeeStatusEvent.updateMany({
+            where: {
+              employeeId: employee.id,
+              endedAt: null,
+              startedAt: { lte: autoPunchOut },
+            },
+            data: { endedAt: autoPunchOut },
+          }),
+        ]);
+      }
+    } catch (cleanErr) {
+      console.error("Auto-cleanup previous day mispunch error:", cleanErr);
+    }
 
     const attendance = await prisma.attendance.findFirst({
       where: {

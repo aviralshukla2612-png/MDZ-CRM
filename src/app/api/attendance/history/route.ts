@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Missing employeeId" }, { status: 400 });
     }
 
-    // Security check: Only OWNER can view other employees' histories
-    if (authRes.activeRole !== "OWNER" && authRes.employeeId !== employeeId) {
+    // Security check: Only OWNER, ADMIN, SUB_ADMIN can view other employees' histories
+    const isManagement = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole);
+    if (!isManagement && authRes.employeeId !== employeeId) {
       return NextResponse.json({ success: false, error: "Forbidden: You cannot view another employee's history" }, { status: 403 });
     }
 

@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
             punchOut: autoPunchOut,
             totalMinutes,
             status: "PRESENT",
-            punchOutReason: "Auto punch-out: employee did not punch out before midnight.",
+            punchOutReason: "Mispunch / Auto-logout at 12:00 AM",
           },
         }),
         // Close any dangling EmployeeStatusEvents for that day
