@@ -31,6 +31,7 @@ export default function ProjectsDirectoryPage() {
   const [clientName, setClientName] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [priority, setPriority] = useState("HIGH");
+  const [contractValue, setContractValue] = useState("");
   const [deadline, setDeadline] = useState("");
   const [editingDeadlineProject, setEditingDeadlineProject] = useState<any | null>(null);
   const [newDeadlineVal, setNewDeadlineVal] = useState("");
@@ -177,7 +178,7 @@ export default function ProjectsDirectoryPage() {
         body: JSON.stringify({
           name: projectName,
           clientName: clientName.trim(),
-          contractValue: 450000,
+          contractValue: contractValue ? Number(contractValue) : 0,
           priority,
           assigneeId: assigneeId || undefined,
           deadline: deadline || undefined,
@@ -191,6 +192,7 @@ export default function ProjectsDirectoryPage() {
         setIsAddOpen(false);
         setProjectName("");
         setClientName("");
+        setContractValue("");
         setAssigneeId("");
         setDeadline("");
         setPriority("HIGH");
@@ -488,6 +490,22 @@ export default function ProjectsDirectoryPage() {
               Leave blank if no deadline is set yet. Automatic deadlines will not be selected.
             </p>
           </div>
+          {!isEmployee && (
+            <div>
+              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5 flex items-center justify-between">
+                <span>Contract / Deal Value (₹)</span>
+                <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500">Optional (Defaults to ₹0)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                placeholder="e.g. 150000 (leave blank for ₹0)"
+                value={contractValue}
+                onChange={(e) => setContractValue(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium text-sm"
+              />
+            </div>
+          )}
           {(session?.user as any)?.role !== "EMPLOYEE" && (
             <div>
               <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Assign To Developer</label>

@@ -250,7 +250,7 @@ export async function POST(req: Request) {
       projectNumber: uniqueCode,
       name: body.name || "New Digital Solution",
       clientId: client.id,
-      contractValue: Number(body.contractValue) || 450000,
+      contractValue: Number(body.contractValue) || 0,
       status: body.status || "IN_PROGRESS",
       priority: body.priority || "HIGH",
       progressPercentage: typeof body.progressPercentage === "number" ? body.progressPercentage : (Number(body.progressPercentage) || 0),
