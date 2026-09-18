@@ -49,6 +49,8 @@ export interface ProjectCardItem {
   totalTasks: number;
   completedTasks: number;
   assignedEmployeeId?: string;
+  assignedEmployeeName?: string;
+  teamMembers?: Array<{ id: string; name: string; role: string; email?: string }>;
   tasks?: Array<{ id: string; title: string; status: string; priority: string }>;
 }
 
@@ -63,6 +65,12 @@ function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardI
       : typeof p.progress === "number"
       ? p.progress
       : Number(p.progressPercentage) || 0;
+
+  const assignedEmpName =
+    p.assignedEmployeeName ||
+    p.employeeName ||
+    p.teamMembers?.find((m: any) => m.active !== false)?.name ||
+    (p.tmName && p.tmName !== "Unassigned" ? p.tmName.replace(" (Tech Lead)", "") : undefined);
 
   return {
     id: p.id,
@@ -82,6 +90,8 @@ function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardI
     totalTasks,
     completedTasks,
     assignedEmployeeId: fallbackEmployeeId || p.assignedEmployeeId || p.tmId || undefined,
+    assignedEmployeeName: assignedEmpName,
+    teamMembers: p.teamMembers || [],
     tasks: p.tasks || [],
   };
 }
@@ -1169,6 +1179,20 @@ export function EmployeeProjectKanban({
                         proj.status === "DELIVERED" ||
                         proj.status === "WON";
 
+                      const assignedEmp = employees.find(
+                        (e) =>
+                          e.id === proj.assignedEmployeeId ||
+                          e.employeeId === proj.assignedEmployeeId ||
+                          e.userId === proj.assignedEmployeeId
+                      );
+
+                      const assignedDisplayName =
+                        proj.assignedEmployeeName ||
+                        assignedEmp?.name ||
+                        selectedEmployee?.name ||
+                        (proj.teamMembers && proj.teamMembers.length > 0 ? proj.teamMembers.map((m: any) => m.name).join(", ") : null) ||
+                        (isEmployee && session?.user?.name ? session.user.name : null);
+
                       return (
                         <div
                           key={proj.id}
@@ -1205,13 +1229,14 @@ export function EmployeeProjectKanban({
                             </div>
 
                             <span
-                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 ${
+                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 max-w-[150px] truncate ${
                                 isLeadRole
                                   ? "bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700"
                                   : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700"
                               }`}
+                              title={assignedDisplayName ? `${assignedDisplayName} (${proj.roleInProject || "Member"})` : proj.roleInProject || "DEVELOPER"}
                             >
-                              {isLeadRole ? "⭐ TECH LEAD (TM)" : proj.roleInProject || "DEVELOPER"}
+                              {assignedDisplayName ? `👤 ${assignedDisplayName}` : isLeadRole ? "⭐ TECH LEAD (TM)" : proj.roleInProject || "DEVELOPER"}
                             </span>
                           </div>
 
@@ -1298,26 +1323,32 @@ export function EmployeeProjectKanban({
                             </div>
                           </div>
 
-                          {/* Assignee Selection Dropdown on Project Card */}
+                          {/* Assignee Selection / Display on Project Card */}
                           <div className="flex items-center justify-between text-xs gap-2">
                             <span className="text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 shrink-0">
                               <User className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
                               <span>Assign:</span>
                             </span>
-                            <select
-                              value={proj.assignedEmployeeId || selectedEmployee?.id || ""}
-                              onChange={(e) => handleReassignProject(proj.id, e.target.value)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 rounded-xl px-2 py-1 text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer max-w-[145px] truncate shadow-2xs"
-                              title="Reassign to developer"
-                            >
-                              <option value="" disabled>-- Developer --</option>
-                              {employees.map((emp) => (
-                                <option key={emp.id} value={emp.id}>
-                                  {emp.name}
-                                </option>
-                              ))}
-                            </select>
+                            {isEmployee ? (
+                              <span className="text-xs font-bold text-slate-900 dark:text-white truncate max-w-[145px]" title={assignedDisplayName || "Assigned Developer"}>
+                                👤 {assignedDisplayName || "Assigned Developer"}
+                              </span>
+                            ) : (
+                              <select
+                                value={proj.assignedEmployeeId || selectedEmployee?.id || ""}
+                                onChange={(e) => handleReassignProject(proj.id, e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 rounded-xl px-2 py-1 text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer max-w-[145px] truncate shadow-2xs"
+                                title="Reassign to developer"
+                              >
+                                <option value="" disabled>-- Developer --</option>
+                                {employees.map((emp) => (
+                                  <option key={emp.id} value={emp.id}>
+                                    {emp.name}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                           </div>
 
                           {/* Tasks summary & Deadline */}
