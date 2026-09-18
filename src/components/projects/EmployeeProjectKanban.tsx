@@ -953,7 +953,7 @@ export function EmployeeProjectKanban({
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         <span>Working Now</span>
                       </span>
-                    ) : (
+                    ) : selectedEmployee.role === "SUB_ADMIN" ? null : (
                       <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
                         {selectedEmployee.shiftCompleted ? "Shift Done" : "Offline"}
                       </span>
