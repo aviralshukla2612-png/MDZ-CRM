@@ -121,7 +121,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body.progressPercentage !== undefined) updateData.progressPercentage = body.progressPercentage;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.priority !== undefined) updateData.priority = body.priority;
-    if (body.contractValue !== undefined) updateData.contractValue = body.contractValue;
+    if (body.stagingUrl !== undefined) updateData.stagingUrl = body.stagingUrl;
+    if (body.liveUrl !== undefined) updateData.liveUrl = body.liveUrl;
+    if (body.designUrl !== undefined) updateData.designUrl = body.designUrl;
     if (body.deadline !== undefined || body.targetDeadline !== undefined) {
       const deadlineVal = body.deadline !== undefined ? body.deadline : body.targetDeadline;
       updateData.targetDeadline = deadlineVal ? new Date(deadlineVal) : null;

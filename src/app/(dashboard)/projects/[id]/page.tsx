@@ -25,6 +25,7 @@ import {
   UserPlus,
   Send,
   Calendar,
+  ExternalLink,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -78,6 +79,48 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   // Change Requests tab state
   const [changeReqsData, setChangeReqsData] = useState<any>({ changeRequests: [], quota: { includedCount: 3, usedCount: 0, remainingCount: 3 } });
   const [loadingChangeReqs, setLoadingChangeReqs] = useState<boolean>(false);
+
+  // Staging / Live URLs state
+  const [isUrlModalOpen, setIsUrlModalOpen] = useState(false);
+  const [stagingUrlInput, setStagingUrlInput] = useState("");
+  const [liveUrlInput, setLiveUrlInput] = useState("");
+  const [designUrlInput, setDesignUrlInput] = useState("");
+  const [updatingUrls, setUpdatingUrls] = useState(false);
+
+  const openUrlModal = () => {
+    setStagingUrlInput(project?.stagingUrl || "");
+    setLiveUrlInput(project?.liveUrl || "");
+    setDesignUrlInput(project?.designUrl || "");
+    setIsUrlModalOpen(true);
+  };
+
+  const handleSaveUrls = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setUpdatingUrls(true);
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stagingUrl: stagingUrlInput.trim() || null,
+          liveUrl: liveUrlInput.trim() || null,
+          designUrl: designUrlInput.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Project preview & live URLs updated!", "success");
+        setIsUrlModalOpen(false);
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to update URLs", "error");
+      }
+    } catch (e) {
+      showToast("Network error updating URLs", "error");
+    } finally {
+      setUpdatingUrls(false);
+    }
+  };
 
   React.useEffect(() => {
     fetchProject();
@@ -692,8 +735,9 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
             </button>
             {!isEmployee && (
               <Link
-                href="/portal/demo-token-abc"
+                href={`/portal/preview-${project.id}`}
                 className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs transition-colors flex items-center gap-1.5"
+                title="Preview client portal for this specific project"
               >
                 <Eye className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 <span>Client Portal Preview</span>
@@ -844,6 +888,84 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                   </div>
                 ))
               )}
+            </div>
+
+            {/* Deployment & Previews Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <ExternalLink className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Deployment & Previews</span>
+                </h3>
+                {isAdminOrOwner && (
+                  <button
+                    onClick={openUrlModal}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Edit URLs</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                  <div className="min-w-0 pr-2">
+                    <div className="text-[10px] font-mono text-slate-400 uppercase font-bold">Staging Preview</div>
+                    <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[170px]" title={project.stagingUrl || "Not Configured"}>
+                      {project.stagingUrl ? project.stagingUrl : "Not Configured"}
+                    </div>
+                  </div>
+                  {project.stagingUrl ? (
+                    <a
+                      href={project.stagingUrl.startsWith("http") ? project.stagingUrl : `https://${project.stagingUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs shrink-0"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Open</span>
+                    </a>
+                  ) : (
+                    isAdminOrOwner && (
+                      <button
+                        onClick={openUrlModal}
+                        className="px-2 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-bold text-[10px] border border-indigo-200 dark:border-indigo-800 shrink-0"
+                      >
+                        + Add URL
+                      </button>
+                    )
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                  <div className="min-w-0 pr-2">
+                    <div className="text-[10px] font-mono text-slate-400 uppercase font-bold">Production Site</div>
+                    <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[170px]" title={project.liveUrl || "Pending Launch"}>
+                      {project.liveUrl ? project.liveUrl : "Pending Launch"}
+                    </div>
+                  </div>
+                  {project.liveUrl ? (
+                    <a
+                      href={project.liveUrl.startsWith("http") ? project.liveUrl : `https://${project.liveUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs shrink-0"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      <span>Live</span>
+                    </a>
+                  ) : (
+                    isAdminOrOwner && (
+                      <button
+                        onClick={openUrlModal}
+                        className="px-2 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 font-bold text-[10px] border border-emerald-200 dark:border-emerald-800 shrink-0"
+                      >
+                        + Add Live
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1652,6 +1774,75 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
             </button>
           </div>
         </div>
+      </BottomSheet>
+
+      {/* Admin & Sub Admin Staging / Live URLs Modal */}
+      <BottomSheet
+        isOpen={isUrlModalOpen}
+        onClose={() => setIsUrlModalOpen(false)}
+        title="Manage Deployment & Preview Links"
+        subtitle={`Configure live site and staging URLs for ${project?.name || "Project"}`}
+      >
+        <form onSubmit={handleSaveUrls} className="space-y-4 text-xs">
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">
+              Staging Preview URL (Test Deployment)
+            </label>
+            <input
+              type="text"
+              value={stagingUrlInput}
+              onChange={(e) => setStagingUrlInput(e.target.value)}
+              placeholder="e.g. https://staging.example.com or https://client-preview.vercel.app"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-mono text-xs"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              This link is opened when clients or team members click &ldquo;Launch Staging Preview&rdquo;.
+            </p>
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">
+              Production / Live Site URL
+            </label>
+            <input
+              type="text"
+              value={liveUrlInput}
+              onChange={(e) => setLiveUrlInput(e.target.value)}
+              placeholder="e.g. https://example.com"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-mono text-xs"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">
+              Design Files / Figma URL (Optional)
+            </label>
+            <input
+              type="text"
+              value={designUrlInput}
+              onChange={(e) => setDesignUrlInput(e.target.value)}
+              placeholder="e.g. https://figma.com/file/..."
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-mono text-xs"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              type="submit"
+              disabled={updatingUrls}
+              className="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {updatingUrls ? "Saving URLs..." : "Save URLs"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsUrlModalOpen(false)}
+              className="py-3 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       </BottomSheet>
     </div>
   );
