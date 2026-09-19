@@ -20,8 +20,29 @@ export default function LoginPage() {
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("registered") === "true") {
-      setRegisteredSuccess(true);
+    if (typeof window !== "undefined") {
+      if (new URLSearchParams(window.location.search).get("registered") === "true") {
+        setRegisteredSuccess(true);
+      }
+
+      // Automatically purge any oversized/corrupted legacy NextAuth chunk cookies
+      try {
+        const cookies = document.cookie.split(";");
+        for (const cookie of cookies) {
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+          if (
+            name.includes("session-token.") ||
+            name.includes("mdz-crm") ||
+            name.includes("next-auth")
+          ) {
+            document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+            document.cookie = `${name}=; Path=/mdz-crm; Expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+          }
+        }
+      } catch (e) {
+        console.warn("Cookie cleanup error:", e);
+      }
     }
   }, []);
 
