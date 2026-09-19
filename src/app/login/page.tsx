@@ -40,17 +40,25 @@ export default function LoginPage() {
     try {
       const res = await signIn("credentials", {
         redirect: false,
-        email: emailOrId,
+        email: emailOrId.trim(),
         password: password,
+        callbackUrl: "/mdz-crm",
       });
 
       if (res?.error) {
-        setError(res.error);
-      } else {
+        if (res.error === "CredentialsSignin" || res.error.toLowerCase().includes("credentials")) {
+          setError("Invalid email or password. Please check your credentials.");
+        } else {
+          setError(res.error);
+        }
+      } else if (res?.ok) {
         window.location.href = "/mdz-crm";
+      } else {
+        setError("Sign in failed. Please try again.");
       }
-    } catch (err) {
-      setError("An unexpected error occurred.");
+    } catch (err: any) {
+      console.error("Sign in exception:", err);
+      setError(err?.message || "An unexpected error occurred connecting to the auth service.");
     } finally {
       setLoading(false);
     }
