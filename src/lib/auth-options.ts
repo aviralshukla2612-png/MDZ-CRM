@@ -48,8 +48,8 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         console.log("NEXTAUTH AUTHORIZE CALLBACK FOR:", credentials?.email);
         if (!credentials?.email || !credentials?.password) {
-          console.log("NEXTAUTH ERROR: Invalid credentials object");
-          throw new Error("Invalid credentials");
+          console.log("NEXTAUTH: Missing credentials");
+          return null;
         }
 
         try {
@@ -58,16 +58,18 @@ export const authOptions: NextAuthOptions = {
             include: { employeeProfile: true },
           });
 
-          console.log("NEXTAUTH FOUND USER:", user ? user.email : "null");
+          console.log("NEXTAUTH FOUND USER:", user ? `${user.email} (Role: ${user.activeRole}, Active: ${user.isActive})` : "null");
 
           if (!user || !user.isActive) {
-            throw new Error("User not found or inactive");
+            console.log("NEXTAUTH: User not found or inactive for", credentials.email);
+            return null;
           }
 
           const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
 
           if (!isPasswordValid) {
-            throw new Error("Invalid password");
+            console.log("NEXTAUTH: Password mismatch for", credentials.email);
+            return null;
           }
 
           return {
@@ -80,7 +82,7 @@ export const authOptions: NextAuthOptions = {
           };
         } catch (error: any) {
           console.error("NEXTAUTH AUTHORIZE EXCEPTION:", error?.message || error);
-          throw error;
+          return null;
         }
       },
     }),
