@@ -52,31 +52,36 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: { employeeProfile: true },
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email.trim().toLowerCase() },
+            include: { employeeProfile: true },
+          });
 
-        console.log("NEXTAUTH FOUND USER:", user ? user.email : "null");
+          console.log("NEXTAUTH FOUND USER:", user ? user.email : "null");
 
-        if (!user || !user.isActive) {
-          throw new Error("User not found or inactive");
+          if (!user || !user.isActive) {
+            throw new Error("User not found or inactive");
+          }
+
+          const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
+
+          if (!isPasswordValid) {
+            throw new Error("Invalid password");
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.activeRole,
+            employeeId: user.employeeProfile?.id || undefined,
+            avatarUrl: user.avatarUrl || null,
+          };
+        } catch (error: any) {
+          console.error("NEXTAUTH AUTHORIZE EXCEPTION:", error?.message || error);
+          throw error;
         }
-
-        const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
-
-        if (!isPasswordValid) {
-          throw new Error("Invalid password");
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.activeRole,
-          employeeId: user.employeeProfile?.id || undefined,
-          avatarUrl: user.avatarUrl || null,
-        };
       },
     }),
   ],
