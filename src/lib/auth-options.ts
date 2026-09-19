@@ -72,13 +72,19 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
+          // Strip large base64 strings from JWT to prevent Cookie Too Large / 400 Bad Request errors
+          const safeAvatarUrl =
+            user.avatarUrl && !user.avatarUrl.startsWith("data:") && user.avatarUrl.length < 500
+              ? user.avatarUrl
+              : null;
+
           return {
             id: user.id,
             email: user.email,
             name: user.name,
             role: user.activeRole,
             employeeId: user.employeeProfile?.id || undefined,
-            avatarUrl: user.avatarUrl || null,
+            avatarUrl: safeAvatarUrl,
           };
         } catch (error: any) {
           console.error("NEXTAUTH AUTHORIZE EXCEPTION:", error?.message || error);
@@ -93,10 +99,16 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.employeeId = user.employeeId;
-        token.avatarUrl = (user as any).avatarUrl || null;
+        const avatar = (user as any).avatarUrl;
+        token.avatarUrl = avatar && !avatar.startsWith("data:") && avatar.length < 500 ? avatar : null;
       }
       if (trigger === "update" && session) {
-        if (session.avatarUrl !== undefined) token.avatarUrl = session.avatarUrl;
+        if (session.avatarUrl !== undefined) {
+          token.avatarUrl =
+            session.avatarUrl && !session.avatarUrl.startsWith("data:") && session.avatarUrl.length < 500
+              ? session.avatarUrl
+              : null;
+        }
         if (session.name !== undefined) token.name = session.name;
       }
       return token;
