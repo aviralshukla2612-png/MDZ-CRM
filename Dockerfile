@@ -37,6 +37,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-http-header-size=65536"
 
 RUN apk add --no-cache openssl
 

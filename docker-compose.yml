@@ -19,5 +19,6 @@ services:
       - DATABASE_URL=file:/app/prisma/data/production.db
       - NEXTAUTH_URL=https://www.millionairedizital.com/mdz-crm/api/auth
       - NEXTAUTH_URL_INTERNAL=http://127.0.0.1:3020/mdz-crm/api/auth
+      - NODE_OPTIONS=--max-http-header-size=65536
     restart: unless-stopped
 
