@@ -37,14 +37,16 @@ interface WorkClockContextType {
   simulatedGeofenceError: boolean;
   simulatedDeviceError: boolean;
   timeline: TimelineEvent[];
+  unclosedShift: { id: string; date: string | Date; punchIn: string | Date } | null;
   // Actions
   punchIn: () => void;
   startBreak: (type: string, reason?: string) => void;
   resumeWork: () => void;
   changeWork: (project: string, task: string) => void;
   punchOut: () => { success: boolean; requiresConfirmation: boolean; remainingSeconds: number };
-  confirmPunchOutAnyway: () => void;
+  confirmPunchOutAnyway: (reason?: string) => Promise<boolean>;
   markPunchOutPending: () => void;
+  refreshStatus: () => Promise<void>;
   toggleGeofenceError: () => void;
   toggleDeviceError: () => void;
   formatHMS: (sec: number) => string;
@@ -81,6 +83,8 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
 
   const [timeline, setTimeline] = useState<TimelineEvent[]>(INITIAL_TIMELINE);
 
+  const [unclosedShift, setUnclosedShift] = useState<{ id: string; date: string | Date; punchIn: string | Date } | null>(null);
+
   const [isLoaded, setIsLoaded] = useState(false);
   const lastPunchOutStatusRef = React.useRef<string | null>(null);
   const statusRef = React.useRef<ClockState>("WORKING");
@@ -92,100 +96,100 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
     statusRef.current = status;
   }, [status]);
 
-  // Polling for Attendance Status
-  useEffect(() => {
-    if (!isLoaded) return;
+  const pollStatus = React.useCallback(async () => {
+    try {
+      const employeeId = session?.user?.employeeId;
+      if (!employeeId) return; // Don't poll if no employee profile
+      const res = await fetch(`/mdz-crm/api/attendance/status?employeeId=${employeeId}&t=${Date.now()}`, { cache: "no-store" });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const dbStatus = json.data.punchOutRequestStatus;
+        const generalStatus = json.data.status;
+        
+        if (json.data.unclosedShift) {
+          setUnclosedShift(json.data.unclosedShift);
+        } else {
+          setUnclosedShift(null);
+        }
 
-    const pollStatus = async () => {
-      try {
-        const employeeId = session?.user?.employeeId;
-        if (!employeeId) return; // Don't poll if no employee profile
-        const res = await fetch(`/mdz-crm/api/attendance/status?employeeId=${employeeId}&t=${Date.now()}`, { cache: "no-store" });
-        const json = await res.json();
-        if (json.success && json.data) {
-          const dbStatus = json.data.punchOutRequestStatus;
-          const generalStatus = json.data.status;
-          
-          if (lastPunchOutStatusRef.current === "PENDING" && dbStatus === "APPROVED") {
-            showToast("✓ Your early punch-out request was approved!", "success");
-            setStatus("DAY_COMPLETE");
-            if (json.data.punchOut) {
-              const serverTime = new Date(json.data.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-              setPunchOutTime(serverTime);
-              setTimeline((prev) => [
-                ...prev,
-                {
-                  id: `evt-${Date.now()}`,
-                  time: serverTime,
-                  type: "PUNCH_OUT",
-                  title: "Punch Out",
-                  subtitle: `Day Complete at ${serverTime}`,
-                },
-              ]);
-            }
-          } else if (lastPunchOutStatusRef.current === "PENDING" && dbStatus === "REJECTED") {
-            showToast("⚠️ Your punch-out request was REJECTED by admin. You must continue working.", "error");
-            setStatus("WORKING");
-            setPunchOutTime(null);
-          } else {
-            // Sync with backend only if there is significant drift (> 10 seconds)
-            // to prevent UI jitter/glitches caused by network latency on the 5-second poll.
-            if (json.data.workSeconds !== undefined) {
-              setWorkSeconds((prev) => 
-                Math.abs(prev - json.data.workSeconds) > 10 ? json.data.workSeconds : prev
-              );
-            }
-            if (json.data.breakSeconds !== undefined) {
-              setBreakSeconds((prev) => 
-                Math.abs(prev - json.data.breakSeconds) > 10 ? json.data.breakSeconds : prev
-              );
-            }
+        if (lastPunchOutStatusRef.current === "PENDING" && dbStatus === "APPROVED") {
+          showToast("✓ Your early punch-out request was approved!", "success");
+          setStatus("DAY_COMPLETE");
+          if (json.data.punchOut) {
+            const serverTime = new Date(json.data.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+            setPunchOutTime(serverTime);
+            setTimeline((prev) => [
+              ...prev,
+              {
+                id: `evt-${Date.now()}`,
+                time: serverTime,
+                type: "PUNCH_OUT",
+                title: "Punch Out",
+                subtitle: `Day Complete at ${serverTime}`,
+              },
+            ]);
+          }
+        } else if (lastPunchOutStatusRef.current === "PENDING" && dbStatus === "REJECTED") {
+          showToast("⚠️ Your punch-out request was REJECTED by admin. You must continue working.", "error");
+          setStatus("WORKING");
+          setPunchOutTime(null);
+        } else {
+          // Sync with backend only if there is significant drift (> 10 seconds)
+          if (json.data.workSeconds !== undefined) {
+            setWorkSeconds((prev) => 
+              Math.abs(prev - json.data.workSeconds) > 10 ? json.data.workSeconds : prev
+            );
+          }
+          if (json.data.breakSeconds !== undefined) {
+            setBreakSeconds((prev) => 
+              Math.abs(prev - json.data.breakSeconds) > 10 ? json.data.breakSeconds : prev
+            );
+          }
 
-            if (json.data.punchIn && !punchInTime) {
-              setPunchInTime(new Date(json.data.punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
-            }
+          if (json.data.punchIn && !punchInTime) {
+            setPunchInTime(new Date(json.data.punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+          }
 
-
-            console.log("[WORK CLOCK] pollStatus:", { generalStatus, currentStatus: status, isLoaded });
-            if (generalStatus !== status) {
-              // Do not overwrite ON_BREAK with WORKING locally unless they just logged in
-              if (status === "ON_BREAK" && generalStatus === "WORKING" && isLoaded) {
-                console.log("[WORK CLOCK] Preserving ON_BREAK");
-                // Preserve ON_BREAK
-              } else {
-                console.log("[WORK CLOCK] Setting status to:", generalStatus);
-                setStatus(generalStatus);
-                if (generalStatus === "NOT_PUNCHED_IN") {
-                  setWorkSeconds(0);
-                  setBreakSeconds(0);
-                  setTimeline([]);
-                } else if (generalStatus === "DAY_COMPLETE" && json.data.punchOut && !punchOutTime) {
-                  const serverTime = new Date(json.data.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                  setPunchOutTime(serverTime);
-                  setTimeline((prev) => [
-                    ...prev,
-                    {
-                      id: `evt-${Date.now()}`,
-                      time: serverTime,
-                      type: "PUNCH_OUT",
-                      title: "Punch Out",
-                      subtitle: `Day Complete at ${serverTime}`,
-                    },
-                  ]);
-                }
+          if (generalStatus !== status) {
+            // Do not overwrite ON_BREAK with WORKING locally unless they just logged in
+            if (status === "ON_BREAK" && generalStatus === "WORKING" && isLoaded) {
+              // Preserve ON_BREAK
+            } else {
+              setStatus(generalStatus);
+              if (generalStatus === "NOT_PUNCHED_IN") {
+                setWorkSeconds(0);
+                setBreakSeconds(0);
+                setTimeline([]);
+              } else if (generalStatus === "DAY_COMPLETE" && json.data.punchOut && !punchOutTime) {
+                const serverTime = new Date(json.data.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                setPunchOutTime(serverTime);
+                setTimeline((prev) => [
+                  ...prev,
+                  {
+                    id: `evt-${Date.now()}`,
+                    time: serverTime,
+                    type: "PUNCH_OUT",
+                    title: "Punch Out",
+                    subtitle: `Day Complete at ${serverTime}`,
+                  },
+                ]);
               }
             }
           }
-
-          lastPunchOutStatusRef.current = dbStatus;
         }
-      } catch (err) {}
-    };
 
-    pollStatus(); // Run immediately on mount or status change
+        lastPunchOutStatusRef.current = dbStatus;
+      }
+    } catch (err) {}
+  }, [isLoaded, status, punchInTime, punchOutTime, showToast, session?.user?.employeeId]);
+
+  // Polling for Attendance Status
+  useEffect(() => {
+    if (!isLoaded) return;
+    pollStatus();
     const intervalId = setInterval(pollStatus, 5000);
     return () => clearInterval(intervalId);
-  }, [isLoaded, status, showToast, session?.user?.employeeId]);
+  }, [isLoaded, pollStatus]);
 
   // Load from localStorage on mount (hydration safe)
   useEffect(() => {
@@ -413,9 +417,13 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const confirmPunchOutAnyway = async () => {
+  const confirmPunchOutAnyway = async (reason?: string): Promise<boolean> => {
     try {
-      const res = await fetch("/mdz-crm/api/attendance/punch-out", { method: "POST" });
+      const res = await fetch("/mdz-crm/api/attendance/punch-out", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason }),
+      });
       const json = await res.json();
       
       if (json.success) {
@@ -436,13 +444,21 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
         ]);
         
         showToast("Successfully punched out for the day.", "success");
+        await pollStatus();
+        return true;
       } else {
         showToast("Failed to punch out: " + json.error, "error");
+        return false;
       }
     } catch (e) {
       console.error("Punch out error:", e);
       showToast("Network error. Please try again.", "error");
+      return false;
     }
+  };
+
+  const refreshStatus = async () => {
+    await pollStatus();
   };
 
   const toggleGeofenceError = () => setSimulatedGeofenceError((prev) => !prev);
@@ -475,6 +491,7 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
         simulatedGeofenceError,
         simulatedDeviceError,
         timeline,
+        unclosedShift,
         punchIn,
         startBreak,
         resumeWork,
@@ -482,6 +499,7 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
         punchOut,
         confirmPunchOutAnyway,
         markPunchOutPending,
+        refreshStatus,
         toggleGeofenceError,
         toggleDeviceError,
         formatHMS,

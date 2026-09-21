@@ -22,13 +22,16 @@ import {
   Clock,
   Send,
   Trash2,
+  Edit3,
 } from "lucide-react";
+import { EditClientModal } from "@/components/clients/EditClientModal";
 
 export default function ClientDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { showToast } = useToast();
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
   const [client, setClient] = useState<any>(null);
   const [linkedProjects, setLinkedProjects] = useState<any[]>([]);
@@ -155,9 +158,17 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
 
           <div className="flex items-center gap-2 shrink-0">
             <button
+              onClick={() => setIsEditOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 touch-target cursor-pointer shadow-xs"
+              title="Edit Client Details & Company Info"
+            >
+              <Edit3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>Edit Client</span>
+            </button>
+            <button
               onClick={() => setIsDeleteOpen(true)}
               disabled={isDeleting}
-              className="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-rose-200/60 dark:border-rose-800/60 disabled:opacity-50 touch-target"
+              className="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-semibold text-xs transition-colors flex items-center gap-1.5 border border-rose-200/60 dark:border-rose-800/60 disabled:opacity-50 touch-target cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
               <span>{isDeleting ? "Deleting..." : "Delete Client"}</span>
@@ -435,6 +446,19 @@ export default function ClientDetailPage({ params }: { params: { id: string } })
         confirmText={isDeleting ? "Deleting..." : "Delete Client"}
         isDestructive={true}
       />
+
+      {/* Edit Client Modal */}
+      {isEditOpen && client && (
+        <EditClientModal
+          isOpen={isEditOpen}
+          onClose={() => setIsEditOpen(false)}
+          client={client}
+          onSuccess={() => {
+            fetchClientData();
+            showToast("Client details updated successfully!", "success");
+          }}
+        />
+      )}
     </div>
   );
 }

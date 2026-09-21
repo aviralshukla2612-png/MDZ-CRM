@@ -34,11 +34,15 @@ export async function POST(req: NextRequest) {
     const startOfToday = new Date(now);
     startOfToday.setHours(0, 0, 0, 0);
 
-    // Find every attendance record that is still open and belongs to a previous day
+    // Only auto-close records older than 7 days that are completely abandoned
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
     const openRecords = await prisma.attendance.findMany({
       where: {
         punchOut: null,
-        date: { lt: startOfToday },
+        date: { lt: sevenDaysAgo },
       },
       include: {
         employee: {

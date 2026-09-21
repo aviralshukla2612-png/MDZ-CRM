@@ -12,6 +12,7 @@ import {
   Users,
   LayoutGrid,
   Calendar,
+  Edit3,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -20,6 +21,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { EmployeeProjectKanban } from "@/components/projects/EmployeeProjectKanban";
 import { ProjectTaskCalendar } from "@/components/projects/ProjectTaskCalendar";
+import { EditProjectModal } from "@/components/projects/EditProjectModal";
 
 export default function ProjectsDirectoryPage() {
   const { showToast } = useToast();
@@ -27,6 +29,7 @@ export default function ProjectsDirectoryPage() {
   const [loading, setLoading] = useState(true);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [editingProject, setEditingProject] = useState<any | null>(null);
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
@@ -620,13 +623,35 @@ export default function ProjectsDirectoryPage() {
                         : "Q4: Down Time"}
                     </span>
                   )}
-                  {(session?.user as any)?.role === "OWNER" && (
+                  {/* Edit Project Button for Admins/Sub-Admins/Sales */}
+                  {((session?.user as any)?.role === "OWNER" ||
+                    (session?.user as any)?.role === "ADMIN" ||
+                    (session?.user as any)?.role === "SUB_ADMIN" ||
+                    (session?.user as any)?.role === "SALES") && (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.preventDefault();
+                        e.stopPropagation();
+                        setEditingProject(p);
+                      }}
+                      className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 transition-colors cursor-pointer"
+                      title="Edit Project Details"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                  )}
+
+                  {(session?.user as any)?.role === "OWNER" && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         setProjectToDelete(p.id);
                       }}
-                      className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 transition-colors"
+                      className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer"
+                      title="Delete Project"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -740,6 +765,18 @@ export default function ProjectsDirectoryPage() {
           </div>
         </div>
       </BottomSheet>
+
+      {/* Edit Project Modal */}
+      {editingProject && (
+        <EditProjectModal
+          isOpen={!!editingProject}
+          onClose={() => setEditingProject(null)}
+          project={editingProject}
+          onSuccess={() => {
+            fetchProjects();
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   Send,
   X,
   ArrowRight,
+  Edit3,
 } from "lucide-react";
 
 interface ChangeRequestItem {
@@ -59,12 +60,31 @@ export default function ClientRevisionsPage() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingCr, setEditingCr] = useState<ChangeRequestRecord | null>(null);
   const [crTitle, setCrTitle] = useState("");
   const [crDescription, setCrDescription] = useState("");
   const [crItems, setCrItems] = useState<string[]>([""]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+
+  const openCreateModal = () => {
+    setEditingCr(null);
+    setCrTitle("");
+    setCrDescription("");
+    setCrItems([""]);
+    setSubmitError(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (cr: ChangeRequestRecord) => {
+    setEditingCr(cr);
+    setCrTitle(cr.originalRequirement);
+    setCrDescription(cr.requestedChange || "");
+    setCrItems(cr.items && cr.items.length > 0 ? cr.items.map((i) => i.title) : [""]);
+    setSubmitError(null);
+    setIsModalOpen(true);
+  };
 
   async function fetchProjects() {
     try {
@@ -131,16 +151,26 @@ export default function ClientRevisionsPage() {
     setSubmitError(null);
 
     try {
-      const res = await fetch(
-        `/mdz-crm/api/client/projects/${selectedProjectId}/change-requests`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+      const method = editingCr ? "PATCH" : "POST";
+      const payload = editingCr
+        ? {
+            changeRequestId: editingCr.id,
             title: crTitle.trim(),
             description: crDescription.trim() || crTitle.trim(),
             items: filteredItems.map((title) => ({ title })),
-          }),
+          }
+        : {
+            title: crTitle.trim(),
+            description: crDescription.trim() || crTitle.trim(),
+            items: filteredItems.map((title) => ({ title })),
+          };
+
+      const res = await fetch(
+        `/mdz-crm/api/client/projects/${selectedProjectId}/change-requests`,
+        {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         }
       );
 
@@ -149,11 +179,14 @@ export default function ClientRevisionsPage() {
         setSubmitError(data.error || "Failed to submit change request.");
       } else {
         setSubmitSuccess(
-          "Change request successfully submitted! Both assigned developers and administrators have been notified."
+          editingCr
+            ? "Change request updated successfully!"
+            : "Change request successfully submitted! Both assigned developers and administrators have been notified."
         );
         setCrTitle("");
         setCrDescription("");
         setCrItems([""]);
+        setEditingCr(null);
         setIsModalOpen(false);
         await fetchProjects();
         setTimeout(() => setSubmitSuccess(null), 5000);
@@ -204,11 +237,8 @@ export default function ClientRevisionsPage() {
 
         {activeProject && (
           <button
-            onClick={() => {
-              setSubmitError(null);
-              setIsModalOpen(true);
-            }}
-            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 transition-all shrink-0 touch-target"
+            onClick={openCreateModal}
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 transition-all shrink-0 touch-target cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>
@@ -362,6 +392,16 @@ export default function ClientRevisionsPage() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {(cr.status === "SUBMITTED" || cr.status === "PENDING_BUDGET_APPROVAL") && (
+                          <button
+                            onClick={() => openEditModal(cr)}
+                            className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                            title="Edit submitted change request"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                        )}
                         <span
                           className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full ${
                             cr.status === "APPROVED" || cr.status === "COMPLETED"
@@ -424,7 +464,9 @@ export default function ClientRevisionsPage() {
               <div className="flex items-center gap-2">
                 <GitPullRequest className="w-5 h-5 text-amber-500" />
                 <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">
-                  Submit Change Request to Developers & Admin
+                  {editingCr
+                    ? `Edit Change Request (${editingCr.requestNumber})`
+                    : "Submit Change Request to Developers & Admin"}
                 </h3>
               </div>
               <button
@@ -544,10 +586,16 @@ export default function ClientRevisionsPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  <span>{submitting ? "Sending..." : "Submit to Developers & Admin"}</span>
+                  <span>
+                    {submitting
+                      ? "Saving..."
+                      : editingCr
+                      ? "Save Changes"
+                      : "Submit to Developers & Admin"}
+                  </span>
                 </button>
               </div>
             </form>

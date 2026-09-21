@@ -40,45 +40,15 @@ export async function GET(req: NextRequest) {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Proactively clean up / auto-logout dangling open records from previous days at 12:00 AM
-    try {
-      const danglingPrevious = await prisma.attendance.findMany({
-        where: {
-          employeeId: employee.id,
-          punchOut: null,
-          date: { lt: startOfDay },
-        },
-      });
-
-      for (const dangling of danglingPrevious) {
-        const autoPunchOut = new Date(dangling.date);
-        autoPunchOut.setHours(23, 59, 59, 0);
-        const punchInMs = new Date(dangling.punchIn).getTime();
-        const totalMinutes = Math.max(0, Math.floor((autoPunchOut.getTime() - punchInMs) / 60000));
-
-        await prisma.$transaction([
-          prisma.attendance.update({
-            where: { id: dangling.id },
-            data: {
-              punchOut: autoPunchOut,
-              totalMinutes,
-              status: "PRESENT",
-              punchOutReason: "Mispunch / Auto-logout at 12:00 AM",
-            },
-          }),
-          prisma.employeeStatusEvent.updateMany({
-            where: {
-              employeeId: employee.id,
-              endedAt: null,
-              startedAt: { lte: autoPunchOut },
-            },
-            data: { endedAt: autoPunchOut },
-          }),
-        ]);
-      }
-    } catch (cleanErr) {
-      console.error("Auto-cleanup previous day mispunch error:", cleanErr);
-    }
+    // Check for any unclosed shift from previous days
+    const unclosedShift = await prisma.attendance.findFirst({
+      where: {
+        employeeId: employee.id,
+        punchOut: null,
+        date: { lt: startOfDay },
+      },
+      orderBy: { punchIn: "desc" }
+    });
 
     const attendance = await prisma.attendance.findFirst({
       where: {
@@ -94,7 +64,17 @@ export async function GET(req: NextRequest) {
     });
 
     if (!attendance) {
-      return NextResponse.json({ success: true, data: { status: "NOT_PUNCHED_IN" } });
+      return NextResponse.json({ 
+        success: true, 
+        data: { 
+          status: "NOT_PUNCHED_IN",
+          unclosedShift: unclosedShift ? {
+            id: unclosedShift.id,
+            date: unclosedShift.date,
+            punchIn: unclosedShift.punchIn,
+          } : null
+        } 
+      });
     }
 
     // Calculate exact work and break seconds for today
@@ -144,6 +124,11 @@ export async function GET(req: NextRequest) {
         punchIn: attendance.punchIn,
         workSeconds: serverWorkSeconds,
         breakSeconds: serverBreakSeconds,
+        unclosedShift: unclosedShift ? {
+          id: unclosedShift.id,
+          date: unclosedShift.date,
+          punchIn: unclosedShift.punchIn,
+        } : null
       } 
     });
 

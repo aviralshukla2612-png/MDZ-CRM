@@ -27,10 +27,9 @@ import {
   Users,
   Moon,
   Edit3,
-  AlertCircle,
-  FileText,
 } from "lucide-react";
 import { TimeModificationModal } from "@/components/attendance/TimeModificationModal";
+import { UnclosedShiftModal } from "@/components/attendance/UnclosedShiftModal";
 
 const CustomStaffDropdown = ({ employees, value, onChange }: any) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -163,6 +162,8 @@ export default function AttendanceWorkClockPage() {
     punchOut,
     confirmPunchOutAnyway,
     markPunchOutPending,
+    unclosedShift,
+    refreshStatus,
     toggleGeofenceError,
     toggleDeviceError,
     formatHMS,
@@ -173,6 +174,8 @@ export default function AttendanceWorkClockPage() {
   const [isBreakSheetOpen, setIsBreakSheetOpen] = useState(false);
   const [isChangeWorkOpen, setIsChangeWorkOpen] = useState(false);
   const [isPunchOutConfirmOpen, setIsPunchOutConfirmOpen] = useState(false);
+  const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
+  const [activeUnclosedRecord, setActiveUnclosedRecord] = useState<any>(null);
 
   // Form states for change work
   const [selectedProject, setSelectedProject] = useState(currentProject);
@@ -216,23 +219,23 @@ export default function AttendanceWorkClockPage() {
     setEndDate(new Date().toISOString().split("T")[0]);
   }, []);
 
-  const fetchAttendanceLogs = async () => {
+  const fetchAttendanceLogs = React.useCallback(async () => {
     try {
-      let url = `/mdz-crm/api/attendance/history?employeeId=${session?.user?.employeeId || ""}`;
+      let url = `/mdz-crm/api/attendance/history?employeeId=${session?.user?.employeeId || ""}&t=${Date.now()}`;
       
       if (startDate && endDate) {
         url += `&startDate=${startDate}&endDate=${endDate}`;
       }
 
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: "no-store" });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setAttendanceRecords(json.data);
       }
     } catch (e) {
-      console.error(e);
+      console.error("fetchAttendanceLogs error:", e);
     }
-  };
+  }, [startDate, endDate, session?.user?.employeeId]);
 
   const [isTimeModOpen, setIsTimeModOpen] = useState(false);
   const [selectedAttForMod, setSelectedAttForMod] = useState<any | null>(null);
@@ -255,7 +258,24 @@ export default function AttendanceWorkClockPage() {
       fetchAttendanceLogs();
       fetchTimeModRequests();
     }
-  }, [startDate, endDate, session?.user?.employeeId]);
+  }, [fetchAttendanceLogs, session?.user?.employeeId]);
+
+  // Real-time periodic refresh of attendance history (every 10 seconds)
+  useEffect(() => {
+    if (!session?.user?.employeeId) return;
+    const interval = setInterval(() => {
+      fetchAttendanceLogs();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [fetchAttendanceLogs, session?.user?.employeeId]);
+
+  // Trigger unclosed shift modal if detected and not yet punched in
+  useEffect(() => {
+    if (unclosedShift && status === "NOT_PUNCHED_IN") {
+      setActiveUnclosedRecord(unclosedShift);
+      setIsUnclosedModalOpen(true);
+    }
+  }, [unclosedShift, status]);
 
   const REQUIRED_WORK_SECONDS = parseInt(process.env.NEXT_PUBLIC_REQUIRED_WORK_HOURS || "9") * 3600;
   const totalActiveSeconds = workSeconds + breakSeconds;
@@ -278,6 +298,14 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 }
 
   const handlePunchInClick = async () => {
+    // If there is an unclosed shift from yesterday, force user to resolve it first
+    if (unclosedShift) {
+      setActiveUnclosedRecord(unclosedShift);
+      setIsUnclosedModalOpen(true);
+      showToast("Please submit your work summary for yesterday's shift before punching in today.", "info");
+      return;
+    }
+
     // Client-side device check
     const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (isMobile) {
@@ -322,11 +350,19 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
           const data = await res.json();
           
           if (!res.ok || !data.success) {
+            if (data.requireUnclosedResolution) {
+              setActiveUnclosedRecord({ id: data.unclosedShiftId, date: data.dateStr });
+              setIsUnclosedModalOpen(true);
+              showToast(data.error || "Please complete yesterday's shift first.", "error");
+              return;
+            }
             showToast(data.error || "Failed to punch in.", "error");
             return;
           }
           
           punchIn();
+          await fetchAttendanceLogs();
+          await refreshStatus();
           showToast("✓ Punched In successfully at " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), "success");
         } catch (e) {
           showToast("Network error while punching in.", "error");
@@ -343,6 +379,7 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
     startBreak(selectedBreakType, customBreakReason);
     setIsBreakSheetOpen(false);
     showToast(`✓ Break started: ${selectedBreakType}`, "info");
+    await fetchAttendanceLogs();
   };
 
   const handleChangeWorkSubmit = (e: React.FormEvent) => {
@@ -358,7 +395,11 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
       setIsPunchOutConfirmOpen(true);
     } else {
       // Normal punch out path (8 hours completed)
-      confirmPunchOutAnyway();
+      const ok = await confirmPunchOutAnyway();
+      if (ok) {
+        await fetchAttendanceLogs();
+        await refreshStatus();
+      }
     }
   };
 
@@ -381,6 +422,8 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
         markPunchOutPending();
         setIsPunchOutConfirmOpen(false);
         showToast("Punch out request submitted for admin approval.", "info");
+        await fetchAttendanceLogs();
+        await refreshStatus();
       } else {
         showToast(data.error || "Failed to submit request", "error");
       }
@@ -951,6 +994,19 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
         defaultDate={selectedAttForMod?.date ? selectedAttForMod.date.split("T")[0] : undefined}
         initialPunchIn={selectedAttForMod?.punchIn}
         initialPunchOut={selectedAttForMod?.punchOut}
+      />
+
+      {/* Unclosed Shift Work Summary Modal */}
+      <UnclosedShiftModal
+        isOpen={isUnclosedModalOpen}
+        onClose={() => setIsUnclosedModalOpen(false)}
+        unclosedRecord={activeUnclosedRecord || unclosedShift}
+        onSuccess={async () => {
+          setIsUnclosedModalOpen(false);
+          setActiveUnclosedRecord(null);
+          await refreshStatus();
+          await fetchAttendanceLogs();
+        }}
       />
     </div>
   );

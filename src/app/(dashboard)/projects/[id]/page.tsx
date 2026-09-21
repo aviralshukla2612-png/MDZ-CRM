@@ -26,10 +26,13 @@ import {
   Send,
   Calendar,
   ExternalLink,
+  Edit3,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
+import { EditProjectModal } from "@/components/projects/EditProjectModal";
+import { EditTaskModal } from "@/components/projects/EditTaskModal";
 import { MediaUploader } from "@/components/ui/MediaUploader";
 import { MediaGallery } from "@/components/ui/MediaGallery";
 
@@ -42,6 +45,8 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
 
   // Daily Progress Update Modal state
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -707,6 +712,16 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           <div className="flex items-center gap-2 shrink-0">
             {isAdminOrOwner && (
               <button
+                onClick={() => setIsEditProjectOpen(true)}
+                className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs touch-target border border-slate-200 dark:border-slate-700"
+                title="Edit project parameters, deadline, and details"
+              >
+                <Edit3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Edit Project</span>
+              </button>
+            )}
+            {isAdminOrOwner && (
+              <button
                 onClick={openAssignModal}
                 className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-xs touch-target"
                 title="Assign Developer to Project"
@@ -1089,7 +1104,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                         {!isDone ? (
                           <button
                             onClick={() => handleToggleTaskStatus(tsk.id, "COMPLETED")}
-                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5"
+                            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
                             title="Mark task complete"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1102,9 +1117,19 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                           </span>
                         )}
 
+                        {/* Edit Task Option for Admin/Owner/TM */}
+                        <button
+                          onClick={() => setEditingTask(tsk)}
+                          className="px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-semibold text-xs transition-colors flex items-center gap-1 border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+                          title="Edit Task Details"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+
                         <button
                           onClick={() => handleArchiveTask(tsk.id)}
-                          className="px-2.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-rose-100 text-slate-600 hover:text-rose-600 text-xs font-semibold transition-colors"
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-rose-100 text-slate-600 hover:text-rose-600 text-xs font-semibold transition-colors cursor-pointer"
                           title="Archive Task"
                         >
                           Archive
@@ -1844,6 +1869,32 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           </div>
         </form>
       </BottomSheet>
+
+      {/* Edit Project Modal */}
+      {isEditProjectOpen && project && (
+        <EditProjectModal
+          isOpen={isEditProjectOpen}
+          onClose={() => setIsEditProjectOpen(false)}
+          project={project}
+          onSuccess={() => {
+            fetchProject();
+          }}
+        />
+      )}
+
+      {/* Edit Task Modal */}
+      {editingTask && project && (
+        <EditTaskModal
+          isOpen={!!editingTask}
+          onClose={() => setEditingTask(null)}
+          task={editingTask}
+          projectId={project.id}
+          employees={project.teamMembers || []}
+          onSuccess={() => {
+            fetchProject();
+          }}
+        />
+      )}
     </div>
   );
 }

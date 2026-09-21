@@ -68,6 +68,13 @@ export async function POST(req: Request) {
     const elapsedMinutes = Math.floor(elapsedMs / 60000);
     const workedMinutes = Math.max(0, elapsedMinutes - totalBreakMinutes);
 
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch (e) {}
+    const { reason, workSummary } = body;
+    const finalReason = (reason || workSummary || "").trim() || activeAttendance.punchOutReason || null;
+
     // 4. Perform the transactional update
     const [updatedAttendance] = await prisma.$transaction([
       // Close the attendance
@@ -77,6 +84,7 @@ export async function POST(req: Request) {
           punchOut: serverNow,
           totalMinutes: workedMinutes,
           status: "COMPLETED",
+          punchOutReason: finalReason,
         }
       }),
       // Close any open status events (e.g. WORKING or stray breaks)

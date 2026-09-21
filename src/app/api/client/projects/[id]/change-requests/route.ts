@@ -237,3 +237,94 @@ export async function POST(
     );
   }
 }
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const authRes = await requireAuth();
+  if (authRes instanceof NextResponse) return authRes;
+
+  const projectId = params.id;
+  const internalRoles = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"];
+
+  if (authRes.activeRole === "CLIENT") {
+    const isAuthorized = await verifyClientProjectAccess(authRes.email, projectId);
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { success: false, error: "Access denied or project not found." },
+        { status: 403 }
+      );
+    }
+  } else if (!internalRoles.includes(authRes.activeRole)) {
+    return NextResponse.json(
+      { success: false, error: "Forbidden: Access denied." },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const body = await req.json();
+    const { changeRequestId, title, description, reason, items } = body;
+
+    if (!changeRequestId) {
+      return NextResponse.json(
+        { success: false, error: "Change Request ID is required." },
+        { status: 400 }
+      );
+    }
+
+    const existing = await prisma.changeRequest.findFirst({
+      where: { id: changeRequestId, projectId },
+      include: { items: true },
+    });
+
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: "Change Request not found." },
+        { status: 404 }
+      );
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const updatedReq = await tx.changeRequest.update({
+        where: { id: changeRequestId },
+        data: {
+          originalRequirement: title ? title.trim() : existing.originalRequirement,
+          requestedChange: description ? description.trim() : existing.requestedChange,
+          reason: reason !== undefined ? (reason ? reason.trim() : null) : existing.reason,
+        },
+      });
+
+      if (Array.isArray(items) && items.length > 0) {
+        await tx.changeRequestItem.deleteMany({
+          where: { changeRequestId },
+        });
+
+        await tx.changeRequestItem.createMany({
+          data: items
+            .filter((item: any) => (typeof item === "string" ? item.trim() : item.title?.trim()))
+            .map((item: any) => ({
+              changeRequestId,
+              title: typeof item === "string" ? item.trim() : item.title.trim(),
+              category: "SCOPE",
+              status: "PENDING",
+            })),
+        });
+      }
+
+      return updatedReq;
+    });
+
+    return NextResponse.json({
+      success: true,
+      changeRequest: updated,
+    });
+  } catch (error) {
+    console.error("Failed to update change request:", error);
+    return NextResponse.json(
+      { success: false, error: "Internal server error." },
+      { status: 500 }
+    );
+  }
+}

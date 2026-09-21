@@ -26,11 +26,14 @@ import {
   ChevronDown,
   GripVertical,
   Camera,
+  Edit3,
 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
 import { AvatarUploadModal } from "@/components/ui/AvatarUploadModal";
 import { ProjectTaskCalendar } from "./ProjectTaskCalendar";
+import { EditProjectModal } from "./EditProjectModal";
+import { EditTaskModal } from "./EditTaskModal";
 
 export interface ProjectCardItem {
   id: string;
@@ -249,6 +252,10 @@ export function EmployeeProjectKanban({
   const [assigning, setAssigning] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [avatarModalEmployee, setAvatarModalEmployee] = useState<EmployeeWorkload | null>(null);
+  const [editingProject, setEditingProject] = useState<any | null>(null);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
+  const [editingTaskProjectId, setEditingTaskProjectId] = useState<string>("");
+  const [editingTaskTeamMembers, setEditingTaskTeamMembers] = useState<any[]>([]);
 
   useEffect(() => {
     fetch("/mdz-crm/api/project-roles")
@@ -1305,16 +1312,38 @@ export function EmployeeProjectKanban({
                               </span>
                             </div>
 
-                            <span
-                              className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 max-w-[180px] truncate ${
-                                isLeadRole
-                                  ? "bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700"
-                                  : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700"
-                              }`}
-                              title={teamTooltip}
-                            >
-                              {assignedDisplayName ? assignedDisplayName : isLeadRole ? "⭐ TECH LEAD (TM)" : proj.roleInProject || "DEVELOPER"}
-                            </span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span
+                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 max-w-[130px] truncate ${
+                                  isLeadRole
+                                    ? "bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700"
+                                    : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700"
+                                }`}
+                                title={teamTooltip}
+                              >
+                                {assignedDisplayName ? assignedDisplayName : isLeadRole ? "⭐ TECH LEAD (TM)" : proj.roleInProject || "DEVELOPER"}
+                              </span>
+
+                              {/* Edit Project button for Admins/Sub-Admins/Sales */}
+                              {((session?.user as any)?.role === "OWNER" ||
+                                (session?.user as any)?.role === "ADMIN" ||
+                                (session?.user as any)?.role === "SUB_ADMIN" ||
+                                (session?.user as any)?.role === "SALES") && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    const rawProj = allProjects.find((p) => p.id === proj.id) || proj;
+                                    setEditingProject(rawProj);
+                                  }}
+                                  className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer"
+                                  title="Edit Project Details"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Project Name & Code */}
@@ -1530,12 +1559,27 @@ export function EmployeeProjectKanban({
                                               e.stopPropagation();
                                               handleUpdateTaskFromKanban(proj.id, tsk.id, "COMPLETED");
                                             }}
-                                            className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-2xs hover:bg-emerald-500 active:scale-95 transition-all"
+                                            className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-2xs hover:bg-emerald-500 active:scale-95 transition-all cursor-pointer"
                                             title="Mark task complete"
                                           >
                                             ✓
                                           </button>
                                         )}
+
+                                        {/* Edit Task Button */}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingTask(tsk);
+                                            setEditingTaskProjectId(proj.id);
+                                            setEditingTaskTeamMembers(proj.teamMembers || []);
+                                          }}
+                                          className="p-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors shrink-0 cursor-pointer"
+                                          title="Edit Task Details"
+                                        >
+                                          <Edit3 className="w-3 h-3" />
+                                        </button>
                                       </div>
                                       </div>
                                     );
@@ -1683,6 +1727,36 @@ export function EmployeeProjectKanban({
             onRefresh();
           }}
           title={`Update Profile Photo for ${avatarModalEmployee.name}`}
+        />
+      )}
+
+      {/* Edit Project Modal */}
+      {editingProject && (
+        <EditProjectModal
+          isOpen={!!editingProject}
+          onClose={() => setEditingProject(null)}
+          project={editingProject}
+          onSuccess={() => {
+            onRefresh();
+          }}
+        />
+      )}
+
+      {/* Edit Task Modal */}
+      {editingTask && (
+        <EditTaskModal
+          isOpen={!!editingTask}
+          onClose={() => {
+            setEditingTask(null);
+            setEditingTaskProjectId("");
+            setEditingTaskTeamMembers([]);
+          }}
+          task={editingTask}
+          projectId={editingTaskProjectId}
+          employees={editingTaskTeamMembers}
+          onSuccess={() => {
+            onRefresh();
+          }}
         />
       )}
     </div>

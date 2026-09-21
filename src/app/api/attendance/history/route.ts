@@ -82,14 +82,19 @@ export async function GET(req: NextRequest) {
 
       let totalElapsedMinutes = record.totalMinutes || 0;
       if (!record.punchOut && record.punchIn) {
-        // If not punched out yet, total time is from punch-in until now
+        // If not punched out yet, total time is from punch-in until now minus breaks
         const punchInTime = new Date(record.punchIn).getTime();
-        totalElapsedMinutes = Math.floor((now.getTime() - punchInTime) / 60000);
+        const rawMinutes = Math.floor((now.getTime() - punchInTime) / 60000);
+        totalElapsedMinutes = Math.max(0, rawMinutes - breakMinutes);
       } else if (record.punchOut && record.punchIn) {
-        // If punched out, total time is from punch-in until punch-out
-        const punchInTime = new Date(record.punchIn).getTime();
-        const punchOutTime = new Date(record.punchOut).getTime();
-        totalElapsedMinutes = Math.floor((punchOutTime - punchInTime) / 60000);
+        if (record.totalMinutes !== null && record.totalMinutes !== undefined && record.totalMinutes > 0) {
+          totalElapsedMinutes = record.totalMinutes;
+        } else {
+          const punchInTime = new Date(record.punchIn).getTime();
+          const punchOutTime = new Date(record.punchOut).getTime();
+          const rawMinutes = Math.floor((punchOutTime - punchInTime) / 60000);
+          totalElapsedMinutes = Math.max(0, rawMinutes - breakMinutes);
+        }
       }
 
       return {

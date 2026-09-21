@@ -9,6 +9,7 @@ import { useWorkClock } from "@/lib/workClockContext";
 import { useToast } from "@/components/ui/Toast";
 import { NotificationBell } from "./NotificationBell";
 import { AvatarUploadModal } from "../ui/AvatarUploadModal";
+import { UnclosedShiftModal } from "../attendance/UnclosedShiftModal";
 
 interface Props {
   currentUser: {
@@ -28,11 +29,13 @@ interface Props {
 }
 
 export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout }: Props) {
-  const { status, workSeconds, breakSeconds, breakType, formatHMS, punchIn, startBreak, resumeWork, punchOut, confirmPunchOutAnyway, markPunchOutPending } = useWorkClock();
+  const { status, workSeconds, breakSeconds, breakType, formatHMS, punchIn, startBreak, resumeWork, punchOut, confirmPunchOutAnyway, markPunchOutPending, unclosedShift, refreshStatus } = useWorkClock();
   const { showToast } = useToast();
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
+  const [activeUnclosedRecord, setActiveUnclosedRecord] = useState<any>(null);
   const [currentPhoto, setCurrentPhoto] = useState<string | null | undefined>(currentUser.avatarUrl);
 
   React.useEffect(() => {
@@ -87,6 +90,13 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
   }, [currentUser.role, showToast]);
 
   const handlePunchInClick = async () => {
+    if (unclosedShift) {
+      setActiveUnclosedRecord(unclosedShift);
+      setIsUnclosedModalOpen(true);
+      showToast("Please submit your work summary for yesterday's shift before punching in today.", "info");
+      return;
+    }
+
     if (isPunchingIn) return;
     setIsPunchingIn(true);
     try {
@@ -98,12 +108,19 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
       const data = await res.json();
       
       if (!res.ok || !data.success) {
+        if (data.requireUnclosedResolution) {
+          setActiveUnclosedRecord({ id: data.unclosedShiftId, date: data.dateStr });
+          setIsUnclosedModalOpen(true);
+          showToast(data.error || "Please complete yesterday's shift first.", "error");
+          return;
+        }
         showToast(data.error || "Failed to punch in.", "error");
         setIsPunchingIn(false);
         return;
       }
       
       punchIn();
+      await refreshStatus();
       showToast("✓ Punched In successfully!", "success");
     } catch (e) {
       showToast("Network error while punching in.", "error");
@@ -118,14 +135,8 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
       setIsPunchOutConfirmOpen(true);
       setIsBreakSheetOpen(false); // close break sheet if open
     } else {
-      try {
-        await fetch("/mdz-crm/api/attendance/punch-out-request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ employeeId: currentUser.employeeId, reason: "" }), // Assume 8+ hours
-        });
-      } catch (e) {}
-      showToast("✓ Punched Out for today. Day complete!", "success");
+      await confirmPunchOutAnyway();
+      await refreshStatus();
     }
   };
 
@@ -483,6 +494,18 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           </button>
         </form>
       </BottomSheet>
+
+      {/* Unclosed Shift Work Summary Modal */}
+      <UnclosedShiftModal
+        isOpen={isUnclosedModalOpen}
+        onClose={() => setIsUnclosedModalOpen(false)}
+        unclosedRecord={activeUnclosedRecord || unclosedShift}
+        onSuccess={async () => {
+          setIsUnclosedModalOpen(false);
+          setActiveUnclosedRecord(null);
+          await refreshStatus();
+        }}
+      />
     </header>
   );
 }

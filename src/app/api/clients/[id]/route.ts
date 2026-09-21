@@ -33,17 +33,35 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   try {
     const body = await req.json();
+    const { companyName, email, phone, notes, billingAddress, gstNumber, taxId, contactPerson, totalBusiness, outstandingBalance } = body;
+    
+    const updateData: any = {};
+    if (companyName !== undefined) updateData.companyName = companyName;
+    if (email !== undefined) updateData.email = email;
+    if (phone !== undefined) updateData.phone = phone;
+    if (notes !== undefined) updateData.notes = notes;
+    if (billingAddress !== undefined) updateData.billingAddress = billingAddress;
+    if (gstNumber !== undefined) updateData.gstNumber = gstNumber;
+    if (taxId !== undefined) updateData.taxId = taxId;
+    if (totalBusiness !== undefined) updateData.totalBusiness = Number(totalBusiness);
+    if (outstandingBalance !== undefined) updateData.outstandingBalance = Number(outstandingBalance);
+
     const client = await prisma.client.update({
       where: { id: params.id },
-      data: {
-        companyName: body.companyName,
-        email: body.email,
-        phone: body.phone,
-        notes: body.notes,
-        totalBusiness: body.totalBusiness,
-        outstandingBalance: body.outstandingBalance,
-      },
+      data: updateData,
     });
+
+    if (contactPerson && typeof contactPerson === "string" && contactPerson.trim()) {
+      const primaryContact = await prisma.clientContact.findFirst({
+        where: { clientId: params.id, isPrimary: true }
+      });
+      if (primaryContact) {
+        await prisma.clientContact.update({
+          where: { id: primaryContact.id },
+          data: { name: contactPerson.trim() }
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, data: client });
   } catch (error) {

@@ -17,7 +17,9 @@ import {
   Sparkles,
   Building2,
   Trash2,
+  Edit3,
 } from "lucide-react";
+import { EditClientModal } from "@/components/clients/EditClientModal";
 
 export default function ClientsPage() {
   const { showToast } = useToast();
@@ -25,6 +27,7 @@ export default function ClientsPage() {
   const [loading, setLoading] = useState(true);
 
   const [clientToDelete, setClientToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [editingClient, setEditingClient] = useState<any | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -215,7 +218,19 @@ export default function ClientsPage() {
                   <span className="font-bold font-mono text-slate-900 dark:text-slate-100">₹{(c.totalBilling || 0).toLocaleString("en-IN")}</span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setEditingClient(c);
+                    }}
+                    title="Edit Client Information"
+                    className="p-2 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors border border-transparent hover:border-indigo-200 dark:hover:border-indigo-900/60 cursor-pointer"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+
                   <button
                     onClick={(e) => {
                       e.preventDefault();
@@ -223,7 +238,7 @@ export default function ClientsPage() {
                       setClientToDelete({ id: c.id, name: c.companyName });
                     }}
                     title="Delete Client Account"
-                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60"
+                    className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -350,6 +365,19 @@ export default function ClientsPage() {
         confirmText={isDeleting ? "Deleting..." : "Delete Client"}
         isDestructive={true}
       />
+
+      {/* Edit Client Modal */}
+      {editingClient && (
+        <EditClientModal
+          isOpen={!!editingClient}
+          onClose={() => setEditingClient(null)}
+          client={editingClient}
+          onSuccess={() => {
+            fetchClients();
+            showToast("Client details updated successfully!", "success");
+          }}
+        />
+      )}
     </div>
   );
 }

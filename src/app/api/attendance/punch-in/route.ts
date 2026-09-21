@@ -66,49 +66,21 @@ export async function POST(req: Request) {
         throw new Error("Already punched in today.");
       }
 
-      // ── Auto-close any forgotten punch-outs from previous days ──────────────
-      // If the employee forgot to punch out yesterday (or earlier), we close
-      // those records at 23:59:59 of their respective day before creating today's.
-      const forgottenRecords = await tx.attendance.findMany({
+      // ── Check for unclosed shifts from previous days ──────────────
+      const unclosedRecord = await tx.attendance.findFirst({
         where: {
           employeeId: employee.id,
           punchOut: null,
           date: { lt: startOfDay }, // strictly before today
         },
+        orderBy: { date: "desc" }
       });
 
-      for (const forgotten of forgottenRecords) {
-        // Set punch-out to 23:59:59 of the day the record belongs to
-        const autoPunchOut = new Date(forgotten.date);
-        autoPunchOut.setHours(23, 59, 59, 0);
-
-        const punchInMs = new Date(forgotten.punchIn).getTime();
-        const totalMinutes = Math.max(0, Math.floor((autoPunchOut.getTime() - punchInMs) / 60000));
-
-        await tx.attendance.update({
-          where: { id: forgotten.id },
-          data: {
-            punchOut: autoPunchOut,
-            totalMinutes,
-            status: "PRESENT",
-            punchOutReason: "Auto punch-out: employee did not punch out before midnight.",
-          },
-        });
-        
-        // Close any dangling status events (breaks/working) for that day
-        await tx.employeeStatusEvent.updateMany({
-          where: {
-            employeeId: employee.id,
-            endedAt: null,
-            startedAt: {
-              gte: new Date(new Date(forgotten.date).setHours(0, 0, 0, 0)),
-              lte: autoPunchOut,
-            },
-          },
-          data: { endedAt: autoPunchOut },
-        });
+      if (unclosedRecord) {
+        const dateStr = new Date(unclosedRecord.date).toLocaleDateString();
+        throw new Error(`UNCLOSED_PREVIOUS_SHIFT:${unclosedRecord.id}:${dateStr}`);
       }
-      // ────────────────────────────────────────────────────────────────────────
+      // ───────────────────────────────────────────────────────────────
 
       // Create new attendance and initial working status event
       const newAttendance = await tx.attendance.create({
@@ -149,6 +121,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, data: attendance });
   } catch (error: any) {
     console.error("Punch In Error:", error);
+    if (error.message?.startsWith("UNCLOSED_PREVIOUS_SHIFT:")) {
+      const parts = error.message.split(":");
+      const unclosedId = parts[1];
+      const dateStr = parts[2] || "previous shift";
+      return NextResponse.json({ 
+        success: false, 
+        requireUnclosedResolution: true,
+        unclosedShiftId: unclosedId,
+        dateStr,
+        error: `You did not punch out on ${dateStr}. Please submit your work summary before punching in today.` 
+      }, { status: 400 });
+    }
     if (error.message === "Already punched in today.") {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
