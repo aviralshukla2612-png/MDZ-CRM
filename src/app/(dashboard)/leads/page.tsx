@@ -238,7 +238,13 @@ export default function LeadsPage() {
           </span>
         </div>
 
-        <LeadPipelineBoard leads={leads} updateLeadStageApi={updateLeadStageApi} convertLeadToClientApi={convertLeadToClientApi} deleteLeadApi={deleteLeadApi} />
+        <LeadPipelineBoard
+          leads={leads}
+          updateLeadStageApi={updateLeadStageApi}
+          convertLeadToClientApi={convertLeadToClientApi}
+          deleteLeadApi={deleteLeadApi}
+          onRefresh={fetchLeads}
+        />
       </div>
 
       {/* Add New Lead Bottom Sheet */}

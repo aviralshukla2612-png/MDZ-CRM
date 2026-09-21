@@ -23,23 +23,65 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "SALES", "ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
     const body = await req.json();
+    const updateData: any = {};
+
+    if (body.clientName !== undefined || body.companyName !== undefined) {
+      updateData.companyName = body.clientName !== undefined ? body.clientName : body.companyName;
+    }
+    if (body.contactPerson !== undefined) {
+      updateData.contactPerson = body.contactPerson;
+    }
+    if (body.phone !== undefined || body.mobile !== undefined) {
+      updateData.mobile = body.phone !== undefined ? body.phone : body.mobile;
+    }
+    if (body.whatsapp !== undefined) {
+      updateData.whatsapp = body.whatsapp;
+    }
+    if (body.email !== undefined) {
+      updateData.email = body.email;
+    }
+    if (body.stage !== undefined || body.status !== undefined) {
+      updateData.status = body.stage !== undefined ? body.stage : body.status;
+    }
+    if (body.leadPriority !== undefined || body.priority !== undefined) {
+      updateData.priority = body.leadPriority !== undefined ? body.leadPriority : body.priority;
+    }
+    if (body.projectScope !== undefined || body.interestedService !== undefined) {
+      updateData.interestedService = body.projectScope !== undefined ? body.projectScope : body.interestedService;
+    }
+    if (body.description !== undefined) {
+      updateData.description = body.description;
+    }
+    if (body.leadValue !== undefined || body.estimatedBudget !== undefined) {
+      const val = Number(body.leadValue !== undefined ? body.leadValue : body.estimatedBudget);
+      if (!isNaN(val)) updateData.estimatedBudget = val;
+    }
+    if (body.expectedRevenue !== undefined || body.expectedValue !== undefined) {
+      const val = Number(body.expectedRevenue !== undefined ? body.expectedRevenue : body.expectedValue);
+      if (!isNaN(val)) updateData.expectedValue = val;
+    }
+    if (body.source !== undefined) {
+      updateData.source = body.source;
+    }
+    if (body.gstNo !== undefined) {
+      updateData.remarks = body.gstNo ? `GST: ${body.gstNo}` : null;
+    } else if (body.remarks !== undefined) {
+      updateData.remarks = body.remarks;
+    }
+
     const lead = await prisma.lead.update({
       where: { id: params.id },
-      data: {
-        status: body.stage || body.status,
-        priority: body.leadPriority || body.priority,
-        companyName: body.clientName || body.companyName,
-        contactPerson: body.contactPerson,
-      },
+      data: updateData,
     });
 
     return NextResponse.json({ success: true, data: lead });
   } catch (error) {
+    console.error("Failed to update lead:", error);
     return NextResponse.json({ success: false, error: "Failed to update lead" }, { status: 500 });
   }
 }

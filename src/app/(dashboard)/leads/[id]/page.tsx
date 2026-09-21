@@ -20,12 +20,15 @@ import {
   FileText,
   Sparkles,
   ShieldCheck,
+  Edit3,
 } from "lucide-react";
+import { EditLeadModal } from "@/components/sales/EditLeadModal";
 
 export default function LeadDetailPage({ params }: { params: { id: string } }) {
   const { showToast } = useToast();
   const [lead, setLead] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   React.useEffect(() => {
     fetchLead();
@@ -190,10 +193,19 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 touch-target cursor-pointer shadow-xs"
+              title="Edit Lead Details & Scope"
+            >
+              <Edit3 className="w-4 h-4 text-amber-500" />
+              <span>Edit Lead</span>
+            </button>
+
             {lead.stage !== "WON" ? (
               <button
                 onClick={handleConvertLead}
-                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 touch-target"
+                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 touch-target cursor-pointer"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>Convert to Client & Project</span>
@@ -461,6 +473,19 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
           </button>
         </form>
       </BottomSheet>
+
+      {/* Edit Lead Modal */}
+      {isEditModalOpen && lead && (
+        <EditLeadModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          lead={lead}
+          onSuccess={() => {
+            fetchLead();
+            showToast("✓ Lead details updated successfully!", "success");
+          }}
+        />
+      )}
     </div>
   );
 }

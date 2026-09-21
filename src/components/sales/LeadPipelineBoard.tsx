@@ -4,8 +4,9 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Plus, PhoneCall, Calendar, ArrowRight, ArrowUpRight, CheckCircle2, User, Building, IndianRupee, Trash, ShieldCheck } from "lucide-react";
+import { Plus, PhoneCall, Calendar, ArrowRight, ArrowUpRight, CheckCircle2, User, Building, IndianRupee, Trash, ShieldCheck, Edit3 } from "lucide-react";
 import { ConvertLeadModal } from "./ConvertLeadModal";
+import { EditLeadModal } from "./EditLeadModal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useToast } from "@/components/ui/Toast";
 
@@ -23,10 +24,27 @@ export interface Lead {
   assignedSales: string;
   nextFollowupDate: string;
   leadPriority: string;
+  source?: string;
+  gstNo?: string;
+  description?: string;
+  remarks?: string;
   updatedAt?: string;
 }
 
-export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClientApi, deleteLeadApi }: { leads: Lead[], updateLeadStageApi: any, convertLeadToClientApi: any, deleteLeadApi?: any }) {
+export function LeadPipelineBoard({
+  leads,
+  updateLeadStageApi,
+  convertLeadToClientApi,
+  deleteLeadApi,
+  onRefresh,
+}: {
+  leads: Lead[];
+  updateLeadStageApi: any;
+  convertLeadToClientApi: any;
+  deleteLeadApi?: any;
+  onRefresh?: () => void;
+}) {
+  const router = useRouter();
   const { data: session } = useSession();
   const STAGES = [
     { id: "NEW", title: "New Prospects" },
@@ -38,6 +56,7 @@ export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClie
   ];
   
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
   return (
     <div className="space-y-4">
@@ -86,10 +105,10 @@ export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClie
                     onClick={(e) => {
                       const target = e.target as HTMLElement;
                       if (!target.closest("button")) {
-                        // Optional: Navigate to lead details
+                        router.push(`/leads/${lead.id}`);
                       }
                     }}
-                    className="p-3.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800/80 shadow-xs hover:border-indigo-500/50 dark:hover:border-indigo-500/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/90 hover:scale-[1.01] hover:shadow-sm transition-all duration-200 space-y-2 group cursor-grab active:cursor-grabbing"
+                    className="p-3.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800/80 shadow-xs hover:border-indigo-500/50 dark:hover:border-indigo-500/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/90 hover:scale-[1.01] hover:shadow-sm transition-all duration-200 space-y-2 group cursor-pointer active:cursor-grabbing"
                   >
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-[10px] font-bold text-slate-400">{lead.leadNumber}</span>
@@ -103,7 +122,22 @@ export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClie
                         }`}>
                           {lead.leadPriority}
                         </span>
+                        
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditingLead(lead);
+                          }}
+                          className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors ml-0.5 cursor-pointer"
+                          title="Edit Lead Parameters"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+
                         <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200 shrink-0" />
+
                         {deleteLeadApi && (
                           <button
                             onClick={(e) => {
@@ -111,7 +145,8 @@ export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClie
                               e.stopPropagation();
                               setDeleteLeadId(lead.id);
                             }}
-                            className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/20 transition-colors ml-1"
+                            className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/20 transition-colors ml-0.5 cursor-pointer"
+                            title="Delete Lead"
                           >
                             <Trash className="w-3.5 h-3.5" />
                           </button>
@@ -186,6 +221,18 @@ export function LeadPipelineBoard({ leads, updateLeadStageApi, convertLeadToClie
         confirmText="Delete Lead"
         isDestructive={true}
       />
+
+      {/* Edit Lead Modal */}
+      {editingLead && (
+        <EditLeadModal
+          isOpen={!!editingLead}
+          onClose={() => setEditingLead(null)}
+          lead={editingLead}
+          onSuccess={() => {
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 }
