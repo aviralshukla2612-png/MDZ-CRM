@@ -3,13 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "SALES", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
     const lead = await prisma.lead.findFirst({
       where: { OR: [{ id: params.id }, { leadNumber: params.id }] },
-      include: { followups: true, activities: true },
+      include: {
+        followups: true,
+        activities: true,
+        mediaFiles: true,
+        assignedSalesperson: {
+          select: { id: true, name: true, email: true, designation: true },
+        },
+      },
     });
 
     if (!lead) {
@@ -57,6 +64,30 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body.description !== undefined) {
       updateData.description = body.description;
     }
+    if (body.industry !== undefined) {
+      updateData.industry = body.industry;
+    }
+    if (body.subCategory !== undefined) {
+      updateData.subCategory = body.subCategory;
+    }
+    if (body.businessType !== undefined) {
+      updateData.businessType = body.businessType;
+    }
+    if (body.location !== undefined) {
+      updateData.location = body.location;
+    }
+    if (body.targetAudience !== undefined) {
+      updateData.targetAudience = body.targetAudience;
+    }
+    if (body.competitors !== undefined) {
+      updateData.competitors = body.competitors;
+    }
+    if (body.additionalDetails !== undefined) {
+      updateData.additionalDetails = body.additionalDetails;
+    }
+    if (body.assignedSalespersonId !== undefined) {
+      updateData.assignedSalespersonId = body.assignedSalespersonId || null;
+    }
     if (body.leadValue !== undefined || body.estimatedBudget !== undefined) {
       const val = Number(body.leadValue !== undefined ? body.leadValue : body.estimatedBudget);
       if (!isNaN(val)) updateData.estimatedBudget = val;
@@ -77,6 +108,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const lead = await prisma.lead.update({
       where: { id: params.id },
       data: updateData,
+      include: {
+        mediaFiles: true,
+        assignedSalesperson: true,
+      },
     });
 
     return NextResponse.json({ success: true, data: lead });

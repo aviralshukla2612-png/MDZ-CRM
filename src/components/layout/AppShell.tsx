@@ -44,6 +44,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     normalizedPath === "/login" ||
     normalizedPath === "/client-register" ||
     normalizedPath === "/terms-and-conditions" ||
+    normalizedPath === "/inquiry" ||
+    normalizedPath.startsWith("/inquiry") ||
     normalizedPath.startsWith("/portal");
 
   if (isStandalonePage) {

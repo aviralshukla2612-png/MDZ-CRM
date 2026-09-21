@@ -99,6 +99,17 @@ model Lead {
   source                String         @default("WEBSITE")
   interestedService     String
   description           String?
+  industry              String?
+  subCategory           String?
+  businessType          String?
+  location              String?
+  goalsJson             String?        @default("[]")
+  servicesJson          String?        @default("[]")
+  durationType          String?
+  durationMonths        Int?
+  targetAudience        String?
+  competitors           String?
+  additionalDetails     String?
   estimatedBudget       Float          @default(0)
   expectedValue         Float          @default(0)
   priority              String         @default("MEDIUM")
@@ -107,16 +118,19 @@ model Lead {
   nextFollowupAt        DateTime?
   remarks               String?
   lostReason            String?
-  createdById           String
+  createdById           String?
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
-  createdBy             User           @relation("CreatedBySalesperson", fields: [createdById], references: [id])
+  createdBy             User?          @relation("CreatedBySalesperson", fields: [createdById], references: [id])
   assignedSalesperson   User?          @relation("AssignedSalesperson", fields: [assignedSalespersonId], references: [id])
   activities            LeadActivity[]
   followups             LeadFollowup[]
+  mediaFiles            MediaFile[]    @relation("LeadMediaFiles")
 
   @@index([assignedSalespersonId])
   @@index([status])
+  @@index([email])
+  @@index([mobile])
 }
 
 model LeadFollowup {
@@ -703,13 +717,16 @@ model MediaFile {
   category        String   @default("GENERAL")
   entityType      String
   entityId        String
-  uploadedById    String
+  uploadedById    String?
+  leadId          String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  uploadedBy      User     @relation("UserUploadedMedia", fields: [uploadedById], references: [id])
+  uploadedBy      User?    @relation("UserUploadedMedia", fields: [uploadedById], references: [id])
+  lead            Lead?    @relation("LeadMediaFiles", fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([entityType, entityId])
   @@index([uploadedById])
+  @@index([leadId])
   @@index([category])
 }

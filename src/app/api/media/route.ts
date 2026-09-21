@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
         entityType: file.entityType,
         entityId: file.entityId,
         category: file.category,
-        uploadedById: file.uploadedById,
+        uploadedById: file.uploadedById || undefined,
       });
       if (allowed) {
         filteredFiles.push(file);

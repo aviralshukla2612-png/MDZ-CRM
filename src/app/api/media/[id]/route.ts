@@ -32,7 +32,7 @@ export async function GET(
       entityType: mediaFile.entityType,
       entityId: mediaFile.entityId,
       category: mediaFile.category,
-      uploadedById: mediaFile.uploadedById,
+      uploadedById: mediaFile.uploadedById || undefined,
     });
 
     if (!canRead) {
@@ -68,7 +68,7 @@ export async function DELETE(
       entityType: mediaFile.entityType,
       entityId: mediaFile.entityId,
       category: mediaFile.category,
-      uploadedById: mediaFile.uploadedById,
+      uploadedById: mediaFile.uploadedById || undefined,
     });
 
     if (!canDelete) {

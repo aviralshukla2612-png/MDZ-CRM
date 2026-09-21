@@ -36,7 +36,7 @@ export async function GET(
       entityType: mediaFile.entityType,
       entityId: mediaFile.entityId,
       category: mediaFile.category,
-      uploadedById: mediaFile.uploadedById,
+      uploadedById: mediaFile.uploadedById || undefined,
     });
 
     if (!canRead) {

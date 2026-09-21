@@ -286,33 +286,167 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Tab 1: Overview */}
-      {activeTab === "overview" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Project Scope & Proposal Summary</h3>
-            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-              {lead.projectScope}
-            </p>
+      {activeTab === "overview" && (() => {
+        let parsedGoals: string[] = [];
+        let parsedServices: string[] = [];
+        try {
+          if (lead.goalsJson) parsedGoals = JSON.parse(lead.goalsJson);
+        } catch {}
+        try {
+          if (lead.servicesJson) parsedServices = JSON.parse(lead.servicesJson);
+        } catch {}
 
-            <div className="space-y-2 pt-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Pipeline Stage Transition</h4>
-              <div className="flex flex-wrap gap-2">
-                {["NEW", "CONTACTED", "REQUIREMENTS", "PROPOSAL", "NEGOTIATION", "WON", "LOST"].map((stg) => (
-                  <button
-                    key={stg}
-                    onClick={() => {
-                      updateLeadStage(lead.id, stg as any);
-                      showToast(`✓ Lead moved to ${stg} stage`, "success");
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all ${
-                      lead.stage === stg
-                        ? "bg-indigo-600 text-white shadow-xs"
-                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {stg}
-                  </button>
-                ))}
+        return (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-2 space-y-6">
+            {/* Public Inquiry / Client Requirements Section */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  Client Inquiry Requirements
+                </h3>
+                {lead.source && (
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    Source: {lead.source}
+                  </span>
+                )}
+              </div>
+
+              {/* Grid of Profile */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Industry</span>
+                  <strong className="text-slate-800 dark:text-slate-200">{lead.industry || "General"}</strong>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Sub-Category</span>
+                  <strong className="text-slate-800 dark:text-slate-200">{lead.subCategory || "N/A"}</strong>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Business Type</span>
+                  <strong className="text-slate-800 dark:text-slate-200">{lead.businessType || "B2B"}</strong>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Duration</span>
+                  <strong className="text-slate-800 dark:text-slate-200">
+                    {lead.durationMonths ? `${lead.durationMonths} Months` : lead.durationType || "N/A"}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Services Badges */}
+              {parsedServices.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Requested Services</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {parsedServices.map((s: string) => (
+                      <span key={s} className="px-2.5 py-1 rounded-lg bg-amber-100 dark:bg-amber-950/70 text-amber-900 dark:text-amber-200 font-bold text-[11px] border border-amber-300 dark:border-amber-800">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Goals Badges */}
+              {parsedGoals.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Business Objectives</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {parsedGoals.map((g: string) => (
+                      <span key={g} className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-200 font-bold text-[11px] border border-emerald-300 dark:border-emerald-800">
+                        {g}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Target Audience & Competitors */}
+              {(lead.targetAudience || lead.competitors) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {lead.targetAudience && (
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Target Audience</span>
+                      <p className="text-slate-700 dark:text-slate-300 mt-0.5">{lead.targetAudience}</p>
+                    </div>
+                  )}
+                  {lead.competitors && (
+                    <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block">Top Competitors</span>
+                      <p className="text-slate-700 dark:text-slate-300 mt-0.5">{lead.competitors}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Additional Details */}
+              {lead.additionalDetails && (
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Additional Brief / Notes</span>
+                  <p className="text-slate-700 dark:text-slate-300 mt-0.5 leading-relaxed">{lead.additionalDetails}</p>
+                </div>
+              )}
+
+              {/* Attached Media Files */}
+              {lead.mediaFiles && lead.mediaFiles.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                    Inquiry Attachments ({lead.mediaFiles.length})
+                  </span>
+                  <div className="space-y-1.5">
+                    {lead.mediaFiles.map((file: any) => (
+                      <div key={file.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                        <div className="flex items-center gap-2 truncate">
+                          <FileText className="w-4 h-4 text-emerald-500 shrink-0" />
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">{file.originalName || file.fileName}</span>
+                          <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                            ({(file.fileSize / (1024 * 1024)).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <a
+                          href={`/mdz-crm/api/media/${file.id}/download`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition-colors"
+                        >
+                          Download
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Scope Summary */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Project Scope & Scope of Work</h3>
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                {lead.projectScope || lead.interestedService || "Full-Service Engagement"}
+              </p>
+
+              <div className="space-y-2 pt-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Pipeline Stage Transition</h4>
+                <div className="flex flex-wrap gap-2">
+                  {["NEW", "CONTACTED", "REQUIREMENTS", "PROPOSAL", "NEGOTIATION", "WON", "LOST"].map((stg) => (
+                    <button
+                      key={stg}
+                      onClick={() => {
+                        updateLeadStage(lead.id, stg as any);
+                        showToast(`✓ Lead moved to ${stg} stage`, "success");
+                      }}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all ${
+                        lead.stage === stg
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      {stg}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -339,7 +473,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Tab 2: Activity Timeline */}
       {activeTab === "timeline" && (
