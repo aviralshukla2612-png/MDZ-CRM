@@ -24,10 +24,42 @@ export const clientSchema = z.object({
 
 export const publicInquirySchema = z.object({
   // Step 1: Company Details
-  companyName: z.string().trim().min(2, "Company / Brand name is required"),
-  contactName: z.string().trim().min(2, "Your name is required"),
-  phone: z.string().trim().min(7, "Valid phone or WhatsApp number is required").max(20, "Phone number is too long"),
-  email: z.string().trim().email("Valid email address is required"),
+  companyName: z
+    .string()
+    .trim()
+    .min(2, "Company / Brand name must be at least 2 characters")
+    .max(100, "Company name is too long")
+    .refine((val) => !/^([a-zA-Z0-9])\1{3,}$/.test(val), {
+      message: "Please enter a valid company name",
+    }),
+  contactName: z
+    .string()
+    .trim()
+    .min(2, "Your full name must be at least 2 characters")
+    .max(80, "Name is too long")
+    .regex(/^[a-zA-Z\s.'-]+$/, "Name should only contain alphabets and spaces")
+    .refine((val) => !/^([a-zA-Z])\1{3,}$/.test(val), {
+      message: "Please enter a realistic contact name",
+    }),
+  phone: z
+    .string()
+    .trim()
+    .refine(
+      (val) => {
+        const digits = val.replace(/\D/g, "");
+        return digits.length >= 10 && digits.length <= 15 && !/^(\d)\1+$/.test(digits);
+      },
+      {
+        message: "Please enter a valid 10 to 15 digit mobile or WhatsApp number",
+      }
+    ),
+  email: z
+    .string()
+    .trim()
+    .regex(
+      /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+      "Please enter a valid email address with a valid domain (e.g., name@company.com)"
+    ),
 
   // Step 2: Industry & Business Profile
   industry: z.string().trim().min(2, "Industry selection is required"),

@@ -235,10 +235,51 @@ export default function PublicInquiryPage() {
   // Step 1 Validation
   const validateStep1 = () => {
     const errs: Record<string, string> = {};
-    if (!formData.companyName.trim()) errs.companyName = "Company or brand name is required";
-    if (!formData.contactName.trim()) errs.contactName = "Your name is required";
-    if (!formData.phone.trim() || formData.phone.trim().length < 7) errs.phone = "Valid phone or WhatsApp number is required";
-    if (!formData.email.trim() || !formData.email.includes("@")) errs.email = "Valid email address is required";
+    const trimmedCompany = formData.companyName.trim();
+    const trimmedName = formData.contactName.trim();
+    const trimmedPhone = formData.phone.trim();
+    const trimmedEmail = formData.email.trim();
+
+    // 1. Company Name
+    if (!trimmedCompany) {
+      errs.companyName = "Company / Brand name is required";
+    } else if (trimmedCompany.length < 2) {
+      errs.companyName = "Company name must be at least 2 characters";
+    } else if (/^([a-zA-Z0-9])\1{3,}$/.test(trimmedCompany)) {
+      errs.companyName = "Please enter a valid company name";
+    }
+
+    // 2. Full Name
+    if (!trimmedName) {
+      errs.contactName = "Your full name is required";
+    } else if (trimmedName.length < 2) {
+      errs.contactName = "Name must be at least 2 characters";
+    } else if (!/^[a-zA-Z\s.'-]+$/.test(trimmedName)) {
+      errs.contactName = "Name should only contain alphabets and spaces";
+    } else if (/^([a-zA-Z])\1{3,}$/.test(trimmedName)) {
+      errs.contactName = "Please enter a realistic contact name";
+    }
+
+    // 3. Mobile / WhatsApp Number
+    const digits = trimmedPhone.replace(/\D/g, "");
+    if (!trimmedPhone) {
+      errs.phone = "Mobile or WhatsApp number is required";
+    } else if (digits.length < 10) {
+      errs.phone = "Phone number must contain at least 10 digits";
+    } else if (digits.length > 15) {
+      errs.phone = "Phone number cannot exceed 15 digits";
+    } else if (/^(\d)\1+$/.test(digits)) {
+      errs.phone = "Please enter a valid mobile number (not all identical digits)";
+    }
+
+    // 4. Business Email Address
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!trimmedEmail) {
+      errs.email = "Business email address is required";
+    } else if (!emailRegex.test(trimmedEmail)) {
+      errs.email = "Please enter a valid email (e.g. name@company.com)";
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -620,74 +661,150 @@ export default function PublicInquiryPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {/* Company Name */}
                     <div className="space-y-1.5 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-emerald-500" />
-                        Company / Brand Name <span className="text-rose-500">*</span>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-emerald-500" />
+                          Company / Brand Name <span className="text-rose-500">*</span>
+                        </span>
                       </label>
                       <input
                         type="text"
                         placeholder="e.g. Acme Luxe Jewellery, TechNova Inc"
                         value={formData.companyName}
-                        onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, companyName: e.target.value });
+                          if (errors.companyName) setErrors((prev) => ({ ...prev, companyName: "" }));
+                        }}
+                        onBlur={() => {
+                          const val = formData.companyName.trim();
+                          if (val && /^([a-zA-Z0-9])\1{3,}$/.test(val)) {
+                            setErrors((prev) => ({ ...prev, companyName: "Please enter a valid company name" }));
+                          }
+                        }}
                         className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border ${
-                          errors.companyName ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
+                          errors.companyName ? "border-rose-500 bg-rose-50/20" : "border-slate-200 dark:border-slate-800"
                         } text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium`}
                       />
-                      {errors.companyName && <p className="text-[11px] text-rose-500 font-semibold">{errors.companyName}</p>}
+                      {errors.companyName && (
+                        <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {errors.companyName}
+                        </p>
+                      )}
                     </div>
 
                     {/* Contact Person Name */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-emerald-500" />
-                        Your Full Name <span className="text-rose-500">*</span>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-emerald-500" />
+                          Your Full Name <span className="text-rose-500">*</span>
+                        </span>
                       </label>
                       <input
                         type="text"
                         placeholder="e.g. Karan Sharma"
                         value={formData.contactName}
-                        onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, contactName: e.target.value });
+                          if (errors.contactName) setErrors((prev) => ({ ...prev, contactName: "" }));
+                        }}
+                        onBlur={() => {
+                          const val = formData.contactName.trim();
+                          if (val && !/^[a-zA-Z\s.'-]+$/.test(val)) {
+                            setErrors((prev) => ({ ...prev, contactName: "Name should only contain alphabets and spaces" }));
+                          } else if (val && /^([a-zA-Z])\1{3,}$/.test(val)) {
+                            setErrors((prev) => ({ ...prev, contactName: "Please enter a realistic contact name" }));
+                          }
+                        }}
                         className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border ${
-                          errors.contactName ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
+                          errors.contactName ? "border-rose-500 bg-rose-50/20" : "border-slate-200 dark:border-slate-800"
                         } text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium`}
                       />
-                      {errors.contactName && <p className="text-[11px] text-rose-500 font-semibold">{errors.contactName}</p>}
+                      {errors.contactName && (
+                        <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {errors.contactName}
+                        </p>
+                      )}
                     </div>
 
                     {/* Mobile / WhatsApp */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Phone className="w-3.5 h-3.5 text-emerald-500" />
-                        Mobile / WhatsApp <span className="text-rose-500">*</span>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Phone className="w-3.5 h-3.5 text-emerald-500" />
+                          Mobile / WhatsApp <span className="text-rose-500">*</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-normal">10–15 digits</span>
                       </label>
                       <input
                         type="tel"
+                        maxLength={16}
                         placeholder="e.g. +91 98765 43210"
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          const filtered = raw.replace(/[^\d+\s-]/g, "");
+                          setFormData({ ...formData, phone: filtered });
+                          if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
+                        }}
+                        onBlur={() => {
+                          const digits = formData.phone.replace(/\D/g, "");
+                          if (digits && digits.length < 10) {
+                            setErrors((prev) => ({ ...prev, phone: "Phone number must contain at least 10 digits" }));
+                          } else if (digits && /^(\d)\1+$/.test(digits)) {
+                            setErrors((prev) => ({ ...prev, phone: "Please enter a valid mobile number (not repetitive digits)" }));
+                          }
+                        }}
                         className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border ${
-                          errors.phone ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
+                          errors.phone ? "border-rose-500 bg-rose-50/20" : "border-slate-200 dark:border-slate-800"
                         } text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium`}
                       />
-                      {errors.phone && <p className="text-[11px] text-rose-500 font-semibold">{errors.phone}</p>}
+                      {errors.phone && (
+                        <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {errors.phone}
+                        </p>
+                      )}
                     </div>
 
                     {/* Email */}
                     <div className="space-y-1.5 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Mail className="w-3.5 h-3.5 text-emerald-500" />
-                        Business Email Address <span className="text-rose-500">*</span>
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Mail className="w-3.5 h-3.5 text-emerald-500" />
+                          Business Email Address <span className="text-rose-500">*</span>
+                        </span>
                       </label>
                       <input
                         type="email"
                         placeholder="e.g. contact@yourcompany.com"
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        onChange={(e) => {
+                          setFormData({ ...formData, email: e.target.value });
+                          if (errors.email) setErrors((prev) => ({ ...prev, email: "" }));
+                        }}
+                        onBlur={() => {
+                          const val = formData.email.trim();
+                          const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                          if (val && !emailRegex.test(val)) {
+                            setErrors((prev) => ({
+                              ...prev,
+                              email: "Please enter a valid email address (e.g. name@company.com)",
+                            }));
+                          }
+                        }}
                         className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border ${
-                          errors.email ? "border-rose-500" : "border-slate-200 dark:border-slate-800"
+                          errors.email ? "border-rose-500 bg-rose-50/20" : "border-slate-200 dark:border-slate-800"
                         } text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium`}
                       />
-                      {errors.email && <p className="text-[11px] text-rose-500 font-semibold">{errors.email}</p>}
+                      {errors.email && (
+                        <p className="text-[11px] text-rose-500 font-semibold flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          {errors.email}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
