@@ -41,36 +41,61 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
       const json = await res.json();
       if (json.success && json.data) {
         const l = json.data;
-        setLead({
-          ...l,
-          leadNumber: l.leadNumber,
-          leadPriority: l.priority,
-          stage: l.status,
-          clientName: l.companyName || l.contactPerson,
-          contactPerson: l.contactPerson,
-          email: l.email || "No Email",
-          phone: l.mobile,
-          leadValue: l.expectedValue || 0,
-          projectScope: l.description || "General Inquiry",
-          timeline: l.activities?.map((a: any) => ({
+        const timelineArr =
+          l.activities?.map((a: any) => ({
             id: a.id,
             type: a.action,
             text: a.detailsJson || a.action,
+            time: new Date(a.createdAt).toLocaleString(),
             timestamp: new Date(a.createdAt).toLocaleString(),
-          })) || [],
-          scheduledFollowups: l.followups?.map((f: any) => ({
+          })) || [];
+
+        const followupsArr =
+          l.followups?.map((f: any) => ({
             id: f.id,
             date: new Date(f.scheduledAt).toLocaleString(),
             note: f.notes || "Followup",
+            notes: f.notes || "Followup",
+            callerName: l.assignedSalesperson?.name || "Sales Rep",
+            outcome: f.result || "Scheduled",
+            createdAt: new Date(f.createdAt || f.scheduledAt).toLocaleString(),
             completed: f.status === "COMPLETED",
-          })) || [],
-          callLogs: [],
-          notes: l.activities?.filter((a: any) => a.action === "NOTE_ADDED").map((a: any) => ({
-            id: a.id,
-            text: a.detailsJson,
-            author: "System",
-            timestamp: new Date(a.createdAt).toLocaleString(),
-          })) || [],
+          })) || [];
+
+        const notesArr =
+          l.activities
+            ?.filter((a: any) => a.action === "NOTE_ADDED")
+            .map((a: any) => ({
+              id: a.id,
+              content: a.detailsJson,
+              text: a.detailsJson,
+              authorName: "Internal Note",
+              author: "System",
+              createdAt: new Date(a.createdAt).toLocaleString(),
+              timestamp: new Date(a.createdAt).toLocaleString(),
+            })) || [];
+
+        setLead({
+          ...l,
+          leadNumber: l.leadNumber,
+          leadPriority: l.priority || "MEDIUM",
+          stage: l.status || "NEW",
+          clientName: l.companyName || l.contactPerson || "Prospective Client",
+          contactPerson: l.contactPerson || "Contact",
+          email: l.email || "No Email",
+          phone: l.mobile || "No Phone",
+          leadValue: Number(l.estimatedBudget) || 0,
+          expectedRevenue: Number(l.expectedValue) || 0,
+          projectScope: l.description || l.interestedService || "General Inquiry",
+          assignedSales: l.assignedSalesperson?.name || "Unassigned",
+          nextFollowupDate: l.nextFollowupAt ? new Date(l.nextFollowupAt).toLocaleDateString() : "Pending",
+          timeline: timelineArr,
+          activityHistory: timelineArr,
+          scheduledFollowups: followupsArr,
+          callHistory: followupsArr,
+          calls: followupsArr,
+          notes: notesArr,
+          mediaFiles: l.mediaFiles || [],
         });
       }
     } catch (e) {
@@ -267,9 +292,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-1 overflow-x-auto">
         {[
           { id: "overview", label: "Overview & Scope" },
-          { id: "timeline", label: `Activity Timeline (${lead.activityHistory.length})` },
-          { id: "calls", label: `Call History (${lead.callHistory.length})` },
-          { id: "notes", label: `Internal Notes (${lead.notes.length})` },
+          { id: "timeline", label: `Activity Timeline (${lead.timeline?.length || 0})` },
+          { id: "calls", label: `Call History (${lead.scheduledFollowups?.length || 0})` },
+          { id: "notes", label: `Internal Notes (${lead.notes?.length || 0})` },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -456,19 +481,19 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
               <h3 className="font-bold text-slate-900 dark:text-slate-100">Financial Metrics</h3>
               <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-slate-500 dark:text-slate-400">Estimated Deal Value:</span>
-                <strong className="font-mono text-slate-900 dark:text-slate-100">₹{lead.leadValue.toLocaleString("en-IN")}</strong>
+                <strong className="font-mono text-slate-900 dark:text-slate-100">₹{(Number(lead.leadValue) || 0).toLocaleString("en-IN")}</strong>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800 text-emerald-600 dark:text-emerald-400">
                 <span>Weighted Expected Value:</span>
-                <strong className="font-mono">₹{lead.expectedRevenue.toLocaleString("en-IN")}</strong>
+                <strong className="font-mono">₹{(Number(lead.expectedRevenue) || 0).toLocaleString("en-IN")}</strong>
               </div>
               <div className="flex justify-between py-1 text-slate-700 dark:text-slate-300">
                 <span>Assigned Salesperson:</span>
-                <strong>{lead.assignedSales}</strong>
+                <strong>{lead.assignedSales || "Unassigned"}</strong>
               </div>
               <div className="flex justify-between py-1 text-amber-700 dark:text-amber-400 font-bold">
                 <span>Next Follow-up:</span>
-                <span>{lead.nextFollowupDate}</span>
+                <span>{lead.nextFollowupDate || "Pending"}</span>
               </div>
             </div>
           </div>
