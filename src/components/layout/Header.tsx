@@ -229,16 +229,27 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setIsBreakSheetOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-sm dark:shadow-lg dark:shadow-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95 transition-all touch-target shrink-0"
-                title="Click for Break & Session Controls"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-sm dark:shadow-lg dark:shadow-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
+                title="Active Stopwatch (Click for Break Menu)"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
                 <span className="font-mono text-xs">{formatHMS(workSeconds)}</span>
               </button>
 
+              {/* Direct 1-Click Lunch Break Button */}
+              <button
+                type="button"
+                onClick={() => startBreak("Lunch")}
+                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 cursor-pointer"
+                title="Take Lunch Break (1-Click)"
+              >
+                <Coffee className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Lunch Break</span>
+              </button>
+
               <button
                 onClick={handlePunchOutClick}
-                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-rose-600/20 active:scale-95 transition-all touch-target shrink-0"
+                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-rose-600/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
                 title="Punch Out for Today"
               >
                 <Power className="w-3.5 h-3.5 shrink-0" />

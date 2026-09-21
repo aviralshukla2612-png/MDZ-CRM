@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
+  Coffee,
 } from "lucide-react";
 
 // ─── Inline Input Component ───────────────────────────────────────────────────
@@ -131,6 +132,58 @@ export default function SettingsPage() {
     { name: "Mobile Application Playbook", stages: 5, code: "MOBILE_APP" },
     { name: "AI Workflow Automation Playbook", stages: 4, code: "AI_AUTO" },
   ];
+
+  // Automated Lunch Break Schedule states
+  const [lunchStartTime, setLunchStartTime] = useState("13:15");
+  const [lunchDurationMinutes, setLunchDurationMinutes] = useState("45");
+  const [lunchReminderMinutes, setLunchReminderMinutes] = useState("5");
+  const [autoLunchEnabled, setAutoLunchEnabled] = useState(true);
+  const [savingLunchSchedule, setSavingLunchSchedule] = useState(false);
+
+  useEffect(() => {
+    fetch("/mdz-crm/api/settings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          if (json.data.lunch_start_time) setLunchStartTime(json.data.lunch_start_time);
+          if (json.data.lunch_duration_minutes) setLunchDurationMinutes(json.data.lunch_duration_minutes);
+          if (json.data.lunch_reminder_mins_before) setLunchReminderMinutes(json.data.lunch_reminder_mins_before);
+          if (json.data.auto_lunch_enabled !== undefined) {
+            setAutoLunchEnabled(json.data.auto_lunch_enabled !== "false");
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveLunchSchedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingLunchSchedule(true);
+    try {
+      const res = await fetch("/mdz-crm/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            lunch_start_time: lunchStartTime,
+            lunch_duration_minutes: lunchDurationMinutes,
+            lunch_reminder_mins_before: lunchReminderMinutes,
+            auto_lunch_enabled: String(autoLunchEnabled),
+          },
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Scheduled lunch break time saved and applied across all employees!", "success");
+      } else {
+        showToast("Failed to save lunch schedule: " + (json.error || "Unknown error"), "error");
+      }
+    } catch {
+      showToast("Network error saving lunch settings", "error");
+    } finally {
+      setSavingLunchSchedule(false);
+    }
+  };
 
   const [lunchLoading, setLunchLoading] = useState(false);
 
@@ -530,23 +583,118 @@ export default function SettingsPage() {
           </div>
         </div>
         
-        {/* Workforce Automation */}
+        {/* Workforce Automation & Lunch Schedule */}
         <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-8 shadow-xl dark:shadow-2xl space-y-6 md:col-span-2">
           <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-4">
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Clock className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-              Workforce Automation
+              Company Lunch & Work Session Automation
             </h2>
             <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
-              TIME TRACKING
+              ALL EMPLOYEES
             </span>
           </div>
 
-          <form className="space-y-4 text-xs">
-            <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-xl gap-4">
+          {/* Scheduled Automatic Lunch Break Form */}
+          <form onSubmit={handleSaveLunchSchedule} className="space-y-4 text-xs">
+            <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50/50 to-orange-50/30 dark:from-amber-950/20 dark:to-orange-950/10 border border-amber-200/80 dark:border-amber-800/60 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 dark:border-amber-900/40 pb-3">
+                <div className="space-y-0.5">
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Coffee className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span>Scheduled Automatic Lunch Break</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Set the company lunch hour. All working employees will automatically be transitioned to lunch break at this exact time.
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <span className="font-semibold text-xs text-slate-700 dark:text-slate-300">Auto-Break:</span>
+                  <input
+                    type="checkbox"
+                    checked={autoLunchEnabled}
+                    onChange={(e) => setAutoLunchEnabled(e.target.checked)}
+                    className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 cursor-pointer"
+                  />
+                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${autoLunchEnabled ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"}`}>
+                    {autoLunchEnabled ? "ENABLED" : "DISABLED"}
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Lunch Start Time (24h)
+                  </label>
+                  <input
+                    type="time"
+                    required
+                    value={lunchStartTime}
+                    onChange={(e) => setLunchStartTime(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 font-mono font-bold outline-none focus:border-indigo-500"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    e.g. 13:15 = 01:15 PM
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Lunch Duration Allowance
+                  </label>
+                  <select
+                    value={lunchDurationMinutes}
+                    onChange={(e) => setLunchDurationMinutes(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 font-semibold outline-none focus:border-indigo-500"
+                  >
+                    <option value="30">30 Minutes</option>
+                    <option value="45">45 Minutes (Default)</option>
+                    <option value="60">60 Minutes (1 Hour)</option>
+                    <option value="90">90 Minutes (1.5 Hours)</option>
+                  </select>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Daily lunch timer cap
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Pre-Lunch Notice Reminder
+                  </label>
+                  <select
+                    value={lunchReminderMinutes}
+                    onChange={(e) => setLunchReminderMinutes(e.target.value)}
+                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 font-semibold outline-none focus:border-indigo-500"
+                  >
+                    <option value="5">5 Minutes Before</option>
+                    <option value="10">10 Minutes Before</option>
+                    <option value="15">15 Minutes Before</option>
+                  </select>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Popup notice before auto-break
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={savingLunchSchedule}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {savingLunchSchedule ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                  <span>{savingLunchSchedule ? "Saving Schedule..." : "Save Lunch Schedule"}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Force Mass Team Action */}
+            <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-2xl gap-4">
               <div className="flex-1">
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Force Team Mass Action</h3>
-                <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-sm">Instantly puts all currently working employees onto a Lunch Break, or forces all employees on break back to work.</p>
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">Immediate Team Mass Override</h3>
+                <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-sm">Instantly puts all currently working employees onto a Lunch Break right now, or forces all employees on break back to work.</p>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-3">
@@ -554,20 +702,20 @@ export default function SettingsPage() {
                   type="button"
                   onClick={forceMassLunchBreak}
                   disabled={lunchLoading}
-                  className="px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
-                  {lunchLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
-                  <span>Trigger Lunch</span>
+                  {lunchLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Coffee className="w-4 h-4" />}
+                  <span>Instant Lunch Break</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={forceMassResumeWork}
                   disabled={lunchLoading}
-                  className="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                 >
                   {lunchLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  <span>Resume Work</span>
+                  <span>Instant Resume Work</span>
                 </button>
               </div>
             </div>

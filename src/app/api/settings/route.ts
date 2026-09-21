@@ -25,11 +25,27 @@ export async function POST(req: NextRequest) {
     const authRes = await requireAuth();
     if (authRes instanceof NextResponse) return authRes;
 
-    if (authRes.activeRole !== "OWNER") {
-      return NextResponse.json({ success: false, error: "Forbidden: Only OWNER can update system settings" }, { status: 403 });
+    const allowedRoles = ["OWNER", "ADMIN", "SUB_ADMIN"];
+    if (!allowedRoles.includes(authRes.activeRole)) {
+      return NextResponse.json({ success: false, error: "Forbidden: Only Admin / Owner can update system settings" }, { status: 403 });
     }
 
     const body = await req.json();
+
+    // Support bulk settings object
+    if (body.settings && typeof body.settings === "object") {
+      const results: any[] = [];
+      for (const [key, value] of Object.entries(body.settings)) {
+        const setting = await prisma.systemSetting.upsert({
+          where: { key },
+          update: { value: String(value) },
+          create: { key, value: String(value) },
+        });
+        results.push(setting);
+      }
+      return NextResponse.json({ success: true, data: results });
+    }
+
     const { key, value } = body;
 
     if (!key || value === undefined) {
