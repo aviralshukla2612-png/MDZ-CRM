@@ -33,7 +33,21 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   try {
     const body = await req.json();
-    const { companyName, email, phone, notes, billingAddress, gstNumber, taxId, contactPerson, totalBusiness, outstandingBalance } = body;
+    const {
+      companyName,
+      email,
+      phone,
+      notes,
+      billingAddress,
+      gstNumber,
+      taxId,
+      contactPerson,
+      totalBusiness,
+      outstandingBalance,
+      totalBilling,
+      paidBilling,
+      pendingBilling,
+    } = body;
     
     const updateData: any = {};
     if (companyName !== undefined) updateData.companyName = companyName;
@@ -43,8 +57,22 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (billingAddress !== undefined) updateData.billingAddress = billingAddress;
     if (gstNumber !== undefined) updateData.gstNumber = gstNumber;
     if (taxId !== undefined) updateData.taxId = taxId;
-    if (totalBusiness !== undefined) updateData.totalBusiness = Number(totalBusiness);
-    if (outstandingBalance !== undefined) updateData.outstandingBalance = Number(outstandingBalance);
+
+    // Handle contract value & total billing
+    const contractVal = totalBusiness !== undefined ? Number(totalBusiness) : (totalBilling !== undefined ? Number(totalBilling) : undefined);
+    if (contractVal !== undefined && !isNaN(contractVal)) {
+      updateData.totalBusiness = Math.max(0, contractVal);
+    }
+
+    // Handle pending / outstanding receivable
+    if (outstandingBalance !== undefined && !isNaN(Number(outstandingBalance))) {
+      updateData.outstandingBalance = Math.max(0, Number(outstandingBalance));
+    } else if (pendingBilling !== undefined && !isNaN(Number(pendingBilling))) {
+      updateData.outstandingBalance = Math.max(0, Number(pendingBilling));
+    } else if (paidBilling !== undefined && !isNaN(Number(paidBilling))) {
+      const baseTotal = contractVal !== undefined ? contractVal : (updateData.totalBusiness ?? 0);
+      updateData.outstandingBalance = Math.max(0, baseTotal - Number(paidBilling));
+    }
 
     const client = await prisma.client.update({
       where: { id: params.id },

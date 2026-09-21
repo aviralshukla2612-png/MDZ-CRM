@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
-import { Building, Save, Mail, Phone, MapPin, FileText, User } from "lucide-react";
+import { Building, Save, Mail, Phone, MapPin, FileText, User, IndianRupee, CreditCard, Calculator } from "lucide-react";
 
 interface EditClientModalProps {
   isOpen: boolean;
@@ -26,6 +26,12 @@ export function EditClientModal({
   const [billingAddress, setBillingAddress] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   const [notes, setNotes] = useState("");
+
+  // Financial & Pricing states
+  const [totalBusiness, setTotalBusiness] = useState<number>(0);
+  const [paidBilling, setPaidBilling] = useState<number>(0);
+  const [pendingBilling, setPendingBilling] = useState<number>(0);
+
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -37,8 +43,30 @@ export function EditClientModal({
       setBillingAddress(client.billingAddress || "");
       setGstNumber(client.gstNumber || client.taxId || "");
       setNotes(typeof client.notes === "string" ? client.notes : "");
+
+      const totalVal = Number(client.totalBilling ?? client.totalBusiness ?? 0);
+      const pendingVal = Number(client.pendingBilling ?? client.outstandingBalance ?? 0);
+      const paidVal = Number(client.paidBilling ?? Math.max(0, totalVal - pendingVal));
+
+      setTotalBusiness(totalVal);
+      setPaidBilling(paidVal);
+      setPendingBilling(pendingVal);
     }
   }, [client, isOpen]);
+
+  // Handle total business contract value change
+  const handleTotalBusinessChange = (val: number) => {
+    const num = Math.max(0, val || 0);
+    setTotalBusiness(num);
+    setPendingBilling(Math.max(0, num - paidBilling));
+  };
+
+  // Handle paid amount change
+  const handlePaidBillingChange = (val: number) => {
+    const num = Math.max(0, val || 0);
+    setPaidBilling(num);
+    setPendingBilling(Math.max(0, totalBusiness - num));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +88,9 @@ export function EditClientModal({
           billingAddress: billingAddress.trim() || undefined,
           gstNumber: gstNumber.trim() || undefined,
           notes: notes.trim() || undefined,
+          totalBusiness: Number(totalBusiness) || 0,
+          outstandingBalance: Math.max(0, Number(pendingBilling) || 0),
+          paidBilling: Number(paidBilling) || 0,
         }),
       });
 
@@ -69,7 +100,7 @@ export function EditClientModal({
         return;
       }
 
-      showToast("✓ Client profile updated successfully!", "success");
+      showToast("✓ Client profile and financials updated successfully!", "success");
       onSuccess();
       onClose();
     } catch (err) {
@@ -84,8 +115,8 @@ export function EditClientModal({
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title="Edit Client Profile"
-      subtitle={`Update company, contact details, and billing information for ${client?.companyName || "Client"}`}
+      title="Edit Client & Pricing Details"
+      subtitle={`Update company, commercial pricing, payment status, and contact details for ${client?.companyName || "Client"}`}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
         {/* Client ID badge */}
@@ -94,6 +125,75 @@ export function EditClientModal({
             <span className="font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300">
               Client Code: {client?.clientCode || client?.clientNumber || client?.id}
             </span>
+          </div>
+          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            {client?.status || "ACTIVE"}
+          </span>
+        </div>
+
+        {/* Pricing & Financial Breakdown Section */}
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-indigo-50/30 dark:from-slate-900 dark:to-indigo-950/20 border border-indigo-200/80 dark:border-indigo-900/60 space-y-3">
+          <div className="flex items-center justify-between border-b border-indigo-100 dark:border-indigo-900/40 pb-2">
+            <div className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-xs">
+              <CreditCard className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>Commercial Pricing & Payment Ledger</span>
+            </div>
+            <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+              <Calculator className="w-3 h-3" /> Auto-Balanced
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1">
+                Total Contract Value (₹)
+              </label>
+              <div className="relative">
+                <IndianRupee className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="number"
+                  min="0"
+                  value={totalBusiness || ""}
+                  onChange={(e) => handleTotalBusinessChange(Number(e.target.value) || 0)}
+                  placeholder="0"
+                  className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl py-2.5 pl-8 pr-3 text-slate-900 dark:text-slate-100 font-mono font-bold outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-emerald-700 dark:text-emerald-400 font-bold block mb-1">
+                Total Paid Revenue (₹)
+              </label>
+              <div className="relative">
+                <IndianRupee className="w-3.5 h-3.5 text-emerald-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="number"
+                  min="0"
+                  value={paidBilling || ""}
+                  onChange={(e) => handlePaidBillingChange(Number(e.target.value) || 0)}
+                  placeholder="0"
+                  className="w-full bg-white dark:bg-slate-950 border border-emerald-200 dark:border-emerald-800/80 rounded-xl py-2.5 pl-8 pr-3 text-emerald-700 dark:text-emerald-300 font-mono font-bold outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-rose-700 dark:text-rose-400 font-bold block mb-1">
+                Pending Receivable (₹)
+              </label>
+              <div className="relative">
+                <IndianRupee className="w-3.5 h-3.5 text-rose-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="number"
+                  min="0"
+                  value={pendingBilling || ""}
+                  onChange={(e) => setPendingBilling(Math.max(0, Number(e.target.value) || 0))}
+                  placeholder="0"
+                  className="w-full bg-white dark:bg-slate-950 border border-rose-200 dark:border-rose-800/80 rounded-xl py-2.5 pl-8 pr-3 text-rose-700 dark:text-rose-300 font-mono font-bold outline-none focus:border-rose-500"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -217,10 +317,10 @@ export function EditClientModal({
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
+            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
-            <span>{submitting ? "Saving..." : "Save Client Profile"}</span>
+            <span>{submitting ? "Saving Changes..." : "Save Client & Pricing"}</span>
           </button>
         </div>
       </form>

@@ -214,8 +214,19 @@ export default function ClientsPage() {
 
               <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800/80 flex items-center justify-between text-xs">
                 <div>
-                  <span className="text-slate-400 text-[10px] block font-sans uppercase font-semibold">Total Billing</span>
-                  <span className="font-bold font-mono text-slate-900 dark:text-slate-100">₹{(c.totalBilling || 0).toLocaleString("en-IN")}</span>
+                  <span className="text-slate-400 text-[10px] block font-sans uppercase font-semibold">Total Contract / Billing</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold font-mono text-slate-900 dark:text-slate-100">₹{(c.totalBilling || 0).toLocaleString("en-IN")}</span>
+                    {c.pendingBilling > 0 ? (
+                      <span className="text-[10px] font-mono font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.2 rounded border border-rose-200 dark:border-rose-900/60">
+                        Due: ₹{c.pendingBilling.toLocaleString("en-IN")}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-900/60">
+                        Paid
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-1.5">
