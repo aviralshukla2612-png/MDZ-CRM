@@ -2,11 +2,38 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 
+async function ensureTimeModificationTable() {
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "TimeModificationRequest" (
+        "id" TEXT NOT NULL PRIMARY KEY,
+        "employeeId" TEXT NOT NULL,
+        "attendanceId" TEXT,
+        "targetDate" DATETIME NOT NULL,
+        "originalPunchIn" DATETIME,
+        "originalPunchOut" DATETIME,
+        "requestedPunchIn" DATETIME NOT NULL,
+        "requestedPunchOut" DATETIME NOT NULL,
+        "reason" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'PENDING',
+        "reviewedById" TEXT,
+        "reviewedAt" DATETIME,
+        "reviewNotes" TEXT,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  } catch (err) {
+    console.warn("Table verification notice:", err);
+  }
+}
+
 export async function POST(req: NextRequest) {
   const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
+    await ensureTimeModificationTable();
     const body = await req.json();
     const { requestId, action, reviewNotes } = body;
 
