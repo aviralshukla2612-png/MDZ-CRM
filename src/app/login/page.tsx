@@ -90,9 +90,10 @@ export default function LoginPage() {
       {/* Header theme toggle */}
       <div className="flex items-center justify-between max-w-md mx-auto w-full pt-2">
         <div className="flex items-center gap-2 font-bold text-base text-stone-900 dark:text-stone-100">
-          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire Dizital Logo" className="w-8 h-8 object-contain rounded-lg ring-1 ring-amber-400/50 shadow-xs" />
-          <span className="font-extrabold tracking-tight">
-            MILLIONAIRE DIZITAL <span className="bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">CRM</span>
+          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire OS Logo" className="w-8 h-8 object-contain rounded-lg ring-1 ring-emerald-500/30 shadow-xs" />
+          <span className="font-extrabold text-base tracking-tight font-sans flex items-center gap-1.5 select-none">
+            <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent font-black">Millionaire</span>
+            <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 dark:from-amber-400 dark:via-yellow-300 dark:to-amber-300 bg-clip-text text-transparent font-black">OS</span>
           </span>
         </div>
 
@@ -107,7 +108,7 @@ export default function LoginPage() {
               Welcome back
             </h1>
             <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400">
-              Sign in with your Millionaire Dizital CRM credentials to access your workspace.
+              Sign in with your Millionaire OS credentials to access your workspace.
             </p>
           </div>
 

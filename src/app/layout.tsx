@@ -5,8 +5,8 @@ import { NextAuthProvider } from "@/components/providers/NextAuthProvider";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata = {
-  title: "Millionaire Dizital CRM — Master Business Operating System",
-  description: "Centralized Operating System for Millionaire Dizital CRM",
+  title: "Millionaire OS — Master Business Operating System",
+  description: "Centralized Operating System — Millionaire OS",
   icons: {
     icon: [
       { url: "/mdz-crm/mdz-logo.jpg" },

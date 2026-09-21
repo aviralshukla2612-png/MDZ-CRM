@@ -196,10 +196,10 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           }
           className="flex items-center gap-3 select-none group"
         >
-          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire Dizital Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shadow-sm ring-1 ring-amber-400/50 group-hover:scale-105 transition-all" />
-          <span className="font-extrabold text-sm sm:text-base tracking-wider text-stone-900 dark:text-stone-100 uppercase font-sans flex items-center gap-1.5">
-            <span className="md:hidden bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 bg-clip-text text-transparent font-black">MILLIONAIRE</span>
-            <span className="hidden md:inline font-black tracking-tight">MILLIONAIRE DIZITAL <span className="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 dark:from-amber-400 dark:to-yellow-400 bg-clip-text text-transparent">CRM</span></span>
+          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire OS Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shadow-sm ring-1 ring-emerald-500/30 group-hover:scale-105 transition-all" />
+          <span className="font-extrabold text-base sm:text-lg tracking-tight font-sans flex items-center gap-1.5 select-none">
+            <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent font-black">Millionaire</span>
+            <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 dark:from-amber-400 dark:via-yellow-300 dark:to-amber-300 bg-clip-text text-transparent font-black">OS</span>
           </span>
         </Link>
       </div>
