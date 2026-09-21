@@ -64,13 +64,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       progressPercentage: calculatedProgress,
     };
 
-    // Strict privacy rule: employees cannot see client or project price, and can only see tasks assigned to them
-    if (authRes.activeRole === "EMPLOYEE") {
+    // Strict privacy rule: only OWNER, ADMIN, and SUB_ADMIN can see project price & financials
+    const isAdminOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole);
+    if (!isAdminOrSubAdmin) {
       delete projectWithProgress.contractValue;
       delete projectWithProgress.paidValue;
       delete projectWithProgress.overdueValue;
       delete projectWithProgress.invoices;
       delete projectWithProgress.paymentMilestones;
+    }
+
+    if (authRes.activeRole === "EMPLOYEE") {
       const targetEmpId = authRes.employeeId || project.memberships.find(m => m.employee?.userId === authRes.id)?.employeeId;
       if (targetEmpId) {
         projectWithProgress.tasks = (project.tasks || []).filter(

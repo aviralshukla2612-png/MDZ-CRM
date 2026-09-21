@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
 import { FolderKanban, Save, Sparkles, Building, Calendar, IndianRupee } from "lucide-react";
@@ -18,6 +19,9 @@ export function EditProjectModal({
   project,
   onSuccess,
 }: EditProjectModalProps) {
+  const { data: session } = useSession();
+  const userRole = ((session?.user as any)?.role || "").toUpperCase();
+  const isAdminOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(userRole);
   const { showToast } = useToast();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -168,7 +172,7 @@ export function EditProjectModal({
         </div>
 
         {/* Deadline & Budget Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className={`grid ${isAdminOrSubAdmin ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1"} gap-3`}>
           <div>
             <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-indigo-500" />
@@ -182,19 +186,21 @@ export function EditProjectModal({
             />
           </div>
 
-          <div>
-            <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5 flex items-center gap-1">
-              <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
-              <span>Contract Value (₹)</span>
-            </label>
-            <input
-              type="number"
-              value={contractValue}
-              onChange={(e) => setContractValue(e.target.value)}
-              placeholder="e.g. 150000"
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium font-mono"
-            />
-          </div>
+          {isAdminOrSubAdmin && (
+            <div>
+              <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5 flex items-center gap-1">
+                <IndianRupee className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Contract Value (₹)</span>
+              </label>
+              <input
+                type="number"
+                value={contractValue}
+                onChange={(e) => setContractValue(e.target.value)}
+                placeholder="e.g. 150000"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium font-mono"
+              />
+            </div>
+          )}
         </div>
 
         {/* URLs */}

@@ -193,7 +193,9 @@ export function EmployeeProjectKanban({
   initialSelectedEmployeeId,
 }: EmployeeProjectKanbanProps) {
   const { data: session } = useSession();
-  const isEmployee = (session?.user as any)?.role === "EMPLOYEE";
+  const userRole = ((session?.user as any)?.role || "").toUpperCase();
+  const isAdminOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(userRole);
+  const isEmployee = userRole === "EMPLOYEE" || !isAdminOrSubAdmin;
   const { showToast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("ALL");
@@ -1222,7 +1224,7 @@ export function EmployeeProjectKanban({
                 </div>
 
                 {/* Total Value Summary for column */}
-                {!isEmployee && totalVal > 0 && (
+                {isAdminOrSubAdmin && totalVal > 0 && (
                   <div className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 px-1">
                     Value: ₹{totalVal.toLocaleString("en-IN")}
                   </div>

@@ -58,6 +58,7 @@ export async function GET() {
     });
 
     const isEmployee = authRes.activeRole === "EMPLOYEE";
+    const isAdminOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole);
 
     const formatted = projects.map((p) => {
       const activeTasks = p.tasks ? p.tasks.filter((t) => t.status !== "ARCHIVED") : [];
@@ -92,9 +93,9 @@ export async function GET() {
         progress: calculatedProgress,
         progressPercentage: calculatedProgress,
         currentStage: p.status,
-        contractValue: isEmployee ? undefined : p.contractValue,
-        paidValue: isEmployee ? undefined : 0,
-        overdueValue: isEmployee ? undefined : 0,
+        contractValue: isAdminOrSubAdmin ? p.contractValue : undefined,
+        paidValue: isAdminOrSubAdmin ? 0 : undefined,
+        overdueValue: isAdminOrSubAdmin ? 0 : undefined,
         deadline: p.targetDeadline ? new Date(p.targetDeadline).toLocaleDateString() : null,
         targetDeadline: p.targetDeadline ? p.targetDeadline.toISOString() : null,
         status: p.status,

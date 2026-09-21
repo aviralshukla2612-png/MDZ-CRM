@@ -39,6 +39,8 @@ import { MediaGallery } from "@/components/ui/MediaGallery";
 
 export default function ProjectWorkspacePage({ params }: { params: { id: string } }) {
   const { data: session } = useSession();
+  const userRole = ((session?.user as any)?.role || "").toUpperCase();
+  const isAdminOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(userRole);
   const router = useRouter();
   const { showToast } = useToast();
   const [project, setProject] = useState<any>(null);
@@ -534,9 +536,8 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   if (loading) return <div className="p-12 text-center text-slate-400 animate-pulse">Loading Workspace...</div>;
   if (!project) return <div className="p-12 text-center text-rose-400">Project Not Found or Access Denied</div>;
 
-  const userRole = (session?.user as any)?.role;
   const isEmployee = userRole === "EMPLOYEE";
-  const isAdminOrOwner = userRole === "OWNER" || userRole === "ADMIN" || userRole === "SUB_ADMIN" || userRole === "SALES";
+  const isAdminOrOwner = isAdminOrSubAdmin || userRole === "SALES";
   const currentEmpId =
     (session?.user as any)?.employeeId ||
     project.memberships?.find(
@@ -835,7 +836,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           </div>
 
           <div className="space-y-4">
-            {!isEmployee && project.contractValue !== undefined && (
+            {isAdminOrSubAdmin && project.contractValue !== undefined && (
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3 text-xs">
                 <h3 className="font-bold text-slate-900 dark:text-slate-100">Financial Contract Summary</h3>
                 <div className="flex justify-between py-1 border-b border-slate-100 dark:border-slate-800">
