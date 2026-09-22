@@ -218,8 +218,8 @@ export default function ProjectsDirectoryPage() {
   return (
     <div className="space-y-8 pb-16">
       <PageHeader
-        title="Project Kanban"
-        description="Unified workspace for client project execution, developer workloads, TMs, and stage Kanban."
+        title="Projects"
+        description="Unified workspace for client project execution, team workloads, and project stages."
         badge={`${projectsList.length} ACTIVE PROJECTS`}
         icon={<FolderKanban className="w-7 h-7 text-indigo-600 dark:text-indigo-400 animate-pulse" />}
         actions={
@@ -321,9 +321,9 @@ export default function ProjectsDirectoryPage() {
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Developer Workload (Kanban)</span>
+            <span>Team Workload</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-extrabold">
-              ODOO
+              WORKSPACE
             </span>
           </button>
 
@@ -347,7 +347,7 @@ export default function ProjectsDirectoryPage() {
           {activeView === "calendar" ? (
             <span>Interactive calendar grid showing dated tasks, execution deadlines, and daily agenda.</span>
           ) : activeView === "kanban" ? (
-            <span>Select any developer on the left sidebar to inspect and manage their assigned projects.</span>
+            <span>Select any team member on the left sidebar to inspect and manage their assigned projects.</span>
           ) : (
             <span>Showing all company project workspaces and live weighted execution progress.</span>
           )}

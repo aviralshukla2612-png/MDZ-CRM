@@ -108,16 +108,16 @@ export default function ClientDevelopersPage() {
           </div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
             <Users className="w-7 h-7 text-indigo-500" />
-            <span>Assigned Developers & Engineers</span>
+            <span>Assigned Team Members</span>
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Directly connect with the developers, technical leads, and designers building your applications.
+            Directly connect with the team members, project leads, and designers building your applications.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold border border-slate-200 dark:border-slate-700">
-            {developers.length} Developer{developers.length === 1 ? "" : "s"} Assigned
+            {developers.length} Team Member{developers.length === 1 ? "" : "s"} Assigned
           </span>
         </div>
       </div>
@@ -129,17 +129,17 @@ export default function ClientDevelopersPage() {
         </div>
       )}
 
-      {/* Developers Grid */}
+      {/* Team Grid */}
       {developers.length === 0 ? (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500 flex items-center justify-center mx-auto">
             <Users className="w-6 h-6" />
           </div>
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
-            No Developers Assigned Yet
+            No Team Members Assigned Yet
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Once your project administrator assigns engineers to your active milestones, their contact numbers, direct email, and live task status will appear here.
+            Once your project administrator assigns team members to your active milestones, their contact numbers, direct email, and live task status will appear here.
           </p>
           <div className="pt-2">
             <Link

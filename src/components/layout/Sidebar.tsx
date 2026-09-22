@@ -56,7 +56,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Sales & Leads", href: "/leads", icon: <Target className="w-4 h-4" /> },
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
-          { title: "Project Kanban", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Notifications", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
@@ -78,7 +78,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Sales & Leads", href: "/leads", icon: <Target className="w-4 h-4" /> },
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
-          { title: "Project Kanban", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Notifications", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
@@ -109,7 +109,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "EMPLOYEE":
         return [
           { title: "My Desk", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
-          { title: "Project Kanban", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Notifications", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
@@ -123,7 +123,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "CLIENT":
         return [
           { title: "Project Overview", href: "/client", icon: <FolderKanban className="w-4 h-4" /> },
-          { title: "Assigned Developers", href: "/client/developers", icon: <Users className="w-4 h-4" /> },
+          { title: "Assigned Team", href: "/client/developers", icon: <Users className="w-4 h-4" /> },
           { title: "Change Requests (3 Max)", href: "/client/revisions", icon: <GitPullRequest className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/client/updates", icon: <Clock className="w-4 h-4" /> },
           { title: "Notifications", href: "/notifications", icon: <Bell className="w-4 h-4" /> },

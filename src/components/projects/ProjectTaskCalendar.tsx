@@ -647,10 +647,10 @@ export function ProjectTaskCalendar({
                 }}
                 className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 cursor-pointer appearance-none shadow-2xs"
               >
-                <option value="ALL">👥 All Developers ({employees.length})</option>
+                <option value="ALL">👥 All Team Members ({employees.length})</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    👤 {emp.name} ({emp.designation || "Developer"})
+                    👤 {emp.name} ({emp.designation || "Team Member"})
                   </option>
                 ))}
               </select>
@@ -1126,7 +1126,7 @@ export function ProjectTaskCalendar({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
-                Assign Developer
+                Assign Team Member
               </label>
               <select
                 value={newTaskAssignee}
@@ -1136,7 +1136,7 @@ export function ProjectTaskCalendar({
                 <option value="">Unassigned</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    👤 {emp.name} ({emp.designation || "Developer"})
+                    👤 {emp.name} ({emp.designation || "Team Member"})
                   </option>
                 ))}
               </select>

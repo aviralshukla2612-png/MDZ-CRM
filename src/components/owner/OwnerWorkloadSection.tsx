@@ -47,7 +47,7 @@ export function OwnerWorkloadSection() {
           </div>
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-              DEVELOPER PROJECT ALLOCATION & WORKLOAD
+              TEAM PROJECT ALLOCATION & WORKLOAD
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Live tracking of projects assigned to each team member and their execution stages.
@@ -67,7 +67,7 @@ export function OwnerWorkloadSection() {
             href="/projects?view=kanban"
             className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs flex items-center gap-1.5 transition-colors"
           >
-            <span>Open Project Kanban</span>
+            <span>Open Projects</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -167,7 +167,7 @@ export function OwnerWorkloadSection() {
                     href={`/projects?view=kanban&employeeId=${emp.id}`}
                     className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
                   >
-                    <span>View Kanban</span>
+                    <span>View Projects</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>

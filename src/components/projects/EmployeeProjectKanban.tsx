@@ -588,7 +588,7 @@ export function EmployeeProjectKanban({
             <div className="flex items-center gap-2 shrink-0">
               <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                 <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <span>Select Developer:</span>
+                <span>Select Team Member:</span>
               </span>
             </div>
 
@@ -601,7 +601,7 @@ export function EmployeeProjectKanban({
                 <option value="ALL">🌐 All Company Projects ({allProjects.length} Projects)</option>
                 {(departmentFilter === "ALL" ? employees : employees.filter((e) => e.department === departmentFilter)).map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    👤 {emp.name} ({emp.totalProjects !== undefined ? emp.totalProjects : emp.assignedProjects?.length || 0} Projects) — {emp.designation || "Developer"}
+                    👤 {emp.name} ({emp.totalProjects !== undefined ? emp.totalProjects : emp.assignedProjects?.length || 0} Projects) — {emp.designation || "Team Member"}
                   </option>
                 ))}
               </select>
@@ -625,7 +625,7 @@ export function EmployeeProjectKanban({
 
           {/* Right: Sidebar Toggle Button + Assign Button + Task Calendar Button */}
           <div className="flex items-center gap-2 shrink-0 self-end lg:self-center flex-wrap">
-            {/* View Switcher: Kanban Cards vs Task Calendar */}
+            {/* View Switcher: Projects Cards vs Task Calendar */}
             <button
               type="button"
               onClick={() => setViewMode(viewMode === "kanban" ? "calendar" : "kanban")}
@@ -634,10 +634,10 @@ export function EmployeeProjectKanban({
                   ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/25"
                   : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-slate-50 dark:hover:bg-slate-700"
               }`}
-              title="Toggle between Kanban Project Board and Interactive Dated Task Calendar"
+              title="Toggle between Projects View and Interactive Dated Task Calendar"
             >
               <Calendar className={`w-4 h-4 ${viewMode === "calendar" ? "text-white" : "text-indigo-600 dark:text-indigo-400"}`} />
-              <span>{viewMode === "calendar" ? "Project Kanban" : "Task Calendar"}</span>
+              <span>{viewMode === "calendar" ? "Projects View" : "Task Calendar"}</span>
               <span
                 className={`text-[9px] font-mono px-1.5 py-0.5 rounded-full font-black ${
                   viewMode === "calendar"
@@ -726,7 +726,7 @@ export function EmployeeProjectKanban({
                   </h3>
                 </div>
             <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300">
-              ODOO KANBAN
+              WORKSPACE
             </span>
           </div>
 
@@ -737,7 +737,7 @@ export function EmployeeProjectKanban({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search developer, role..."
+              placeholder="Search team member, role..."
               className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-colors"
             />
           </div>
@@ -757,7 +757,7 @@ export function EmployeeProjectKanban({
                 <option value="ALL">🌐 All Company Projects ({allProjects.length} Projects)</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    👤 {emp.name} ({emp.totalProjects !== undefined ? emp.totalProjects : emp.assignedProjects?.length || 0} Projects) — {emp.designation || "Developer"}
+                    👤 {emp.name} ({emp.totalProjects !== undefined ? emp.totalProjects : emp.assignedProjects?.length || 0} Projects) — {emp.designation || "Team Member"}
                   </option>
                 ))}
               </select>
@@ -942,7 +942,7 @@ export function EmployeeProjectKanban({
                     setAvatarModalEmployee(selectedEmployee);
                     setIsAvatarModalOpen(true);
                   }}
-                  title="Click to change developer photo"
+                  title="Click to change member photo"
                 >
                   <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden border-2 border-indigo-200 dark:border-indigo-800 shadow-md shadow-indigo-600/20 flex items-center justify-center bg-gradient-to-tr from-indigo-600 to-purple-600 group-hover:scale-105 transition-transform">
                     {selectedEmployee.avatarUrl ? (
@@ -985,7 +985,7 @@ export function EmployeeProjectKanban({
                     )}
                   </div>
                   <div className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold mt-0.5">
-                    {selectedEmployee.designation || "Developer"} • {selectedEmployee.department || "Engineering"}
+                    {selectedEmployee.designation || "Team Member"} • {selectedEmployee.department || "Engineering"}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-3 mt-1 font-mono">
                     <span>📧 {selectedEmployee.email}</span>
@@ -1083,7 +1083,7 @@ export function EmployeeProjectKanban({
                 All Company Project Workloads
               </h2>
               <p className="text-xs text-slate-500">
-                Showing all active projects across all {employees.length} developers. Drag cards to update statuses.
+                Showing all active projects across all {employees.length} team members. Drag cards to update statuses.
               </p>
             </div>
             <div className="flex items-center gap-3 text-xs">
@@ -1681,7 +1681,7 @@ export function EmployeeProjectKanban({
           isOpen={isAssignModalOpen}
           onClose={() => setIsAssignModalOpen(false)}
           title={`Assign ${selectedEmployee.name} to Project`}
-          subtitle="Link developer to project workspace with active membership."
+          subtitle="Link team member to project workspace with active membership."
         >
           <form onSubmit={handleAssignSubmit} className="space-y-4 text-xs">
             <div>
