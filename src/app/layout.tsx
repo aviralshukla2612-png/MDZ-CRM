@@ -19,6 +19,7 @@ export const metadata = {
 
 import { PrototypeStoreProvider } from "@/lib/prototypeStore";
 import { WorkClockProvider } from "@/lib/workClockContext";
+import { BrandingProvider } from "@/components/providers/BrandingProvider";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -59,11 +60,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ToastProvider>
           <NextAuthProvider>
-            <PrototypeStoreProvider>
-              <WorkClockProvider>
-                <AppShell>{children}</AppShell>
-              </WorkClockProvider>
-            </PrototypeStoreProvider>
+            <BrandingProvider>
+              <PrototypeStoreProvider>
+                <WorkClockProvider>
+                  <AppShell>{children}</AppShell>
+                </WorkClockProvider>
+              </PrototypeStoreProvider>
+            </BrandingProvider>
           </NextAuthProvider>
         </ToastProvider>
       </body>

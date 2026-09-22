@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -26,7 +27,10 @@ import {
   LogIn,
 } from "lucide-react";
 
+import { isApplicableHoliday } from "@/lib/holidayHelpers";
+
 export default function EmployeeDetailPage({ params }: { params: { id: string } }) {
+  const { data: session } = useSession();
   const { showToast } = useToast();
   const [employee, setEmployee] = useState<any>(null);
   const [assignedProjs, setAssignedProjs] = useState<any[]>([]);
@@ -34,6 +38,8 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
   const [editDesignation, setEditDesignation] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editSalary, setEditSalary] = useState<number>(0);
@@ -114,14 +120,16 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
     }
     const sundaysCount = sundayDaysSet.size;
 
-    // Filter official company holidays dynamically for selected month and year
+    // Filter official applicable company/national/state holidays dynamically for employee
     const monthlyHolidays = holidays.filter((h: any) => {
-      if (!h.date) return false;
+      if (!h.date || h.isActive === false) return false;
       const d = new Date(h.date);
-      return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      const isMatch = d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+      if (!isMatch) return false;
+      return isApplicableHoliday(h, employee.state || null);
     });
 
-    // Merge Sundays and Official Holidays into a unique set (prevents double-counting if a holiday falls on a Sunday)
+    // Merge Sundays and Applicable Holidays into a unique set (prevents double-counting if a holiday falls on a Sunday)
     const uniqueDaysOffSet = new Set<number>(sundayDaysSet);
     monthlyHolidays.forEach((h: any) => {
       const d = new Date(h.date);
@@ -130,7 +138,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
 
     const totalDaysOff = uniqueDaysOffSet.size;
     const daysOffStr = `${totalDaysOff} Day${totalDaysOff === 1 ? "" : "s"} Off`;
-    const daysOffSubtext = `${monthlyHolidays.length} Official Holiday${monthlyHolidays.length === 1 ? "" : "s"} + ${sundaysCount} Sunday${sundaysCount === 1 ? "" : "s"}`;
+    const daysOffSubtext = `${monthlyHolidays.length} Applicable Holiday${monthlyHolidays.length === 1 ? "" : "s"} + ${sundaysCount} Sunday${sundaysCount === 1 ? "" : "s"}`;
 
     let sumPunchInMins = 0;
     let cntPunchIn = 0;
@@ -203,16 +211,30 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
       });
 
       const hol = holidays.find((h: any) => {
+        if (!h.date || h.isActive === false) return false;
         const d = new Date(h.date);
-        return d.getDate() === day && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+        const matches = d.getDate() === day && d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
+        if (!matches) return false;
+        return isApplicableHoliday(h, employee.state || null);
       });
 
       let dotColor = "bg-slate-400";
       let workLabel = "0h 0m";
 
       if (hol) {
-        dotColor = "bg-indigo-500";
-        workLabel = `🎉 ${hol.title}`;
+        if (hol.type === "COMPANY") {
+          dotColor = "bg-sky-500";
+          workLabel = `🏢 ${hol.title}`;
+        } else if (hol.type === "STATE") {
+          dotColor = "bg-amber-500";
+          workLabel = `🏛️ ${hol.title}`;
+        } else if (hol.type === "OPTIONAL" || hol.isOptional) {
+          dotColor = "bg-purple-500";
+          workLabel = `✨ ${hol.title}`;
+        } else {
+          dotColor = "bg-indigo-500";
+          workLabel = `🎉 ${hol.title}`;
+        }
       } else if (isToday && employee?.punchedIn) {
         dotColor = "bg-blue-500";
         workLabel = att?.totalMinutes ? `${Math.floor(att.totalMinutes / 60)}h ${att.totalMinutes % 60}m` : "0h 0m";
@@ -239,6 +261,7 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         isToday,
         dotColor,
         workLabel,
+        holiday: hol || null,
       });
     }
 
@@ -306,12 +329,12 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         setEmployee({
           ...e,
           employeeId: e.employeeIdCode,
-          name: e.user.name,
-          email: e.user.email,
-          role: e.user.activeRole,
-          designation: e.user.designation,
-          department: e.user.department,
-          phone: "+91 98980 000" + (e.employeeIdCode?.length > 3 ? e.employeeIdCode.slice(-2) : "01"),
+          name: e.user?.name || "Employee",
+          email: e.user?.email || "",
+          role: e.user?.activeRole || "EMPLOYEE",
+          designation: e.user?.designation || "Developer",
+          department: e.user?.department || "Engineering",
+          phone: e.user?.phone || e.phone || "",
           punchedIn: isPunchedIn,
           shiftCompleted: isShiftCompleted,
           punchInTime: todayAtt[0]?.punchIn ? new Date(todayAtt[0].punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "09:00 AM",
@@ -338,6 +361,8 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         });
         
         setEditName(e.user?.name || "");
+        setEditEmail(e.user?.email || "");
+        setEditPhone(e.user?.phone || e.phone || "");
         setEditDesignation(e.user?.designation || "");
         setEditDepartment(e.user?.department || "");
         setEditSalary(e.salaryMonthly || 0);
@@ -369,14 +394,16 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
           }
 
           return {
-            id: m.project.id,
-            projectNumber: m.project.projectNumber,
-            name: m.project.name,
-            clientName: m.project.client?.companyName || "Client",
-            roleInProject: m.roleInProject,
-            progress,
+            id: m.project?.id,
+            name: m.project?.name || "Project Workspace",
+            role: m.roleInProject,
             compensationAmount: m.compensationAmount,
             currency: m.currency || "INR",
+            progress,
+            totalTasks,
+            completedTasks,
+            deadline: m.project?.targetDeadline ? new Date(m.project.targetDeadline).toLocaleDateString() : "No deadline",
+            status: m.project?.status || "IN_PROGRESS",
             deliveryStatus,
             deliveryColor,
           };
@@ -400,6 +427,8 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: editName,
+          email: editEmail,
+          phone: editPhone,
           designation: editDesignation,
           department: editDepartment,
           salaryMonthly: editSalary,
@@ -924,51 +953,98 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         title="Edit Employee Profile"
-        subtitle="Update employee details and department."
+        subtitle="Update employee contact details, department, and salary."
       >
         <form onSubmit={handleUpdateEmployee} className="space-y-4 text-xs">
           <div>
-            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Full Name</label>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Full Name *</label>
             <input
               type="text"
               required
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium"
             />
           </div>
+
           <div>
-            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Designation</label>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5 flex items-center justify-between">
+              <span>Email Address *</span>
+              {session?.user?.role !== "OWNER" && session?.user?.role !== "ADMIN" && session?.user?.role !== "SUB_ADMIN" && (
+                <span className="text-[10px] text-slate-400 font-normal">Admin Managed</span>
+              )}
+            </label>
+            <input
+              type="email"
+              required
+              value={editEmail}
+              onChange={(e) => setEditEmail(e.target.value)}
+              disabled={session?.user?.role !== "OWNER" && session?.user?.role !== "ADMIN" && session?.user?.role !== "SUB_ADMIN"}
+              placeholder="employee@company.com"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Mobile Number / Phone</label>
+            <input
+              type="tel"
+              value={editPhone}
+              onChange={(e) => setEditPhone(e.target.value)}
+              placeholder="+91 98765 43210"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium"
+            />
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5 flex items-center justify-between">
+              <span>Designation *</span>
+              {session?.user?.role !== "OWNER" && session?.user?.role !== "ADMIN" && session?.user?.role !== "SUB_ADMIN" && (
+                <span className="text-[10px] text-slate-400 font-normal">Admin Managed</span>
+              )}
+            </label>
             <input
               type="text"
               required
               value={editDesignation}
               onChange={(e) => setEditDesignation(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all"
+              disabled={session?.user?.role !== "OWNER" && session?.user?.role !== "ADMIN" && session?.user?.role !== "SUB_ADMIN"}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed"
             />
           </div>
+
           <div>
-            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Department</label>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5 flex items-center justify-between">
+              <span>Department *</span>
+              {session?.user?.role !== "OWNER" && session?.user?.role !== "ADMIN" && session?.user?.role !== "SUB_ADMIN" && (
+                <span className="text-[10px] text-slate-400 font-normal">Admin Managed</span>
+              )}
+            </label>
             <input
               type="text"
               required
               value={editDepartment}
               onChange={(e) => setEditDepartment(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all"
+              disabled={session?.user?.role !== "OWNER" && session?.user?.role !== "ADMIN" && session?.user?.role !== "SUB_ADMIN"}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium disabled:opacity-60 disabled:cursor-not-allowed"
             />
           </div>
-          <div>
-            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Monthly Salary</label>
-            <input
-              type="number"
-              value={editSalary}
-              onChange={(e) => setEditSalary(Number(e.target.value))}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all"
-            />
-          </div>
+
+          {(session?.user?.role === "OWNER" || session?.user?.role === "ADMIN" || session?.user?.role === "SUB_ADMIN") && (
+            <div>
+              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Monthly Salary (₹)</label>
+              <input
+                type="number"
+                value={editSalary}
+                onChange={(e) => setEditSalary(Number(e.target.value))}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium"
+              />
+            </div>
+          )}
+
           <button
             type="submit"
-            className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all mt-2"
+            className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all mt-2 cursor-pointer"
           >
             Save Changes
           </button>

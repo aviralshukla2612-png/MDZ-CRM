@@ -109,8 +109,31 @@ export async function PATCH(req: Request) {
       });
     }
 
+    if (type === "phone" || type === "mobile") {
+      const cleanPhone = String(newValue || "").trim();
+      await prisma.user.update({
+        where: { id: currentUser.id },
+        data: { phone: cleanPhone },
+      });
+
+      const emp = await prisma.employee.findFirst({
+        where: { userId: currentUser.id },
+      });
+      if (emp) {
+        await prisma.employee.update({
+          where: { id: emp.id },
+          data: { phone: cleanPhone },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Mobile number updated successfully.",
+      });
+    }
+
     return NextResponse.json(
-      { success: false, error: "Invalid update type. Must be 'email' or 'password'" },
+      { success: false, error: "Invalid update type. Must be 'email', 'password', or 'phone'" },
       { status: 400 }
     );
   } catch (error) {

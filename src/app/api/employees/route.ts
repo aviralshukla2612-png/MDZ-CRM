@@ -126,7 +126,7 @@ export async function GET() {
         role: e.user?.activeRole || "EMPLOYEE",
         designation: e.user?.designation || "Developer",
         department: e.user?.department || "Engineering",
-        phone: "+91 98980 000" + (e.employeeIdCode.length > 3 ? e.employeeIdCode.slice(-2) : "01"),
+        phone: e.user?.phone || e.phone || "",
         punchedIn: isPunchedIn,
         shiftCompleted: isShiftCompleted,
         punchInTime: todayAtt[0]?.punchIn ? new Date(todayAtt[0].punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "09:00 AM",

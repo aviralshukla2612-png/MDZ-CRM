@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { NotificationBell } from "./NotificationBell";
 import { AvatarUploadModal } from "../ui/AvatarUploadModal";
 import { UnclosedShiftModal } from "../attendance/UnclosedShiftModal";
+import { useBranding } from "@/components/providers/BrandingProvider";
 
 interface Props {
   currentUser: {
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout }: Props) {
+  const { branding, themeStyle } = useBranding();
   const { status, workSeconds, breakSeconds, breakType, formatHMS, punchIn, startBreak, resumeWork, punchOut, confirmPunchOutAnyway, markPunchOutPending, unclosedShift, refreshStatus } = useWorkClock();
   const { showToast } = useToast();
 
@@ -196,10 +198,30 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           }
           className="flex items-center gap-3 select-none group"
         >
-          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire OS Logo" className="w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shadow-sm ring-1 ring-emerald-500/30 group-hover:scale-105 transition-all" />
+          {branding.logoUrl ? (
+            <img
+              src={branding.logoUrl}
+              alt={`${branding.companyName} Logo`}
+              className={`w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shadow-sm ring-1 ${themeStyle.ringClass} group-hover:scale-105 transition-all bg-white dark:bg-slate-900 p-0.5`}
+              onError={(e) => {
+                // Fallback to default if custom image fails to load
+                (e.target as HTMLImageElement).src = "/mdz-crm/mdz-logo.jpg";
+              }}
+            />
+          ) : (
+            <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br ${themeStyle.swatchBg} text-white font-black flex items-center justify-center text-sm shadow-sm`}>
+              {branding.companyName.charAt(0)}
+            </div>
+          )}
           <span className="font-extrabold text-base sm:text-lg tracking-tight font-sans flex items-center gap-1.5 select-none">
-            <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent font-black">Millionaire</span>
-            <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 dark:from-amber-400 dark:via-yellow-300 dark:to-amber-300 bg-clip-text text-transparent font-black">OS</span>
+            <span className={`${themeStyle.primaryGradient} bg-clip-text text-transparent font-black`}>
+              {branding.companyName}
+            </span>
+            {branding.brandTagline && (
+              <span className={`${themeStyle.secondaryGradient} bg-clip-text text-transparent font-black`}>
+                {branding.brandTagline}
+              </span>
+            )}
           </span>
         </Link>
       </div>

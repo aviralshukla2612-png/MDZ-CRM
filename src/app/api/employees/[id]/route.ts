@@ -52,31 +52,69 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
+  const authRes = await requireAuth();
   if (authRes instanceof NextResponse) return authRes;
 
   try {
     const body = await req.json();
     
-    const existing = await prisma.employee.findUnique({ where: { id: params.id } });
+    const existing = await prisma.employee.findUnique({
+      where: { id: params.id },
+      include: { user: true }
+    });
     if (!existing) {
       return NextResponse.json({ success: false, error: "Employee not found" }, { status: 404 });
     }
 
-    const updatedEmployee = await prisma.$transaction(async (tx) => {
-      await tx.employee.update({
-        where: { id: params.id },
-        data: {
-          salaryMonthly: body.salaryMonthly !== undefined ? Number(body.salaryMonthly) : undefined,
-          status: body.status,
-        },
-      });
+    const isAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole);
+    const isSelf = existing.userId === authRes.id || existing.id === authRes.employeeId;
 
-      const userUpdateData: any = {};
+    if (!isAdmin && !isSelf) {
+      return NextResponse.json({ success: false, error: "Forbidden: You cannot modify this employee profile" }, { status: 403 });
+    }
+
+    const userUpdateData: any = {};
+    const employeeUpdateData: any = {};
+
+    // Mobile / Phone update (Allowed for Admin, Sub-Admin, and Employee self-service)
+    if (body.phone !== undefined) {
+      const cleanPhone = String(body.phone || "").trim();
+      userUpdateData.phone = cleanPhone;
+      employeeUpdateData.phone = cleanPhone;
+    }
+    if (body.mobile !== undefined) {
+      const cleanMobile = String(body.mobile || "").trim();
+      userUpdateData.phone = cleanMobile;
+      employeeUpdateData.phone = cleanMobile;
+    }
+
+    // Admin & Sub-Admin controls (Email, Name, Designation, Department, Salary, Status, etc.)
+    if (isAdmin) {
+      if (body.email !== undefined) {
+        const cleanEmail = String(body.email || "").toLowerCase().trim();
+        if (cleanEmail && cleanEmail !== existing.user?.email) {
+          const duplicate = await prisma.user.findUnique({ where: { email: cleanEmail } });
+          if (duplicate && duplicate.id !== existing.userId) {
+            return NextResponse.json({ success: false, error: "Email is already in use by another account" }, { status: 400 });
+          }
+          userUpdateData.email = cleanEmail;
+        }
+      }
       if (body.name) userUpdateData.name = body.name;
       if (body.designation) userUpdateData.designation = body.designation;
       if (body.department) userUpdateData.department = body.department;
       if (body.isActive !== undefined) userUpdateData.isActive = body.isActive;
+      if (body.salaryMonthly !== undefined) employeeUpdateData.salaryMonthly = Number(body.salaryMonthly);
+      if (body.status) employeeUpdateData.status = body.status;
+    }
+
+    const updatedEmployee = await prisma.$transaction(async (tx) => {
+      if (Object.keys(employeeUpdateData).length > 0) {
+        await tx.employee.update({
+          where: { id: params.id },
+          data: employeeUpdateData,
+        });
+      }
 
       if (Object.keys(userUpdateData).length > 0) {
         await tx.user.update({
@@ -97,8 +135,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     return NextResponse.json({ success: true, data: updatedEmployee });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to update employee" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message || "Failed to update employee" }, { status: 500 });
   }
 }
 

@@ -78,7 +78,10 @@ export default function EmployeeTermsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">
             <ShieldCheck className="w-4 h-4" />
-            <span>Verified Employee Terms {terms?.version || "v1.0"}</span>
+            <span>
+              {terms?.isIndividual ? "Personalized Employee Agreement" : "Verified Employee Terms"}{" "}
+              {terms?.version || "v1.0"}
+            </span>
           </div>
 
           <button
@@ -93,19 +96,27 @@ export default function EmployeeTermsPage() {
         {/* Terms Box */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-10 shadow-xs space-y-6">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                <FileText className="w-5 h-5" />
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                    {terms?.title || "Employee Terms and Conditions of Service"}
+                  </h1>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Version: <strong>{terms?.version || "v1.0"}</strong> • Last Updated:{" "}
+                    {terms?.publishedAt ? new Date(terms.publishedAt).toLocaleDateString() : "Current"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                  {terms?.title || "Employee Terms and Conditions of Service"}
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Version: <strong>{terms?.version || "v1.0"}</strong> • Last Updated:{" "}
-                  {terms?.publishedAt ? new Date(terms.publishedAt).toLocaleDateString() : "Current"}
-                </p>
-              </div>
+
+              {terms?.isIndividual && (
+                <span className="text-[10px] font-mono font-bold px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+                  INDIVIDUAL AGREEMENT
+                </span>
+              )}
             </div>
           </div>
 

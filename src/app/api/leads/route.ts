@@ -3,12 +3,21 @@ import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { leadSchema } from "@/lib/validations";
 
-export async function GET() {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+export async function GET(req: Request) {
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
+    const url = new URL(req.url);
+    const sourceFilter = url.searchParams.get("source");
+
+    const whereClause: any = {};
+    if (sourceFilter && sourceFilter !== "ALL") {
+      whereClause.source = sourceFilter;
+    }
+
     const leads = await prisma.lead.findMany({
+      where: whereClause,
       orderBy: { createdAt: "desc" },
       include: {
         followups: true,
@@ -34,7 +43,7 @@ export async function GET() {
       expectedRevenue: l.expectedValue,
       projectScope: l.interestedService,
       interestedService: l.interestedService,
-      source: l.source,
+      source: l.source || "WEBSITE",
       industry: l.industry || "General",
       subCategory: l.subCategory,
       businessType: l.businessType,
@@ -76,7 +85,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -101,6 +110,7 @@ export async function POST(req: Request) {
         companyName: validData.clientName,
         mobile: validData.phone,
         email: validData.email,
+        source: body.source ? String(body.source).toUpperCase() : "MANUAL",
         interestedService: validData.projectScope,
         estimatedBudget: validData.leadValue,
         expectedValue: validData.expectedRevenue,
@@ -120,6 +130,7 @@ export async function POST(req: Request) {
         contactPerson: newLead.contactPerson,
         email: newLead.email,
         phone: newLead.mobile,
+        source: newLead.source,
         stage: newLead.status,
         leadValue: newLead.estimatedBudget,
         expectedRevenue: newLead.expectedValue,

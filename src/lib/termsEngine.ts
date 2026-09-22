@@ -6,7 +6,7 @@ export const DEFAULT_EMPLOYEE_TERMS_VERSION = "v1.0";
 export const DEFAULT_CLIENT_TERMS_VERSION = "v1.0";
 
 export const DEFAULT_EMPLOYEE_TERMS_CONTENT = `
-1. ACCEPTANCE OF TERMS
+1. ACCEPTANCE OF TERMS & WORKPLACE POLICIES
 By accessing and using MDZ OS as an employee of Millionaire Dizital, you agree to comply with all company operational policies, data security guidelines, and internal governance rules set forth in this agreement.
 
 2. CONFIDENTIALITY AND DATA PROTECTION
@@ -66,6 +66,45 @@ export async function getPublishedTerms(targetAudience: "EMPLOYEE" | "CLIENT") {
 }
 
 /**
+ * Retrieves the specific terms for an employee (returns individual custom terms if configured,
+ * otherwise falls back to published company-wide Employee terms).
+ */
+export async function getEmployeeSpecificTerms(userId: string) {
+  const employee = await prisma.employee.findFirst({
+    where: { userId },
+    include: { user: true },
+  });
+
+  if (employee && employee.customTermsContent && employee.customTermsContent.trim()) {
+    return {
+      id: `custom-${employee.id}`,
+      targetAudience: "EMPLOYEE",
+      version: employee.termsVersion || "v1.0",
+      title: employee.customTermsTitle || `Employment Terms & Agreement — ${employee.user.name}`,
+      content: employee.customTermsContent,
+      isCurrent: true,
+      isIndividual: true,
+      employeeId: employee.id,
+      employeeName: employee.user.name,
+      employeeEmail: employee.user.email,
+      termsAccepted: employee.termsAccepted,
+      termsAcceptedAt: employee.termsAcceptedAt,
+      publishedAt: employee.createdAt,
+    };
+  }
+
+  const globalTerms = await getPublishedTerms("EMPLOYEE");
+  return {
+    ...globalTerms,
+    isIndividual: false,
+    employeeId: employee?.id || null,
+    employeeName: employee?.user?.name || null,
+    termsAccepted: employee?.termsAccepted || false,
+    termsAcceptedAt: employee?.termsAcceptedAt || null,
+  };
+}
+
+/**
  * Server-authoritative terms version check for an authenticated User session.
  */
 export async function checkUserTermsStatus(user: CurrentUserSession) {
@@ -74,6 +113,31 @@ export async function checkUserTermsStatus(user: CurrentUserSession) {
   }
 
   if (user.activeRole === "EMPLOYEE") {
+    const employee = await prisma.employee.findFirst({
+      where: { userId: user.id },
+      include: { user: true },
+    });
+
+    // Check if employee has individual terms
+    if (employee && employee.customTermsContent && employee.customTermsContent.trim()) {
+      const needsAcceptance = !employee.termsAccepted;
+      return {
+        needsAcceptance,
+        currentVersion: employee.termsVersion || "v1.0",
+        acceptedVersion: employee.termsAccepted ? employee.termsVersion : null,
+        isIndividual: true,
+        terms: {
+          id: `custom-${employee.id}`,
+          title: employee.customTermsTitle || `Employment Terms & Agreement — ${employee.user.name}`,
+          content: employee.customTermsContent,
+          version: employee.termsVersion || "v1.0",
+          isIndividual: true,
+          publishedAt: employee.createdAt,
+        },
+      };
+    }
+
+    // Otherwise use company terms
     const currentTerms = await getPublishedTerms("EMPLOYEE");
     const dbUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -87,6 +151,7 @@ export async function checkUserTermsStatus(user: CurrentUserSession) {
       needsAcceptance,
       currentVersion: currentTerms.version,
       acceptedVersion,
+      isIndividual: false,
       terms: currentTerms,
     };
   }

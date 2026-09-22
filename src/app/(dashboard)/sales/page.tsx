@@ -25,15 +25,11 @@ export default function SalesDashboardPage() {
   const [leadValue, setLeadValue] = useState("");
   const [gstNo, setGstNo] = useState("");
   const [projectScope, setProjectScope] = useState("");
+  const [leadSource, setLeadSource] = useState("WEBSITE");
 
   const [isImportOpen, setIsImportOpen] = useState(false);
 
   useEffect(() => {
-    if (session?.user?.role === "SUB_ADMIN") {
-      showToast("Access restricted: Sub-Admin does not have access to Sales.", "error");
-      router.replace("/projects");
-      return;
-    }
     fetchLeads();
   }, [session, router]);
 
@@ -130,6 +126,7 @@ export default function SalesDashboardPage() {
           contactPerson: contactPerson,
           phone: `+91 ${cleanPhone}`,
           email: email || "contact@prospect.com",
+          source: leadSource,
           projectScope: projectScope || "General inquiry",
           leadValue: 0,
           expectedRevenue: 0,
@@ -332,6 +329,25 @@ export default function SalesDashboardPage() {
                   Enter {10 - phone.length} more digit{10 - phone.length > 1 ? "s" : ""} (only 10 digits allowed, no letters).
                 </p>
               )}
+            </div>
+            <div>
+              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5">Lead Inbound Source</label>
+              <select
+                value={leadSource}
+                onChange={(e) => setLeadSource(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-semibold"
+              >
+                <option value="WEBSITE">🌐 Website Direct</option>
+                <option value="INSTAGRAM">📸 Instagram / Meta</option>
+                <option value="FACEBOOK">🔵 Facebook Ads / Page</option>
+                <option value="LINKEDIN">💼 LinkedIn</option>
+                <option value="WHATSAPP">💬 WhatsApp Inbound</option>
+                <option value="GOOGLE_ADS">🎯 Google Ads</option>
+                <option value="WEBHOOK">⚡ Webhook / API</option>
+                <option value="REFERRAL">👥 Client Referral</option>
+                <option value="COLD_CALL">📞 Cold Call / Outreach</option>
+                <option value="OTHER">✨ Other</option>
+              </select>
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">

@@ -30,7 +30,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES", "ADMIN"]);
+  const authRes = await requireRole(["OWNER", "SALES", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -85,16 +85,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body.additionalDetails !== undefined) {
       updateData.additionalDetails = body.additionalDetails;
     }
+    if (body.estimatedBudget !== undefined || body.leadValue !== undefined) {
+      updateData.estimatedBudget = body.estimatedBudget !== undefined ? Number(body.estimatedBudget) : Number(body.leadValue);
+    }
+    if (body.expectedValue !== undefined || body.expectedRevenue !== undefined) {
+      updateData.expectedValue = body.expectedValue !== undefined ? Number(body.expectedValue) : Number(body.expectedRevenue);
+    }
     if (body.assignedSalespersonId !== undefined) {
-      updateData.assignedSalespersonId = body.assignedSalespersonId || null;
-    }
-    if (body.leadValue !== undefined || body.estimatedBudget !== undefined) {
-      const val = Number(body.leadValue !== undefined ? body.leadValue : body.estimatedBudget);
-      if (!isNaN(val)) updateData.estimatedBudget = val;
-    }
-    if (body.expectedRevenue !== undefined || body.expectedValue !== undefined) {
-      const val = Number(body.expectedRevenue !== undefined ? body.expectedRevenue : body.expectedValue);
-      if (!isNaN(val)) updateData.expectedValue = val;
+      updateData.assignedSalespersonId = body.assignedSalespersonId;
     }
     if (body.source !== undefined) {
       updateData.source = body.source;
@@ -122,7 +120,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES"]);
+  const authRes = await requireRole(["OWNER", "SALES", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {

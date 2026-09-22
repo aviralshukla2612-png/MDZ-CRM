@@ -183,6 +183,7 @@ export default function ProjectsDirectoryPage() {
           clientName: clientName.trim(),
           contractValue: contractValue ? Number(contractValue) : 0,
           priority,
+          status: "PLANNING",
           assigneeId: assigneeId || undefined,
           deadline: deadline || undefined,
         }),

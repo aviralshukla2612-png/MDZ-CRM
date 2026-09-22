@@ -395,6 +395,19 @@ export function EmployeeProjectKanban({
     setOptimisticProjects(null);
   }, [displayedProjects]);
 
+  // Global dragend listener to ensure draggedProjectId is always cleared (prevents card staying faded/translucent)
+  useEffect(() => {
+    const handleGlobalDragEnd = () => {
+      setDraggedProjectId(null);
+    };
+    window.addEventListener("dragend", handleGlobalDragEnd);
+    window.addEventListener("drop", handleGlobalDragEnd);
+    return () => {
+      window.removeEventListener("dragend", handleGlobalDragEnd);
+      window.removeEventListener("drop", handleGlobalDragEnd);
+    };
+  }, []);
+
   const rawProjects = optimisticProjects || displayedProjects;
   const projectsToRender = useMemo(() => {
     if (!searchTerm.trim()) return rawProjects;
@@ -409,6 +422,9 @@ export function EmployeeProjectKanban({
 
   // Handle Drag & Drop status change
   const handleDropProject = async (projectId: string, targetStage: string) => {
+    // Immediately clear drag state so the card doesn't stay faded/dashed
+    setDraggedProjectId(null);
+
     const proj = projectsToRender.find((p) => p.id === projectId);
     if (!proj) return;
 
@@ -1116,8 +1132,47 @@ export function EmployeeProjectKanban({
         {/* KANBAN BOARD (Columns by Status with Drop Zones) */}
         <div className="flex overflow-x-auto gap-4 items-start pb-4 scrollbar-thin max-w-full">
           {KANBAN_COLUMNS.map((col) => {
+            const isProjectPastDeadline = (p: ProjectCardItem) => {
+              const s = (p.status || "").toUpperCase();
+              const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+              if (isCompleted) return false;
+              if (!p.targetDeadline || p.targetDeadline === "No Deadline" || !p.targetDeadline.trim()) return false;
+              const parsed = new Date(p.targetDeadline);
+              if (isNaN(parsed.getTime())) return false;
+              parsed.setHours(23, 59, 59, 999);
+              return parsed.getTime() < Date.now();
+            };
+
             const colProjects = projectsToRender.filter((p) => {
               const s = (p.status || "").toUpperCase();
+              const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+              const isOverdue = isProjectPastDeadline(p);
+
+              // 1. Completed column always displays completed projects
+              if (col.id === "COMPLETED") {
+                return isCompleted;
+              }
+
+              // Completed projects do not show in other stages
+              if (isCompleted) return false;
+
+              // 2. Incomplete column displays explicitly incomplete projects OR any project not completed past its deadline
+              if (col.id === "INCOMPLETE") {
+                return (
+                  s === "INCOMPLETE" ||
+                  s === "DROPPED" ||
+                  s === "CANCELLED" ||
+                  s.includes("INCOMPLETE") ||
+                  isOverdue
+                );
+              }
+
+              // Overdue projects automatically move to the Incomplete column
+              if (isOverdue) {
+                return false;
+              }
+
+              // 3. Other stages
               if (col.id === "PLANNING") {
                 const isOther =
                   s === "IN_PROGRESS" ||
@@ -1131,11 +1186,7 @@ export function EmployeeProjectKanban({
                   s === "INCOMPLETE" ||
                   s === "DROPPED" ||
                   s === "CANCELLED" ||
-                  s.includes("INCOMPLETE") ||
-                  s === "COMPLETED" ||
-                  s === "DONE" ||
-                  s === "DELIVERED" ||
-                  s === "WON";
+                  s.includes("INCOMPLETE");
                 return (
                   s === "PLANNING" ||
                   s === "DRAFT" ||
@@ -1152,12 +1203,6 @@ export function EmployeeProjectKanban({
               }
               if (col.id === "ON_HOLD") {
                 return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED" || s === "REVISION";
-              }
-              if (col.id === "INCOMPLETE") {
-                return s === "INCOMPLETE" || s === "DROPPED" || s === "CANCELLED" || s.includes("INCOMPLETE");
-              }
-              if (col.id === "COMPLETED") {
-                return s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
               }
               return s === col.id;
             });
@@ -1193,6 +1238,7 @@ export function EmployeeProjectKanban({
                     "dark:bg-indigo-950/50"
                   );
                   const pId = e.dataTransfer.getData("projectId") || draggedProjectId;
+                  setDraggedProjectId(null);
                   if (pId) {
                     handleDropProject(pId, col.id);
                   }
@@ -1493,7 +1539,22 @@ export function EmployeeProjectKanban({
                               <span>{proj.completedTasks}/{proj.totalTasks} Tasks</span>
                             </span>
 
-                            <span className="text-slate-700 dark:text-slate-300 font-semibold">{proj.targetDeadline || "No Deadline"}</span>
+                            {(() => {
+                              const s = (proj.status || "").toUpperCase();
+                              const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+                              const isOverdue = !isCompleted && proj.targetDeadline && proj.targetDeadline !== "No Deadline" && !isNaN(new Date(proj.targetDeadline).getTime()) && new Date(proj.targetDeadline).setHours(23, 59, 59, 999) < Date.now();
+                              
+                              if (isOverdue) {
+                                return (
+                                  <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800 text-[11px]" title="Deadline is overdue!">
+                                    ⚠️ {proj.targetDeadline}
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span className="text-slate-700 dark:text-slate-300 font-semibold">{proj.targetDeadline || "No Deadline"}</span>
+                              );
+                            })()}
                           </div>
 
                           {/* Project Tasks Quick List (If tasks exist and assigned to employee) */}

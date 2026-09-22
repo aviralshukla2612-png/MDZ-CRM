@@ -257,7 +257,7 @@ export async function POST(req: Request) {
       name: body.name || "New Digital Solution",
       clientId: client.id,
       contractValue: Number(body.contractValue) || 0,
-      status: body.status || "IN_PROGRESS",
+      status: body.status || "PLANNING",
       priority: body.priority || "HIGH",
       progressPercentage: typeof body.progressPercentage === "number" ? body.progressPercentage : (Number(body.progressPercentage) || 0),
       targetDeadline: body.deadline ? new Date(body.deadline) : (body.targetDeadline ? new Date(body.targetDeadline) : null),

@@ -20,8 +20,11 @@ import {
   Sparkles,
   Calendar,
   Building,
+  CalendarDays,
+  LayoutList,
 } from "lucide-react";
 import DailyProgressEntryModal, { ProjectOption } from "@/components/projects/DailyProgressEntryModal";
+import { DailyUpdatesCalendar } from "@/components/updates/DailyUpdatesCalendar";
 
 interface ClientUpdateItem {
   id: string;
@@ -47,6 +50,7 @@ export default function EmployeeDailyUpdatesPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"calendar" | "feed">("calendar");
 
   // Post Daily Update Modal
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
@@ -220,107 +224,150 @@ export default function EmployeeDailyUpdatesPage() {
         badge={isAdmin ? "TEAM MONITORING" : "DAILY LOGS"}
         icon={<Clock className="w-7 h-7 text-amber-500" />}
         actions={
-          isEmployee ? (
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* View Mode Switcher */}
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xs">
               <button
-                onClick={() => setIsTaskSheetOpen(true)}
-                className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs transition-colors shadow-2xs flex items-center gap-1.5 touch-target"
+                type="button"
+                onClick={() => setViewMode("calendar")}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === "calendar"
+                    ? "bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                }`}
               >
-                <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <span>+ Add Task</span>
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span>Calendar View</span>
               </button>
 
               <button
-                onClick={() => setIsUpdateModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 touch-target active:scale-95"
+                type="button"
+                onClick={() => setViewMode("feed")}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                  viewMode === "feed"
+                    ? "bg-white dark:bg-slate-700 text-amber-600 dark:text-amber-400 shadow-xs"
+                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                }`}
               >
-                <Send className="w-3.5 h-3.5 text-white" />
-                <span>+ Post Daily Update</span>
+                <LayoutList className="w-3.5 h-3.5" />
+                <span>Feed View</span>
               </button>
             </div>
-          ) : null
+
+            {isEmployee && (
+              <>
+                <button
+                  onClick={() => setIsTaskSheetOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 font-bold text-xs transition-colors shadow-2xs flex items-center gap-1.5 touch-target"
+                >
+                  <Plus className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>+ Add Task</span>
+                </button>
+
+                <button
+                  onClick={() => setIsUpdateModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2 touch-target active:scale-95"
+                >
+                  <Send className="w-3.5 h-3.5 text-white" />
+                  <span>+ Post Daily Update</span>
+                </button>
+              </>
+            )}
+          </div>
         }
       />
 
-      {/* TOP CONTROL BAR: Project Dropdown Selector + Search Bar */}
-      <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Project Dropdown Selector */}
-          <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                <span>Filter Project:</span>
-              </span>
-            </div>
+      {/* CALENDAR VIEW */}
+      {viewMode === "calendar" ? (
+        <DailyUpdatesCalendar
+          updates={allUpdates}
+          projects={projects}
+          isAdmin={isAdmin}
+          selectedProjectId={selectedProjectId}
+          onSelectProject={(pId) => setSelectedProjectId(pId)}
+          onPostUpdate={() => setIsUpdateModalOpen(true)}
+        />
+      ) : (
+        <>
+          {/* TOP CONTROL BAR: Project Dropdown Selector + Search Bar */}
+          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-5 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              {/* Project Dropdown Selector */}
+              <div className="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                    <Layers className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>Filter Project:</span>
+                  </span>
+                </div>
 
-            <div className="relative flex-1 min-w-[260px] max-w-md">
-              <select
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-200 dark:border-indigo-800/60 hover:border-indigo-400 dark:hover:border-indigo-600 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none shadow-xs transition-all"
-              >
-                <option value="ALL">
-                  🌐 {isAdmin ? "All Projects" : "All Assigned Projects"} ({projects.length} Projects)
-                </option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    📁 {p.name} {p.projectCode || p.projectNumber ? `(${p.projectCode || p.projectNumber})` : ""} {p.clientName ? `— ${p.clientName}` : ""}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600 dark:text-indigo-400 text-xs">
-                ▼
+                <div className="relative flex-1 min-w-[260px] max-w-md">
+                  <select
+                    value={selectedProjectId}
+                    onChange={(e) => setSelectedProjectId(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-indigo-200 dark:border-indigo-800/60 hover:border-indigo-400 dark:hover:border-indigo-600 rounded-2xl pl-3.5 pr-9 py-2.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer appearance-none shadow-xs transition-all"
+                  >
+                    <option value="ALL">
+                      🌐 {isAdmin ? "All Projects" : "All Assigned Projects"} ({projects.length} Projects)
+                    </option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        📁 {p.name} {p.projectCode || p.projectNumber ? `(${p.projectCode || p.projectNumber})` : ""} {p.clientName ? `— ${p.clientName}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-indigo-600 dark:text-indigo-400 text-xs">
+                    ▼
+                  </div>
+                </div>
+
+                {/* Quick Search */}
+                <div className="relative w-full sm:w-60">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search updates or points..."
+                    className="w-full pl-8 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Metrics Badge */}
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                <span className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold text-xs border border-amber-200 dark:border-amber-800 font-mono flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>{filteredUpdates.length} Updates Logged</span>
+                </span>
               </div>
             </div>
 
-            {/* Quick Search */}
-            <div className="relative w-full sm:w-60">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search updates or points..."
-                className="w-full pl-8 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-colors"
-              />
-            </div>
-          </div>
+            {/* If a specific project is selected, show banner */}
+            {activeProject && (
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900 dark:text-slate-100">
+                    Viewing: {activeProject.name}
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    {activeProject.projectCode || activeProject.projectNumber}
+                  </span>
+                  <span className="text-slate-500 dark:text-slate-400">
+                    Client: <strong>{activeProject.clientName || activeProject.client?.companyName}</strong>
+                  </span>
+                </div>
 
-          {/* Quick Metrics Badge */}
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-            <span className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold text-xs border border-amber-200 dark:border-amber-800 font-mono flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{filteredUpdates.length} Updates Logged</span>
-            </span>
+                <Link
+                  href={`/projects/${activeProject.id}`}
+                  className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                >
+                  <span>Open Project Workspace</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
-        </div>
-
-        {/* If a specific project is selected, show banner */}
-        {activeProject && (
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-900 dark:text-slate-100">
-                Viewing: {activeProject.name}
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                {activeProject.projectCode || activeProject.projectNumber}
-              </span>
-              <span className="text-slate-500 dark:text-slate-400">
-                Client: <strong>{activeProject.clientName || activeProject.client?.companyName}</strong>
-              </span>
-            </div>
-
-            <Link
-              href={`/projects/${activeProject.id}`}
-              className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-            >
-              <span>Open Project Workspace</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        )}
-      </div>
 
       {/* UPDATES LIST: Number-Wise Tasks Rendering */}
       <div className="space-y-4">
@@ -439,6 +486,8 @@ export default function EmployeeDailyUpdatesPage() {
           })
         )}
       </div>
+        </>
+      )}
 
       {/* Post Daily Progress Modal (Number-Wise Inputs) */}
       <DailyProgressEntryModal

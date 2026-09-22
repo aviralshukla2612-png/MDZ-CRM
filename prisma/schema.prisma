@@ -16,6 +16,7 @@ model User {
   department          String
   activeRole          String              @default("EMPLOYEE")
   avatarUrl           String?
+  phone               String?             @default("")
   isActive            Boolean             @default(true)
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
@@ -445,6 +446,12 @@ model Employee {
   joiningDate        DateTime              @default(now())
   status             String                @default("ACTIVE")
   salaryMonthly      Float                 @default(0)
+  phone              String?               @default("")
+  customTermsTitle   String?
+  customTermsContent String?
+  termsVersion       String?               @default("v1.0")
+  termsAcceptedAt    DateTime?
+  termsAccepted      Boolean               @default(false)
   reportingManagerId String?
   skillsJson         String?               @default("[]")
   sickLeaveTotal     Int                   @default(10)
@@ -695,15 +702,28 @@ model TermsAcceptanceLog {
 }
 
 model Holiday {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   date        DateTime
+  endDate     DateTime?
+  type        String    @default("PUBLIC") // PUBLIC, STATE, COMPANY, OPTIONAL, CUSTOM
+  country     String?   @default("IN")
+  state       String?   // null for All India / national, or specific state name e.g. "Gujarat"
+  source      String    @default("GOOGLE") // GOOGLE, SYSTEM, ADMIN, MANUAL
+  sourceId    String?
   description String?
-  isOptional  Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean   @default(true)
+  isOptional  Boolean   @default(false)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([date])
+  @@index([country, date])
+  @@index([state, date])
+  @@index([type, date])
+  @@index([isActive])
+  @@unique([title, date])
 }
 
 model MediaFile {

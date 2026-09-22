@@ -162,16 +162,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       });
     }
 
-    // If project was awaiting Sub Admin team allocation or in DRAFT/PLANNING, activate it to IN_PROGRESS
+    // If project was awaiting Sub Admin team allocation, move it to PLANNING
     if (
       project.status === "PENDING_SUB_ADMIN_ALLOCATION" ||
       project.status === "PENDING_ALLOCATION" ||
-      project.status === "DRAFT" ||
-      project.status === "PLANNING"
+      project.status === "DRAFT"
     ) {
       await prisma.project.update({
         where: { id: project.id },
-        data: { status: "IN_PROGRESS" },
+        data: { status: "PLANNING" },
       });
     }
 

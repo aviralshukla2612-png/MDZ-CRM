@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
-import { getPublishedTerms, checkUserTermsStatus } from "@/lib/termsEngine";
+import { getEmployeeSpecificTerms, checkUserTermsStatus } from "@/lib/termsEngine";
 import { getCurrentUser } from "@/lib/auth";
 
 export async function GET() {
   try {
-    const terms = await getPublishedTerms("EMPLOYEE");
     const currentUser = await getCurrentUser();
 
-    let userStatus = null;
-    if (currentUser) {
-      userStatus = await checkUserTermsStatus(currentUser);
+    if (!currentUser) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
     }
+
+    const terms = await getEmployeeSpecificTerms(currentUser.id);
+    const userStatus = await checkUserTermsStatus(currentUser);
 
     return NextResponse.json({
       success: true,

@@ -290,11 +290,14 @@ export function EditLeadModal({ isOpen, onClose, lead, onSuccess }: EditLeadModa
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500 transition-all font-medium cursor-pointer"
             >
               <option value="WEBSITE">🌐 Website Direct</option>
+              <option value="INSTAGRAM">📸 Instagram / Meta</option>
+              <option value="FACEBOOK">🔵 Facebook Ads / Page</option>
+              <option value="LINKEDIN">💼 LinkedIn</option>
+              <option value="WHATSAPP">💬 WhatsApp Inbound</option>
+              <option value="GOOGLE_ADS">🎯 Google Ads</option>
+              <option value="WEBHOOK">⚡ Webhook / API</option>
               <option value="REFERRAL">👥 Client Referral</option>
               <option value="COLD_CALL">📞 Cold Call / Outreach</option>
-              <option value="WHATSAPP">💬 WhatsApp Inbound</option>
-              <option value="INSTAGRAM">📸 Instagram / Meta Ads</option>
-              <option value="LINKEDIN">💼 LinkedIn</option>
               <option value="OTHER">✨ Other</option>
             </select>
           </div>

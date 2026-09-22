@@ -476,9 +476,17 @@ export function NotificationBell({ currentUserId }: Props) {
             )}
           </div>
 
-          {/* Footer: Live Test Trigger */}
-          <div className="p-2 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/40 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400 text-[10px]">MDZ Real-time Alerts</span>
+          {/* Footer: Notifications Hub Link & Live Test Trigger */}
+          <div className="p-2.5 border-t border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-900/60 flex items-center justify-between text-[11px] gap-2">
+            <Link
+              href="/notifications"
+              onClick={() => setIsOpen(false)}
+              className="font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1 transition-colors text-xs"
+            >
+              <span>Notifications Hub</span>
+              <ExternalLink className="w-3 h-3" />
+            </Link>
+
             <button
               onClick={handleSendTest}
               disabled={isSendingTest}
@@ -490,7 +498,7 @@ export function NotificationBell({ currentUserId }: Props) {
               ) : (
                 <Send className="w-3 h-3 text-indigo-500" />
               )}
-              <span>Send Test Alert</span>
+              <span>Test Alert</span>
             </button>
           </div>
         </div>

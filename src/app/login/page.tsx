@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Crown, Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, KeyRound, Building2, CheckCircle2 } from "lucide-react";
+import { Crown, Lock, Mail, Eye, EyeOff, ArrowRight, ShieldCheck, KeyRound, Building2, CheckCircle2, Sparkles } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { useBranding } from "@/components/providers/BrandingProvider";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { branding, themeStyle } = useBranding();
   const [emailOrId, setEmailOrId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -90,10 +92,29 @@ export default function LoginPage() {
       {/* Header theme toggle */}
       <div className="flex items-center justify-between max-w-md mx-auto w-full pt-2">
         <div className="flex items-center gap-2 font-bold text-base text-stone-900 dark:text-stone-100">
-          <img src="/mdz-crm/mdz-logo.jpg" alt="Millionaire OS Logo" className="w-8 h-8 object-contain rounded-lg ring-1 ring-emerald-500/30 shadow-xs" />
+          {branding.logoUrl ? (
+            <img
+              src={branding.logoUrl}
+              alt={`${branding.companyName} Logo`}
+              className={`w-8 h-8 object-contain rounded-lg ring-1 ${themeStyle.ringClass} shadow-xs bg-white dark:bg-slate-900 p-0.5`}
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/mdz-crm/mdz-logo.jpg";
+              }}
+            />
+          ) : (
+            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${themeStyle.swatchBg} text-white font-black flex items-center justify-center text-sm shadow-xs`}>
+              {branding.companyName.charAt(0)}
+            </div>
+          )}
           <span className="font-extrabold text-base tracking-tight font-sans flex items-center gap-1.5 select-none">
-            <span className="bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-500 dark:from-emerald-400 dark:via-emerald-300 dark:to-teal-300 bg-clip-text text-transparent font-black">Millionaire</span>
-            <span className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 dark:from-amber-400 dark:via-yellow-300 dark:to-amber-300 bg-clip-text text-transparent font-black">OS</span>
+            <span className={`${themeStyle.primaryGradient} bg-clip-text text-transparent font-black`}>
+              {branding.companyName}
+            </span>
+            {branding.brandTagline && (
+              <span className={`${themeStyle.secondaryGradient} bg-clip-text text-transparent font-black`}>
+                {branding.brandTagline}
+              </span>
+            )}
           </span>
         </div>
 
@@ -108,7 +129,7 @@ export default function LoginPage() {
               Welcome back
             </h1>
             <p className="text-xs sm:text-sm text-stone-500 dark:text-stone-400">
-              Sign in with your Millionaire OS credentials to access your workspace.
+              Sign in with your {branding.companyName} {branding.brandTagline} credentials to access your workspace.
             </p>
           </div>
 
@@ -238,6 +259,33 @@ export default function LoginPage() {
             <div className="text-[10px] text-stone-500 dark:text-stone-400 text-center leading-relaxed">
               <span className="text-amber-600 dark:text-amber-400 font-semibold">Strict Note:</span> Employee self-registration is disabled. Employee accounts are created exclusively by CRM management.
             </div>
+          </div>
+
+          {/* Instant Inquiry Without Registration Box */}
+          <div className="rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-gradient-to-br from-indigo-50/70 to-purple-50/40 dark:from-indigo-950/30 dark:to-purple-950/20 p-4 space-y-3">
+            <div className="flex items-start gap-2.5">
+              <div className="p-2 rounded-lg bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5 text-left">
+                <div className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-1.5">
+                  <span>Project & Service Inquiry</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-indigo-200/70 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 font-semibold">Instant Quote</span>
+                </div>
+                <p className="text-[11px] text-stone-600 dark:text-stone-400 leading-snug">
+                  Submit your project requirements and receive a customized quote in 1 minute without registration.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/inquiry"
+              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all touch-target"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Inquire Without Registration (Inquiry Form)</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
         </div>

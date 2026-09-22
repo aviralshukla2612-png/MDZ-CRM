@@ -129,14 +129,106 @@ export function ProjectTaskCalendar({
     }
   }, [selectedEmployeeId]);
 
-  // Aggregate all tasks from allProjects if propTasks is not provided
+  // Aggregate all tasks and project milestones from allProjects if propTasks is not provided
   const allTasks: TaskCalendarItem[] = useMemo(() => {
+    const aggregated: TaskCalendarItem[] = [];
+
     if (propTasks && propTasks.length > 0) {
-      return propTasks;
+      aggregated.push(...propTasks);
     }
 
-    const aggregated: TaskCalendarItem[] = [];
-    allProjects.forEach((p) => {
+    (allProjects || []).forEach((p) => {
+      const rawMembers = Array.isArray(p.teamMembers) ? p.teamMembers : Array.isArray(p.memberships) ? p.memberships : [];
+      const activeMember = rawMembers.find((m: any) => m.active !== false) || rawMembers[0];
+      const primaryEmpId = activeMember?.employeeId || activeMember?.id || p.assignedEmployeeId || p.tmId || null;
+      const primaryEmpName = activeMember?.name || activeMember?.employee?.name || p.assignedEmployeeName || (p.tmName && p.tmName !== "Unassigned" ? p.tmName : "Team");
+
+      const projectRef = {
+        id: p.id,
+        name: p.name,
+        projectNumber: p.projectCode || p.projectNumber || p.id,
+        client: {
+          companyName: p.clientName || p.client?.companyName || "Client",
+        },
+        teamMembers: rawMembers,
+        tmId: p.tmId,
+        assignedEmployeeId: p.assignedEmployeeId,
+      };
+
+      const isCompleted =
+        p.status === "COMPLETED" ||
+        p.status === "DONE" ||
+        p.status === "DELIVERED" ||
+        p.status === "WON";
+
+      // 1. PROJECT ASSIGNMENT / START MILESTONE
+      const assignDate = p.startDate || p.createdAt || activeMember?.assignedAt;
+      if (assignDate) {
+        aggregated.push({
+          id: `proj-assign-${p.id}`,
+          title: `📁 Assigned: ${p.name}`,
+          description: p.description || `Project assignment & kickoff for ${p.clientName || "Client"}`,
+          status: p.status || "PLANNING",
+          priority: p.priority || "HIGH",
+          deadline: assignDate,
+          startDate: assignDate,
+          createdAt: p.createdAt || assignDate,
+          assignedToId: primaryEmpId,
+          assignee: primaryEmpName,
+          assigneeAvatar: activeMember?.avatarUrl || null,
+          projectId: p.id,
+          projectName: p.name,
+          clientName: p.clientName || p.client?.companyName || "Client",
+          project: projectRef,
+        });
+      }
+
+      // 2. PROJECT TARGET DEADLINE MILESTONE
+      const deadlineDate = p.targetDeadline || p.deadline;
+      if (deadlineDate) {
+        aggregated.push({
+          id: `proj-deadline-${p.id}`,
+          title: `🎯 Deadline: ${p.name}`,
+          description: `Target delivery deadline for ${p.name}`,
+          status: p.status || "IN_PROGRESS",
+          priority: p.priority || "URGENT",
+          deadline: deadlineDate,
+          startDate: assignDate || deadlineDate,
+          createdAt: p.createdAt || deadlineDate,
+          assignedToId: primaryEmpId,
+          assignee: primaryEmpName,
+          assigneeAvatar: activeMember?.avatarUrl || null,
+          projectId: p.id,
+          projectName: p.name,
+          clientName: p.clientName || p.client?.companyName || "Client",
+          project: projectRef,
+        });
+      }
+
+      // 3. PROJECT COMPLETED MILESTONE
+      if (isCompleted) {
+        const completedDate = p.actualCompletionDate || p.completedAt || p.updatedAt || deadlineDate || p.createdAt;
+        aggregated.push({
+          id: `proj-completed-${p.id}`,
+          title: `✅ Completed: ${p.name}`,
+          description: `Project officially completed and delivered successfully.`,
+          status: "COMPLETED",
+          priority: "HIGH",
+          deadline: completedDate,
+          completedAt: completedDate,
+          startDate: assignDate || completedDate,
+          createdAt: p.createdAt || completedDate,
+          assignedToId: primaryEmpId,
+          assignee: primaryEmpName,
+          assigneeAvatar: activeMember?.avatarUrl || null,
+          projectId: p.id,
+          projectName: p.name,
+          clientName: p.clientName || p.client?.companyName || "Client",
+          project: projectRef,
+        });
+      }
+
+      // 4. SUB-TASKS (if any)
       if (Array.isArray(p.tasks)) {
         p.tasks.forEach((t: any) => {
           aggregated.push({
@@ -150,23 +242,16 @@ export function ProjectTaskCalendar({
             createdAt: t.createdAt || new Date().toISOString(),
             completedAt: t.completedAt,
             isMostImportant: t.isMostImportant,
-            assignedToId: t.assignedToId || t.assignedTo?.id,
-            assignee: t.assignee || t.assignedTo?.name || "Unassigned",
+            assignedToId: t.assignedToId || t.assignedTo?.id || primaryEmpId,
+            assignee: t.assignee || t.assignedTo?.name || primaryEmpName,
             assigneeAvatar: t.assigneeAvatar || t.assignedTo?.avatarUrl || null,
             projectId: p.id,
             projectName: p.name,
             clientName: p.clientName || p.client?.companyName || "Client",
-            project: {
-              id: p.id,
-              name: p.name,
-              projectNumber: p.projectCode || p.projectNumber,
-              client: {
-                companyName: p.clientName || p.client?.companyName,
-              },
-            },
+            project: projectRef,
             assignedTo: t.assignedTo || {
-              id: t.assignedToId,
-              name: t.assignee,
+              id: t.assignedToId || primaryEmpId,
+              name: t.assignee || primaryEmpName,
               designation: "Developer",
               avatarUrl: t.assigneeAvatar,
             },
@@ -183,7 +268,18 @@ export function ProjectTaskCalendar({
     return allTasks.filter((t) => {
       // Developer filter
       if (filterDeveloper !== "ALL") {
-        if (t.assignedToId !== filterDeveloper && t.assignedTo?.id !== filterDeveloper) {
+        const matchesDirect = t.assignedToId === filterDeveloper || t.assignedTo?.id === filterDeveloper;
+        const matchesProjectMember =
+          (t.project as any)?.teamMembers?.some(
+            (m: any) => m.id === filterDeveloper || m.employeeId === filterDeveloper
+          ) ||
+          (t.project as any)?.memberships?.some(
+            (m: any) => m.employeeId === filterDeveloper || m.id === filterDeveloper
+          ) ||
+          (t.project as any)?.tmId === filterDeveloper ||
+          (t.project as any)?.assignedEmployeeId === filterDeveloper;
+
+        if (!matchesDirect && !matchesProjectMember) {
           return false;
         }
       }
@@ -198,9 +294,10 @@ export function ProjectTaskCalendar({
       // Status filter
       if (filterStatus !== "ALL") {
         const s = (t.status || "").toUpperCase();
-        if (filterStatus === "PENDING" && (s === "COMPLETED" || s === "DONE")) return false;
-        if (filterStatus === "COMPLETED" && !(s === "COMPLETED" || s === "DONE")) return false;
-        if (filterStatus === "IN_PROGRESS" && !(s === "IN_PROGRESS" || s === "CURRENT")) return false;
+        const isComplete = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+        if (filterStatus === "PENDING" && isComplete) return false;
+        if (filterStatus === "COMPLETED" && !isComplete) return false;
+        if (filterStatus === "IN_PROGRESS" && (isComplete || s === "PLANNING" || s === "DRAFT")) return false;
       }
 
       // Search query
@@ -378,24 +475,47 @@ export function ProjectTaskCalendar({
     setSelectedDate(today);
   };
 
-  // Quick Task status toggle
+  // Quick Task or Project status toggle
   const handleToggleTaskStatus = async (task: TaskCalendarItem) => {
-    const isDone = task.status === "COMPLETED" || task.status === "DONE";
-    const nextStatus = isDone ? "TODO" : "COMPLETED";
+    const isDone = task.status === "COMPLETED" || task.status === "DONE" || task.status === "DELIVERED" || task.status === "WON";
+    const nextStatus = isDone ? "IN_PROGRESS" : "COMPLETED";
 
     const projectId = task.projectId || task.project?.id;
     if (!projectId) return;
+
+    if (task.id.startsWith("proj-")) {
+      try {
+        const res = await fetch(`/mdz-crm/api/projects/${projectId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: nextStatus }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          showToast(
+            nextStatus === "COMPLETED" ? "✓ Project marked completed!" : "Project marked In Progress",
+            "success"
+          );
+          if (onRefresh) onRefresh();
+        } else {
+          showToast(json.error || "Failed to update project status", "error");
+        }
+      } catch {
+        showToast("Network error updating project status", "error");
+      }
+      return;
+    }
 
     try {
       const res = await fetch(`/mdz-crm/api/projects/${projectId}/tasks/${task.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify({ status: isDone ? "TODO" : "COMPLETED" }),
       });
       const json = await res.json();
       if (json.success) {
         showToast(
-          nextStatus === "COMPLETED" ? "✓ Task marked completed!" : "Task marked as To Do",
+          !isDone ? "✓ Task marked completed!" : "Task marked as To Do",
           "success"
         );
         if (onRefresh) onRefresh();

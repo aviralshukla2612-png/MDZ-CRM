@@ -112,32 +112,50 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
   const [followupDate, setFollowupDate] = useState("Tomorrow 11:00 AM");
   const [followupNote, setFollowupNote] = useState("");
 
-  const handleAddNoteSubmit = (e: React.FormEvent) => {
+  const handleAddNoteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNoteText.trim()) return;
-    // Mock local update since no POST /notes endpoint exists in Phase 2
-    setLead((prev: any) => ({
-      ...prev,
-      notes: [...prev.notes, { id: Date.now().toString(), text: newNoteText, author: "You", timestamp: "Just now" }],
-      timeline: [{ id: Date.now().toString(), type: "NOTE_ADDED", text: `Note added: "${newNoteText}"`, timestamp: "Just now" }, ...prev.timeline],
-    }));
-    showToast("✓ Note added to Lead activity log (local)", "success");
-    setNewNoteText("");
-    setIsNoteSheetOpen(false);
+    if (!newNoteText.trim() || !lead) return;
+    try {
+      const res = await fetch(`/mdz-crm/api/leads/${lead.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: newNoteText }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Note added to Lead activity log", "success");
+        setNewNoteText("");
+        setIsNoteSheetOpen(false);
+        fetchLead();
+      } else {
+        showToast(json.error || "Failed to add note", "error");
+      }
+    } catch {
+      showToast("Network error adding note", "error");
+    }
   };
 
-  const handleAddFollowupSubmit = (e: React.FormEvent) => {
+  const handleAddFollowupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!followupNote.trim()) return;
-    // Mock local update
-    setLead((prev: any) => ({
-      ...prev,
-      scheduledFollowups: [...prev.scheduledFollowups, { id: Date.now().toString(), date: followupDate, note: followupNote, completed: false }],
-      timeline: [{ id: Date.now().toString(), type: "FOLLOWUP_SCHEDULED", text: `Scheduled for ${followupDate}: ${followupNote}`, timestamp: "Just now" }, ...prev.timeline],
-    }));
-    showToast(`✓ Follow-up scheduled for ${followupDate} (local)`, "success");
-    setFollowupNote("");
-    setIsFollowupSheetOpen(false);
+    if (!followupNote.trim() || !lead) return;
+    try {
+      const res = await fetch(`/mdz-crm/api/leads/${lead.id}/followups`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: followupNote, date: followupDate }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Follow-up scheduled successfully`, "success");
+        setFollowupNote("");
+        setIsFollowupSheetOpen(false);
+        fetchLead();
+      } else {
+        showToast(json.error || "Failed to schedule follow-up", "error");
+      }
+    } catch {
+      showToast("Network error scheduling follow-up", "error");
+    }
   };
 
   const handleConvertLead = async () => {
