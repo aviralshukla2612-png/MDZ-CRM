@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import { BrandingConfig, DEFAULT_BRANDING } from "@/app/api/public/branding/route";
+import { BrandingConfig, DEFAULT_BRANDING } from "@/lib/branding";
 
 interface ThemeStyleDefinition {
   name: string;

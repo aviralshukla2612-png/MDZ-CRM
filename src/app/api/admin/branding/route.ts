@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
-import { DEFAULT_BRANDING, BrandingConfig } from "@/app/api/public/branding/route";
+import { DEFAULT_BRANDING, BrandingConfig } from "@/lib/branding";
 
 export async function POST(req: NextRequest) {
   const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
