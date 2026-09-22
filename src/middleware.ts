@@ -5,7 +5,7 @@ export async function middleware(req: any) {
   const { pathname } = req.nextUrl;
   console.log("MIDDLEWARE HIT:", pathname);
   
-  // Exclude static files, API routes, login, client registration, terms, and portal
+  // Exclude static files, API routes, login, client registration, inquiry, terms, and portal
   const isPublicRoute = 
     pathname.startsWith("/api") || 
     pathname.startsWith("/_next") || 
@@ -14,6 +14,10 @@ export async function middleware(req: any) {
     pathname === "/client-register" ||
     pathname.endsWith("/client-register") ||
     pathname.startsWith("/client-register") ||
+    pathname === "/inquiry" ||
+    pathname.endsWith("/inquiry") ||
+    pathname.startsWith("/inquiry") ||
+    pathname.includes("/inquiry") ||
     pathname === "/terms-and-conditions" ||
     pathname.endsWith("/terms-and-conditions") ||
     pathname.startsWith("/terms-and-conditions") ||
@@ -51,9 +55,9 @@ export async function middleware(req: any) {
     return NextResponse.redirect(new URL("/mdz-crm/login", req.url));
   }
 
-  // Sales routes: OWNER, ADMIN, SALES
+  // Sales routes: OWNER, ADMIN, SUB_ADMIN, SALES
   const salesRoutes = ["/leads", "/sales", "/quotes"];
-  if (salesRoutes.some(r => relPath.startsWith(r)) && role !== "OWNER" && role !== "ADMIN" && role !== "SALES") {
+  if (salesRoutes.some(r => relPath.startsWith(r)) && role !== "OWNER" && role !== "ADMIN" && role !== "SUB_ADMIN" && role !== "SALES") {
     return NextResponse.redirect(new URL("/mdz-crm/login", req.url));
   }
 
