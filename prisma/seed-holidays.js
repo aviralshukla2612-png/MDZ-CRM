@@ -78,7 +78,10 @@ const DATASET = {
 
 async function main() {
   console.log('--- Ensuring Holiday Schema Columns ---');
+  await addCol('Holiday', 'title TEXT');
+  await addCol('Holiday', 'date DATETIME');
   await addCol('Holiday', 'endDate DATETIME');
+  await addCol('Holiday', 'type TEXT DEFAULT "PUBLIC"');
   await addCol('Holiday', 'country TEXT DEFAULT "IN"');
   await addCol('Holiday', 'state TEXT');
   await addCol('Holiday', 'source TEXT DEFAULT "SYSTEM"');
