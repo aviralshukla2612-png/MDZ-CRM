@@ -11,15 +11,19 @@ import { Plus, Download, Crown, Cloud } from "lucide-react";
 import Link from "next/link";
 
 import { useToast } from "@/components/ui/Toast";
+import { useSession } from "next-auth/react";
 
 export default function OwnerDashboardPage() {
   const { showToast } = useToast();
+  const { data: session } = useSession();
+
+  const userName = session?.user?.name ? session.user.name.split(" ")[0] : "Vikram";
 
   return (
     <div className="space-y-8 pb-12">
       {/* Executive Page Header */}
       <PageHeader
-        title="Good morning, Rahul"
+        title={`Good morning, ${userName}`}
         description="Here's what needs your attention across Millionaire Dizital CRM today."
         badge="EXECUTIVE MODE"
         icon={<Crown className="w-7 h-7 text-amber-500 dark:text-amber-400" />}

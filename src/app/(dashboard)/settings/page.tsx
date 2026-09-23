@@ -29,6 +29,7 @@ import {
   RotateCcw,
   Layers,
   Crown,
+  User,
 } from "lucide-react";
 import { useBranding, THEME_PALETTES } from "@/components/providers/BrandingProvider";
 
@@ -338,6 +339,46 @@ export default function SettingsPage() {
     }
   };
 
+  // ── Change Name ──
+  const [nameForm, setNameForm] = useState({
+    currentPassword: "",
+    newName: "",
+  });
+  const [nameStatus, setNameStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [nameLoading, setNameLoading] = useState(false);
+
+  const handleNameChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setNameStatus(null);
+    setNameLoading(true);
+
+    try {
+      const res = await fetch("/mdz-crm/api/auth/update-credentials", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "name",
+          currentPassword: nameForm.currentPassword,
+          newValue: nameForm.newName,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setNameStatus({ type: "success", msg: data.message });
+        showToast("👤 Name updated successfully!", "success");
+        setNameForm({ currentPassword: "", newName: "" });
+        setTimeout(() => window.location.reload(), 1200);
+      } else {
+        setNameStatus({ type: "error", msg: data.error || "Failed to update name." });
+      }
+    } catch {
+      setNameStatus({ type: "error", msg: "Network error. Please try again." });
+    } finally {
+      setNameLoading(false);
+    }
+  };
+
   // ── Change Email ──
   const [emailForm, setEmailForm] = useState({
     currentPassword: "",
@@ -494,7 +535,63 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-5">
+          {/* ── Change Full Name Card ─────────────────────────────────────── */}
+          <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-6 shadow-xl dark:shadow-2xl flex flex-col justify-between">
+            <div>
+              {/* Card header */}
+              <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-4 mb-5">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-500" />
+                  Change Full Name
+                </h3>
+                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-500/20">
+                  PROFILE
+                </span>
+              </div>
+
+              <form onSubmit={handleNameChange} className="space-y-4">
+                <PasswordField
+                  label="Current Password"
+                  value={nameForm.currentPassword}
+                  onChange={(v) => setNameForm((f) => ({ ...f, currentPassword: v }))}
+                  placeholder="Enter your current password"
+                />
+                <Field
+                  label="New Full Name"
+                  type="text"
+                  value={nameForm.newName}
+                  onChange={(v) => setNameForm((f) => ({ ...f, newName: v }))}
+                  placeholder="e.g. Vikram Lathiya"
+                />
+
+                {nameStatus && <StatusBanner type={nameStatus.type} message={nameStatus.msg} />}
+
+                <button
+                  type="submit"
+                  disabled={nameLoading || !nameForm.currentPassword || !nameForm.newName.trim()}
+                  className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-1 cursor-pointer"
+                >
+                  {nameLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Updating Name…</span>
+                    </>
+                  ) : (
+                    <>
+                      <User className="w-4 h-4" />
+                      <span>Update Full Name</span>
+                    </>
+                  )}
+                </button>
+
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center leading-relaxed">
+                  Your updated name will reflect across the dashboard, chat, and reports.
+                </p>
+              </form>
+            </div>
+          </div>
+
           {/* ── Change Email Card ─────────────────────────────────────────── */}
           <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-6 shadow-xl dark:shadow-2xl flex flex-col justify-between">
             <div>

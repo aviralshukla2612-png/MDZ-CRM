@@ -23,11 +23,12 @@ async function main() {
       passwordHash,
       isActive: true,
       activeRole: "OWNER",
+      name: "Vikram Lathiya",
     },
     create: {
       email: email.toLowerCase(),
       passwordHash,
-      name: "Rahul MDZ",
+      name: "Vikram Lathiya",
       designation: "Founder & CEO",
       department: "Management",
       activeRole: "OWNER",

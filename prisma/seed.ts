@@ -72,7 +72,7 @@ async function main() {
     create: {
       email: "owner@mdzcompany.com",
       passwordHash: defaultPasswordHash,
-      name: "Rahul MDZ",
+      name: "Vikram Lathiya",
       designation: "Founder & CEO",
       department: "Management",
       activeRole: "OWNER",

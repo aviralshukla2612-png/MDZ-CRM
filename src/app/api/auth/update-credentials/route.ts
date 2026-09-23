@@ -109,6 +109,27 @@ export async function PATCH(req: Request) {
       });
     }
 
+    if (type === "name" || type === "fullName") {
+      const cleanName = String(newValue || "").trim();
+      if (cleanName.length < 2) {
+        return NextResponse.json(
+          { success: false, error: "Name must be at least 2 characters long" },
+          { status: 400 }
+        );
+      }
+
+      await prisma.user.update({
+        where: { id: currentUser.id },
+        data: { name: cleanName },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Full name updated successfully.",
+        name: cleanName,
+      });
+    }
+
     if (type === "phone" || type === "mobile") {
       const cleanPhone = String(newValue || "").trim();
       await prisma.user.update({
@@ -133,7 +154,7 @@ export async function PATCH(req: Request) {
     }
 
     return NextResponse.json(
-      { success: false, error: "Invalid update type. Must be 'email', 'password', or 'phone'" },
+      { success: false, error: "Invalid update type. Must be 'name', 'email', 'password', or 'phone'" },
       { status: 400 }
     );
   } catch (error) {
