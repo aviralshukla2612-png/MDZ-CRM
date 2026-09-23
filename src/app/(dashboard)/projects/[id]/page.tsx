@@ -35,6 +35,7 @@ import { EditProjectModal } from "@/components/projects/EditProjectModal";
 import { EditTaskModal } from "@/components/projects/EditTaskModal";
 import { MediaUploader } from "@/components/ui/MediaUploader";
 import { MediaGallery } from "@/components/ui/MediaGallery";
+import { ProjectChatTab } from "@/components/chat/ProjectChatTab";
 
 
 export default function ProjectWorkspacePage({ params }: { params: { id: string } }) {
@@ -364,7 +365,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   };
 
   const [activeTab, setActiveTab] = useState<
-    "overview" | "workflow" | "tasks" | "updates" | "team" | "docs" | "notes" | "calls" | "changes" | "payments" | "media"
+    "overview" | "workflow" | "tasks" | "chat" | "updates" | "team" | "docs" | "notes" | "calls" | "changes" | "payments" | "media"
   >("overview");
 
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
@@ -560,6 +561,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     { id: "overview", label: "Overview & Scope" },
     { id: "workflow", label: "Workflow Playbook" },
     { id: "tasks", label: isEmployee ? `My Tasks (${visibleTasks.length})` : `Task Stack (${project.tasks?.length || 0})` },
+    { id: "chat", label: "Team Chat 💬" },
     { id: "updates", label: `Daily Updates (${project.clientUpdates?.length || 0})` },
     { id: "team", label: isEmployee ? `Team Members (${project.teamMembers?.length || 0})` : `Team & Removal History (${project.teamMembers?.length || 0})` },
     { id: "docs", label: `Living Docs (${project.livingDocs?.length || 0})` },
@@ -1521,6 +1523,13 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               allowDelete={true}
             />
           </div>
+        </div>
+      )}
+
+      {/* Team Chat Tab */}
+      {activeTab === "chat" && (
+        <div className="space-y-4">
+          <ProjectChatTab projectId={params.id} projectName={project.name} />
         </div>
       )}
 

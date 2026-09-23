@@ -83,10 +83,161 @@ global.broadcastWsNotification = (userId, notification) => {
   return false;
 };
 
-// Hook http.createServer to attach WebSocket to the server instance
+const { Server: SocketIOServer } = require("socket.io");
+
+// Socket.IO presence and state
+const onlineUsers = new Map(); // userId -> Set<socketId>
+
+function attachSocketIO(server) {
+  if (server._socketIOAttached) return;
+  server._socketIOAttached = true;
+
+  const io = new SocketIOServer(server, {
+    path: "/mdz-crm/socket.io",
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+    },
+    transports: ["websocket", "polling"],
+  });
+
+  io.on("connection", (socket) => {
+    const userId = socket.handshake.query?.userId || socket.handshake.auth?.userId;
+    const userName = socket.handshake.query?.userName || socket.handshake.auth?.userName || "User";
+
+    if (userId && typeof userId === "string") {
+      socket.userId = userId;
+      socket.userName = userName;
+
+      if (!onlineUsers.has(userId)) {
+        onlineUsers.set(userId, new Set());
+      }
+      onlineUsers.get(userId).add(socket.id);
+
+      socket.join(`user:${userId}`);
+
+      // Broadcast online status to all connected users
+      io.emit("presence:update", {
+        userId,
+        status: "ONLINE",
+        onlineUserIds: Array.from(onlineUsers.keys()),
+      });
+
+      console.log(`[Socket.IO] User connected: ${userId} (${userName}) - Active sockets: ${onlineUsers.get(userId).size}`);
+
+      socket.emit("presence:initial", {
+        onlineUserIds: Array.from(onlineUsers.keys()),
+      });
+
+      socket.on("conversation:join", (data) => {
+        const convId = typeof data === "string" ? data : data?.conversationId;
+        if (convId) {
+          socket.join(`conversation:${convId}`);
+          console.log(`[Socket.IO] User ${userId} joined room conversation:${convId}`);
+        }
+      });
+
+      socket.on("conversation:leave", (data) => {
+        const convId = typeof data === "string" ? data : data?.conversationId;
+        if (convId) {
+          socket.leave(`conversation:${convId}`);
+          console.log(`[Socket.IO] User ${userId} left room conversation:${convId}`);
+        }
+      });
+
+      socket.on("typing:start", (data) => {
+        const convId = data?.conversationId;
+        if (convId) {
+          socket.to(`conversation:${convId}`).emit("typing:start", {
+            conversationId: convId,
+            userId: socket.userId,
+            userName: socket.userName,
+          });
+        }
+      });
+
+      socket.on("typing:stop", (data) => {
+        const convId = data?.conversationId;
+        if (convId) {
+          socket.to(`conversation:${convId}`).emit("typing:stop", {
+            conversationId: convId,
+            userId: socket.userId,
+          });
+        }
+      });
+
+      socket.on("message:read", (data) => {
+        const convId = data?.conversationId;
+        if (convId) {
+          socket.to(`conversation:${convId}`).emit("message:read", {
+            conversationId: convId,
+            userId: socket.userId,
+            lastReadAt: data?.lastReadAt || new Date().toISOString(),
+          });
+        }
+      });
+
+      socket.on("disconnect", () => {
+        const userSockets = onlineUsers.get(userId);
+        if (userSockets) {
+          userSockets.delete(socket.id);
+          if (userSockets.size === 0) {
+            onlineUsers.delete(userId);
+            io.emit("presence:update", {
+              userId,
+              status: "OFFLINE",
+              onlineUserIds: Array.from(onlineUsers.keys()),
+            });
+          }
+        }
+        console.log(`[Socket.IO] User disconnected: ${userId}`);
+      });
+    }
+  });
+
+  global.ioInstance = io;
+  global.onlineUsers = onlineUsers;
+}
+
+// Global chat message broadcaster
+global.broadcastChatMessage = (conversationId, messagePayload) => {
+  if (global.ioInstance) {
+    global.ioInstance.to(`conversation:${conversationId}`).emit("message:new", messagePayload);
+    global.ioInstance.emit("conversation:updated", {
+      conversationId,
+      lastMessage: messagePayload,
+    });
+    return true;
+  }
+  return false;
+};
+
+// Global chat deletion broadcaster
+global.broadcastMessageDeleted = (conversationId, messageId) => {
+  if (global.ioInstance) {
+    global.ioInstance.to(`conversation:${conversationId}`).emit("message:deleted", {
+      conversationId,
+      messageId,
+    });
+    return true;
+  }
+  return false;
+};
+
+// Global online users query
+global.getOnlineUserIds = () => {
+  if (global.onlineUsers) {
+    return Array.from(global.onlineUsers.keys());
+  }
+  return [];
+};
+
+// Hook http.createServer to attach WebSocket & Socket.IO to the server instance
 const origCreateServer = http.createServer;
 http.createServer = function (...args) {
   const server = origCreateServer.apply(this, args);
+
+  attachSocketIO(server);
 
   server.on("newListener", (event) => {
     if (event === "upgrade" && !server._wsHooked) {

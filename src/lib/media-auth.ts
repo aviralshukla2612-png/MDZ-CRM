@@ -121,6 +121,15 @@ export async function canUploadMedia(
       return isSales(user);
     }
 
+    case "CHAT": {
+      return (
+        user.activeRole === "EMPLOYEE" ||
+        user.activeRole === "SALES" ||
+        isSubAdmin(user) ||
+        isOwner(user)
+      );
+    }
+
     default:
       return false;
   }
@@ -224,6 +233,20 @@ export async function canReadMedia(
       return false;
     }
 
+    case "CHAT": {
+      if (!user || user.activeRole === "CLIENT") return false;
+      if (isOwner(user) || isSubAdmin(user)) return true;
+      const participant = await prisma.conversationParticipant.findUnique({
+        where: {
+          conversationId_userId: {
+            conversationId: mediaFile.entityId,
+            userId: user.id,
+          },
+        },
+      });
+      return Boolean(participant);
+    }
+
     default:
       return false;
   }
@@ -247,6 +270,14 @@ export async function canDeleteMedia(
   // Project TM has authority over files in their managed project
   if (mediaFile.entityType.toUpperCase() === "PROJECT") {
     return await isProjectTM(user.id, mediaFile.entityId);
+  }
+
+  if (mediaFile.entityType.toUpperCase() === "CHAT") {
+    return (
+      mediaFile.uploadedById === user.id ||
+      isOwner(user) ||
+      isSubAdmin(user)
+    );
   }
 
   return false;

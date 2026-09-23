@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, ChevronDown, LogOut, Coffee, Play, Power, Sparkles, Clock, ShieldCheck, Camera } from "lucide-react";
+import { Search, ChevronDown, LogOut, Coffee, Play, Power, Sparkles, Clock, ShieldCheck, Camera, MessageSquare } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useWorkClock } from "@/lib/workClockContext";
@@ -327,6 +327,19 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
         <div className="shrink-0">
           <NotificationBell currentUserId={currentUser.id} />
         </div>
+
+        {/* Chat Shortcut (Internal only) */}
+        {currentUser.role !== "CLIENT" && (
+          <div className="shrink-0">
+            <Link
+              href="/chat"
+              className="relative p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center touch-target"
+              title="Internal Chat"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </Link>
+          </div>
+        )}
 
         {/* Theme Toggle */}
         <div className="hidden md:block shrink-0">

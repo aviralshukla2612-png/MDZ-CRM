@@ -50,6 +50,8 @@ model User {
   approvedLeaves      LeaveRequest[]      @relation("LeaveApprover")
   pushTokens          UserPushToken[]
   uploadedMedia       MediaFile[]         @relation("UserUploadedMedia")
+  chatParticipants    ConversationParticipant[]
+  chatMessages        ChatMessage[]
 }
 
 model Role {
@@ -246,6 +248,7 @@ model Project {
   stages               ProjectStage[]
   tasks                Task[]
   workSessions         WorkSession[]
+  chatConversations    Conversation[]
 
   @@index([clientId])
   @@index([status])
@@ -744,9 +747,70 @@ model MediaFile {
 
   uploadedBy      User?    @relation("UserUploadedMedia", fields: [uploadedById], references: [id])
   lead            Lead?    @relation("LeadMediaFiles", fields: [leadId], references: [id], onDelete: Cascade)
+  chatAttachments ChatMessageAttachment[]
 
   @@index([entityType, entityId])
   @@index([uploadedById])
   @@index([leadId])
   @@index([category])
 }
+
+model Conversation {
+  id           String   @id @default(uuid())
+  type         String   @default("DIRECT") // DIRECT, GROUP, PROJECT, ANNOUNCEMENT
+  name         String?
+  projectId    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  project      Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     ChatMessage[]
+
+  @@index([updatedAt])
+  @@index([projectId])
+}
+
+model ConversationParticipant {
+  id             String    @id @default(uuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime  @default(now())
+  lastReadAt     DateTime?
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id             String    @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  messageType    String    @default("TEXT") // TEXT, IMAGE, FILE, SYSTEM
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  conversation   Conversation            @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User                    @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  attachments    ChatMessageAttachment[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model ChatMessageAttachment {
+  id        String   @id @default(uuid())
+  messageId String
+  mediaId   String
+
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  media     MediaFile   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, mediaId])
+}
+

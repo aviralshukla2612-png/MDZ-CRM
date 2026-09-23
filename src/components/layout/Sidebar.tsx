@@ -25,6 +25,7 @@ import {
   Send,
   Cloud,
   Bell,
+  MessageSquare,
 } from "lucide-react";
 
 import { useBranding } from "@/components/providers/BrandingProvider";
@@ -53,6 +54,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "OWNER":
         return [
           { title: "Overview", href: "/owner", icon: <LayoutDashboard className="w-4 h-4" /> },
+          { title: "Internal Chat", href: "/chat", icon: <MessageSquare className="w-4 h-4" /> },
           { title: "Sales & Leads", href: "/leads", icon: <Target className="w-4 h-4" /> },
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
@@ -75,6 +77,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "SUB_ADMIN":
         return [
           { title: "Overview", href: "/owner", icon: <LayoutDashboard className="w-4 h-4" /> },
+          { title: "Internal Chat", href: "/chat", icon: <MessageSquare className="w-4 h-4" /> },
           { title: "Sales & Leads", href: "/leads", icon: <Target className="w-4 h-4" /> },
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
@@ -95,6 +98,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "SALES":
         return [
           { title: "Sales Overview", href: "/sales", icon: <LayoutDashboard className="w-4 h-4" /> },
+          { title: "Internal Chat", href: "/chat", icon: <MessageSquare className="w-4 h-4" /> },
           { title: "My Work Sessions", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
           { title: "Leave Applications", href: "/attendance/leave", icon: <UserCheck className="w-4 h-4" /> },
           { title: "Lead Pipeline", href: "/leads", icon: <Target className="w-4 h-4" /> },
@@ -109,6 +113,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "EMPLOYEE":
         return [
           { title: "My Desk", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
+          { title: "Internal Chat", href: "/chat", icon: <MessageSquare className="w-4 h-4" /> },
           { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },

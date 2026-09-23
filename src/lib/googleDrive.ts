@@ -176,6 +176,11 @@ export async function resolveEntityFolder(
     return await getOrCreateSubfolder(employeesFolder, `Employee-${entityId}`);
   }
 
+  if (normalizedEntity === "CHAT") {
+    const chatFolder = await getOrCreateSubfolder(rootId, "Chat");
+    return await getOrCreateSubfolder(chatFolder, `Chat-${entityId}`);
+  }
+
   const generalFolder = await getOrCreateSubfolder(rootId, "General");
   if (category && category !== "GENERAL") {
     return await getOrCreateSubfolder(generalFolder, category);
