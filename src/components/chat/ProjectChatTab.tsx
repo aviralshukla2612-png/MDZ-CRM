@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Send, Paperclip, Loader2, Trash2, Check, CheckCheck, FileText, Image as ImageIcon, Download } from "lucide-react";
+import { Send, Paperclip, Loader2, Trash2, FileText, Download } from "lucide-react";
 import { useChatSocket } from "@/lib/useChatSocket";
 import { useToast } from "@/components/ui/Toast";
 
@@ -30,7 +30,6 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
 
   const {
     isConnected,
-    onlineUserIds,
     typingUsers,
     sendTypingStart,
     sendTypingStop,
@@ -86,7 +85,6 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
           if (prev.some((m) => m.id === newMsg.id)) return prev;
           return [...prev, newMsg];
         });
-        // Send read receipt if viewing
         sendReadReceipt(conversation.id);
         fetch(`/mdz-crm/api/chat/conversations/${conversation.id}/read`, { method: "PATCH" });
       }
@@ -213,33 +211,33 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 bg-slate-900/50 border border-slate-800 rounded-2xl">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-2" />
-        <p className="text-sm text-slate-400">Loading project chat...</p>
+      <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-2" />
+        <p className="text-sm text-slate-500 dark:text-slate-400">Loading project chat...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-[650px] bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+    <div className="flex flex-col h-[650px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-800 bg-slate-900/60 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-6 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur-sm">
         <div>
-          <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+          <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             💬 {projectName} Team Chat
           </h4>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {conversation?.participants?.length || 0} members • Real-time project communication
           </p>
         </div>
         <div className="flex items-center gap-2">
           {isConnected ? (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Live
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
               Connecting...
             </span>
           )}
@@ -247,11 +245,11 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-950/60">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-slate-50/40 dark:bg-slate-950/60">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-slate-500">
-            <p className="text-sm font-medium">No messages yet in this project chat.</p>
-            <p className="text-xs text-slate-600 mt-1">Start the conversation with your team members!</p>
+          <div className="flex flex-col items-center justify-center h-full text-center text-slate-400 py-12">
+            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">No messages yet in this project chat.</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Start the conversation with your team members!</p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -264,10 +262,10 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
                 className={`flex flex-col group ${isMe ? "items-end" : "items-start"}`}
               >
                 <div className="flex items-center gap-1.5 mb-1 px-1">
-                  <span className="text-xs font-medium text-slate-300">
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     {isMe ? "You" : msg.sender?.name || "Colleague"}
                   </span>
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
                     {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                   </span>
                 </div>
@@ -277,19 +275,19 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
                     <button
                       onClick={() => handleDeleteMessage(msg.id)}
                       title="Delete message"
-                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-rose-400 transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-500 transition-opacity cursor-pointer"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
 
                   <div
-                    className={`rounded-2xl px-4 py-2.5 text-sm shadow-md ${
+                    className={`rounded-2xl px-4 py-2.5 text-sm shadow-xs ${
                       isDeleted
-                        ? "bg-slate-900/60 text-slate-500 italic border border-slate-800"
+                        ? "bg-slate-100 dark:bg-slate-900/60 text-slate-400 dark:text-slate-500 italic border border-slate-200 dark:border-slate-800"
                         : isMe
-                        ? "bg-blue-600 text-white rounded-br-none"
-                        : "bg-slate-900 border border-slate-800 text-slate-200 rounded-bl-none"
+                        ? "bg-indigo-600 text-white rounded-br-xs shadow-indigo-500/10"
+                        : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 rounded-bl-xs"
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
@@ -304,7 +302,7 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
                           return (
                             <div
                               key={att.id}
-                              className="rounded-xl overflow-hidden border border-white/10 bg-black/20 p-2"
+                              className="rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-black/20 p-2"
                             >
                               {isImage ? (
                                 <a
@@ -324,7 +322,7 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
                                   href={`/mdz-crm/api/media/${media.id}`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex items-center gap-2 text-xs hover:underline text-blue-200"
+                                  className="flex items-center gap-2 text-xs hover:underline text-indigo-600 dark:text-indigo-300 font-medium"
                                 >
                                   <FileText className="w-4 h-4" />
                                   <span className="truncate max-w-[200px]">{media.originalName || media.fileName}</span>
@@ -347,30 +345,30 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
 
       {/* Typing Indicator */}
       {typingUsers.length > 0 && (
-        <div className="px-4 py-1.5 text-xs text-blue-400 bg-slate-900/40 flex items-center gap-1.5 border-t border-slate-800/40">
+        <div className="px-5 py-1.5 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/30 flex items-center gap-1.5 border-t border-indigo-100 dark:border-slate-800/40">
           <span className="flex gap-1">
-            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" />
-            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce" />
+            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+            <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.4s]" />
           </span>
-          <span>{typingUsers.map((u) => u.userName).join(", ")} is typing...</span>
+          <span className="font-medium">{typingUsers.map((u) => u.userName).join(", ")} is typing...</span>
         </div>
       )}
 
       {/* Attachment Previews */}
       {attachments.length > 0 && (
-        <div className="px-4 py-2 border-t border-slate-800 bg-slate-900/40 flex items-center gap-2">
+        <div className="px-5 py-2 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 flex items-center gap-2">
           {attachments.map((att, idx) => (
             <div
               key={idx}
-              className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white"
+              className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-100"
             >
-              <Paperclip className="w-3.5 h-3.5 text-blue-400" />
-              <span className="truncate max-w-[150px]">{att.originalName || att.fileName}</span>
+              <Paperclip className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span className="truncate max-w-[150px] font-medium">{att.originalName || att.fileName}</span>
               <button
                 type="button"
                 onClick={() => setAttachments((prev) => prev.filter((_, i) => i !== idx))}
-                className="text-slate-400 hover:text-rose-400"
+                className="text-slate-400 hover:text-rose-500 cursor-pointer"
               >
                 ×
               </button>
@@ -382,7 +380,7 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
       {/* Input Form */}
       <form
         onSubmit={handleSendMessage}
-        className="p-3 border-t border-slate-800 bg-slate-900/80 flex items-center gap-2"
+        className="p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2"
       >
         <input
           type="file"
@@ -394,10 +392,10 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
           type="button"
           disabled={uploadingFile}
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors disabled:opacity-50"
+          className="p-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-50 cursor-pointer"
           title="Attach file from Google Drive"
         >
-          {uploadingFile ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
+          {uploadingFile ? <Loader2 className="w-5 h-5 animate-spin text-indigo-600" /> : <Paperclip className="w-5 h-5" />}
         </button>
 
         <input
@@ -405,13 +403,13 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
           placeholder="Type message to project team..."
           value={inputText}
           onChange={handleInputChange}
-          className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
         />
 
         <button
           type="submit"
           disabled={sending || (!inputText.trim() && attachments.length === 0)}
-          className="p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all disabled:opacity-50 shadow-md shadow-blue-500/20"
+          className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl transition-all disabled:opacity-50 shadow-xs cursor-pointer active:scale-95"
         >
           {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
         </button>
