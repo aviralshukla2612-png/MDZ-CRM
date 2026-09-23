@@ -193,6 +193,29 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const userRole = ((session?.user as any)?.role || "").toUpperCase();
+  const handleExitChat = () => {
+    switch (userRole) {
+      case "OWNER":
+      case "ADMIN":
+      case "SUB_ADMIN":
+        router.push("/owner");
+        break;
+      case "SALES":
+        router.push("/sales");
+        break;
+      case "EMPLOYEE":
+        router.push("/employee");
+        break;
+      case "CLIENT":
+        router.push("/client");
+        break;
+      default:
+        router.push("/");
+        break;
+    }
+  };
+
   const handleCloseConversation = () => {
     setActiveConversationId(null);
     setActiveConversation(null);
@@ -330,13 +353,23 @@ export default function ChatPage() {
               </div>
             </div>
 
-            <button
-              onClick={() => setIsNewChatOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Chat</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setIsNewChatOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+                title="Create New Chat"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">New Chat</span>
+              </button>
+              <button
+                onClick={handleExitChat}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Close Chat & Return to Dashboard"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </div>
 
           {/* Filter Pills */}
@@ -549,11 +582,11 @@ export default function ChatPage() {
                     </button>
                   )}
 
-                  {/* CROSS SIGN (X) TO CLOSE THIS CONVERSATION */}
+                  {/* CROSS SIGN (X) TO CLOSE WHOLE CHAT */}
                   <button
-                    onClick={handleCloseConversation}
+                    onClick={handleExitChat}
                     className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                    title="Close Chat"
+                    title="Close Chat & Return to Dashboard"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -749,23 +782,34 @@ export default function ChatPage() {
               </form>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 mb-3">
-                <MessageSquare className="w-8 h-8" />
+            <div className="flex-1 flex flex-col">
+              <div className="flex items-center justify-end px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80">
+                <button
+                  onClick={handleExitChat}
+                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  title="Close Chat & Return to Dashboard"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">
-                Select a Conversation
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-4">
-                Choose a colleague, team group, or project workspace conversation to start messaging.
-              </p>
-              <button
-                onClick={() => setIsNewChatOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>New Conversation</span>
-              </button>
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
+                <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800/80 mb-3">
+                  <MessageSquare className="w-8 h-8" />
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">
+                  Select a Conversation
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mb-4">
+                  Choose a colleague, team group, or project workspace conversation to start messaging.
+                </p>
+                <button
+                  onClick={() => setIsNewChatOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>New Conversation</span>
+                </button>
+              </div>
             </div>
           )}
         </div>
