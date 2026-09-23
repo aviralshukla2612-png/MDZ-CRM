@@ -191,11 +191,6 @@ export async function POST(req: NextRequest) {
 
     // GROUP CHAT
     if (type === "GROUP") {
-      const groupName = (name || "").trim();
-      if (!groupName) {
-        return NextResponse.json({ success: false, error: "Group name is required." }, { status: 400 });
-      }
-
       const selectedIds = Array.isArray(memberIds) ? memberIds : [];
       const distinctMembers = Array.from(new Set([user.id, ...selectedIds]));
 
@@ -210,19 +205,33 @@ export async function POST(req: NextRequest) {
           isActive: true,
           activeRole: { not: "CLIENT" },
         },
-        select: { id: true },
+        select: { id: true, name: true },
       });
 
-      if (validUsers.length !== distinctMembers.length) {
-        return NextResponse.json({ success: false, error: "One or more selected members are invalid or clients." }, { status: 400 });
+      if (validUsers.length < 2) {
+        return NextResponse.json({ success: false, error: "Please select at least one active internal team member." }, { status: 400 });
+      }
+
+      let groupName = (name || "").trim();
+      if (!groupName) {
+        const otherMemberNames = validUsers
+          .filter((u) => u.id !== user.id)
+          .map((u) => u.name)
+          .filter(Boolean);
+
+        if (otherMemberNames.length <= 2) {
+          groupName = `${otherMemberNames.join(", ")} & You`;
+        } else {
+          groupName = `${otherMemberNames.slice(0, 2).join(", ")} +${otherMemberNames.length - 2} others`;
+        }
       }
 
       const conversation = await prisma.conversation.create({
         data: {
           type: "GROUP",
-          name: groupName,
+          name: groupName || "Team Group",
           participants: {
-            create: distinctMembers.map((uid) => ({ userId: uid })),
+            create: validUsers.map((u) => ({ userId: u.id })),
           },
         },
         include: {

@@ -90,13 +90,21 @@ export function NewChatModal({ isOpen, onClose, onConversationCreated }: Props) 
 
   const handleCreateGroupChat = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupName.trim()) {
-      showToast("Please enter a group name", "error");
+    if (selectedUserIds.length === 0) {
+      showToast("Please select at least one colleague to add to the group", "error");
       return;
     }
-    if (selectedUserIds.length === 0) {
-      showToast("Please select at least one member", "error");
-      return;
+
+    // Auto-generate fallback group name if user left it blank
+    let finalGroupName = groupName.trim();
+    if (!finalGroupName) {
+      const selectedUsers = users.filter((u) => selectedUserIds.includes(u.id));
+      const names = selectedUsers.map((u) => u.name).filter(Boolean);
+      if (names.length <= 2) {
+        finalGroupName = names.length > 0 ? `${names.join(", ")} & You` : "Team Group";
+      } else {
+        finalGroupName = `${names.slice(0, 2).join(", ")} +${names.length - 2} others`;
+      }
     }
 
     try {
@@ -106,7 +114,7 @@ export function NewChatModal({ isOpen, onClose, onConversationCreated }: Props) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "GROUP",
-          name: groupName.trim(),
+          name: finalGroupName,
           memberIds: selectedUserIds,
         }),
       });
@@ -290,10 +298,15 @@ export function NewChatModal({ isOpen, onClose, onConversationCreated }: Props) 
             // GROUP FORM & LIST
             <form onSubmit={handleCreateGroupChat} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Group Name</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Group Name
+                  </label>
+                  <span className="text-[11px] text-slate-400">Optional</span>
+                </div>
                 <input
                   type="text"
-                  placeholder="e.g. Marketing Sprint, Core Devs"
+                  placeholder="e.g. Marketing Sprint, Core Devs (auto-generated if blank)"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-indigo-500"
@@ -305,6 +318,15 @@ export function NewChatModal({ isOpen, onClose, onConversationCreated }: Props) 
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                     Select Members ({selectedUserIds.length} selected)
                   </label>
+                  {selectedUserIds.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedUserIds([])}
+                      className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                    >
+                      Clear all
+                    </button>
+                  )}
                 </div>
                 <div className="max-h-52 overflow-y-auto space-y-1.5 pr-1">
                   {users.map((u) => {
@@ -350,11 +372,19 @@ export function NewChatModal({ isOpen, onClose, onConversationCreated }: Props) 
               <div className="pt-2">
                 <button
                   type="submit"
-                  disabled={submitting || !groupName.trim() || selectedUserIds.length === 0}
+                  disabled={submitting || selectedUserIds.length === 0}
                   className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-xs cursor-pointer active:scale-95"
                 >
-                  {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
-                  Create Group Chat
+                  {submitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Users className="w-4 h-4" />
+                  )}
+                  {submitting
+                    ? "Creating Group..."
+                    : selectedUserIds.length === 0
+                    ? "Select Members to Create Group"
+                    : `Create Group Chat (${selectedUserIds.length} members)`}
                 </button>
               </div>
             </form>
