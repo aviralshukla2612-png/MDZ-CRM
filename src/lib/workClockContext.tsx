@@ -72,9 +72,24 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
   const [usedLunchSeconds, setUsedLunchSeconds] = useState<number>(0);
   const [usedTeaSeconds, setUsedTeaSeconds] = useState<number>(0); 
   const [usedCallSeconds, setUsedCallSeconds] = useState<number>(0);
-  const lunchAllowanceSeconds = 45 * 60; // 45m
+  const [lunchAllowanceSeconds, setLunchAllowanceSeconds] = useState<number>(45 * 60); // 45m default
   const teaAllowanceSeconds = 10 * 60; // 10m
   const callAllowanceSeconds = 120 * 60; // 2h
+
+  // Fetch configured lunch duration allowance
+  useEffect(() => {
+    fetch("/mdz-crm/api/settings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data && json.data.lunch_duration_minutes) {
+          const mins = parseInt(json.data.lunch_duration_minutes, 10);
+          if (!isNaN(mins) && mins > 0) {
+            setLunchAllowanceSeconds(mins * 60);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const [locationVerified, setLocationVerified] = useState<boolean>(true);
   const [deviceVerified, setDeviceVerified] = useState<boolean>(true);

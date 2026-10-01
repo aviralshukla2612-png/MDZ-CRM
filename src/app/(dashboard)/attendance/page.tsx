@@ -277,7 +277,30 @@ export default function AttendanceWorkClockPage() {
     }
   }, [unclosedShift, status]);
 
-  const REQUIRED_WORK_SECONDS = parseInt(process.env.NEXT_PUBLIC_REQUIRED_WORK_HOURS || "9") * 3600;
+  const [targetWorkingHours, setTargetWorkingHours] = useState<number>(8.0);
+
+  useEffect(() => {
+    fetch("/mdz-crm/api/attendance/working-hours")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) {
+          const empId = session?.user?.employeeId;
+          if (empId && json.employees) {
+            const found = json.employees.find((e: any) => e.id === empId || e.userId === session?.user?.id);
+            if (found && found.targetWorkingHours) {
+              setTargetWorkingHours(found.targetWorkingHours);
+              return;
+            }
+          }
+          if (json.defaultWorkingHours) {
+            setTargetWorkingHours(json.defaultWorkingHours);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [session?.user?.employeeId, session?.user?.id]);
+
+  const REQUIRED_WORK_SECONDS = (targetWorkingHours || 8.0) * 3600;
   const totalActiveSeconds = workSeconds + breakSeconds;
   const progressPercent = Math.min(100, Math.round((totalActiveSeconds / REQUIRED_WORK_SECONDS) * 100));
   const remainingWorkSeconds = Math.max(0, REQUIRED_WORK_SECONDS - totalActiveSeconds);

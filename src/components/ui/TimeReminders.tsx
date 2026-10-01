@@ -18,7 +18,7 @@ export function TimeReminders() {
 
   // Dynamic system settings
   const [lunchStartTime, setLunchStartTime] = useState("13:15");
-  const [autoLunchEnabled, setAutoLunchEnabled] = useState(true);
+  const [autoLunchEnabled, setAutoLunchEnabled] = useState(false);
   const [lunchReminderMins, setLunchReminderMins] = useState(5);
 
   // Daily Progress modal state triggered from the reminder
@@ -35,7 +35,7 @@ export function TimeReminders() {
             setLunchStartTime(json.data.lunch_start_time);
           }
           if (json.data.auto_lunch_enabled !== undefined) {
-            setAutoLunchEnabled(json.data.auto_lunch_enabled !== "false");
+            setAutoLunchEnabled(json.data.auto_lunch_enabled === "true");
           }
           if (json.data.lunch_reminder_mins_before) {
             setLunchReminderMins(Number(json.data.lunch_reminder_mins_before) || 5);

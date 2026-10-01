@@ -245,7 +245,7 @@ export default function SettingsPage() {
   const [lunchStartTime, setLunchStartTime] = useState("13:15");
   const [lunchDurationMinutes, setLunchDurationMinutes] = useState("45");
   const [lunchReminderMinutes, setLunchReminderMinutes] = useState("5");
-  const [autoLunchEnabled, setAutoLunchEnabled] = useState(true);
+  const [autoLunchEnabled, setAutoLunchEnabled] = useState(false);
   const [savingLunchSchedule, setSavingLunchSchedule] = useState(false);
 
   useEffect(() => {
@@ -257,7 +257,7 @@ export default function SettingsPage() {
           if (json.data.lunch_duration_minutes) setLunchDurationMinutes(json.data.lunch_duration_minutes);
           if (json.data.lunch_reminder_mins_before) setLunchReminderMinutes(json.data.lunch_reminder_mins_before);
           if (json.data.auto_lunch_enabled !== undefined) {
-            setAutoLunchEnabled(json.data.auto_lunch_enabled !== "false");
+            setAutoLunchEnabled(json.data.auto_lunch_enabled === "true");
           }
         }
       })
@@ -1052,7 +1052,7 @@ export default function SettingsPage() {
       )}
 
       {/* ── Playbooks Template & Workforce Automation ────────────────────────── */}
-      {session?.user?.role === "OWNER" && (
+      {(session?.user?.role === "OWNER" || session?.user?.role === "ADMIN" || session?.user?.role === "SUB_ADMIN") && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
         {/* Playbooks Template */}
