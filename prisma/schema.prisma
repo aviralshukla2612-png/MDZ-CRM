@@ -52,6 +52,7 @@ model User {
   uploadedMedia       MediaFile[]         @relation("UserUploadedMedia")
   chatParticipants    ConversationParticipant[]
   chatMessages        ChatMessage[]
+  salesNotes          SalesNote[]
 }
 
 model Role {
@@ -813,5 +814,24 @@ model ChatMessageAttachment {
   media     MediaFile   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, mediaId])
+}
+
+model SalesNote {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  content     String   @default("")
+  category    String   @default("GENERAL") // GENERAL, CALL_LOG, DEAL_DRAFT, REMINDER, CLIENT_PITCH
+  tags        String   @default("[]")      // JSON array of strings
+  isPinned    Boolean  @default(false)
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([category])
+  @@index([isPinned])
 }
 

@@ -25,6 +25,7 @@ import {
   Send,
   Cloud,
   Bell,
+  Notebook,
 } from "lucide-react";
 
 import { useBranding } from "@/components/providers/BrandingProvider";
@@ -97,6 +98,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "SALES":
         return [
           { title: "Sales Overview", href: "/sales", icon: <LayoutDashboard className="w-4 h-4" /> },
+          { title: "My Personal Notes", href: "/sales/notes", icon: <Notebook className="w-4 h-4" /> },
           { title: "My Work Sessions", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
           { title: "Leave Applications", href: "/attendance/leave", icon: <UserCheck className="w-4 h-4" /> },
           { title: "Lead Pipeline", href: "/leads", icon: <Target className="w-4 h-4" /> },
