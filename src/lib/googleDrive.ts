@@ -22,44 +22,14 @@ export function isGoogleDriveConfigured(): boolean {
   return hasOAuth || hasServiceAccount;
 }
 
-/**
- * Returns a singleton instance of the authenticated Google Drive v3 client.
- * Priority: OAuth 2.0 (User Quota) > Service Account.
- */
-export function getDriveClient() {
-  if (driveClientInstance) {
-    return driveClientInstance;
-  }
-
-  // 1. Check for OAuth 2.0 Credentials (Personal Gmail with full storage quota)
-  const oauthClientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
-  const oauthClientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
-  const oauthRefreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
-
-  if (oauthClientId && oauthClientSecret && oauthRefreshToken) {
-    const oauth2Client = new google.auth.OAuth2(
-      oauthClientId,
-      oauthClientSecret,
-      process.env.GOOGLE_DRIVE_REDIRECT_URI || "https://developers.google.com/oauthplayground"
-    );
-    oauth2Client.setCredentials({
-      refresh_token: oauthRefreshToken,
-    });
-    driveClientInstance = google.drive({ version: "v3", auth: oauth2Client });
-    return driveClientInstance;
-  }
-
-  // 2. Fallback to Service Account
+function getServiceAccountClient() {
   const clientEmail = process.env.GOOGLE_DRIVE_CLIENT_EMAIL;
   let privateKey = process.env.GOOGLE_DRIVE_PRIVATE_KEY;
 
   if (!clientEmail || !privateKey) {
-    throw new Error(
-      "Google Drive is not configured. Missing OAuth 2.0 credentials or Service Account credentials in .env."
-    );
+    return null;
   }
 
-  // Ensure newlines in PEM private key are properly formatted
   privateKey = privateKey.replace(/\\n/g, "\n");
 
   const auth = new google.auth.JWT({
@@ -68,8 +38,48 @@ export function getDriveClient() {
     scopes: ["https://www.googleapis.com/auth/drive"],
   });
 
-  driveClientInstance = google.drive({ version: "v3", auth });
-  return driveClientInstance;
+  return google.drive({ version: "v3", auth });
+}
+
+/**
+ * Returns a singleton instance of the authenticated Google Drive v3 client.
+ * Priority: OAuth 2.0 (User Quota) > Service Account.
+ */
+export function getDriveClient(forceServiceAccount = false) {
+  if (driveClientInstance && !forceServiceAccount) {
+    return driveClientInstance;
+  }
+
+  if (!forceServiceAccount) {
+    // 1. Check for OAuth 2.0 Credentials (Personal Gmail with full storage quota)
+    const oauthClientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
+    const oauthClientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
+    const oauthRefreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+
+    if (oauthClientId && oauthClientSecret && oauthRefreshToken) {
+      const oauth2Client = new google.auth.OAuth2(
+        oauthClientId,
+        oauthClientSecret,
+        process.env.GOOGLE_DRIVE_REDIRECT_URI || "https://developers.google.com/oauthplayground"
+      );
+      oauth2Client.setCredentials({
+        refresh_token: oauthRefreshToken,
+      });
+      driveClientInstance = google.drive({ version: "v3", auth: oauth2Client });
+      return driveClientInstance;
+    }
+  }
+
+  // 2. Fallback to Service Account
+  const saClient = getServiceAccountClient();
+  if (saClient) {
+    driveClientInstance = saClient;
+    return driveClientInstance;
+  }
+
+  throw new Error(
+    "Google Drive is not configured. Missing OAuth 2.0 credentials or Service Account credentials in .env."
+  );
 }
 
 /**
@@ -202,31 +212,58 @@ export async function uploadStreamToDrive({
   mimeType: string;
   folderId?: string;
 }): Promise<{ driveFileId: string; fileName: string; fileSize?: number }> {
-  const drive = getDriveClient();
+  let drive = getDriveClient();
   const targetParents = folderId ? [folderId] : [];
 
-  const res = await drive.files.create({
-    requestBody: {
-      name: fileName,
-      parents: targetParents,
-    },
-    media: {
-      mimeType,
-      body: stream,
-    },
-    fields: "id, name, size, mimeType",
-    supportsAllDrives: true,
-  });
+  try {
+    const res = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: targetParents,
+      },
+      media: {
+        mimeType,
+        body: stream,
+      },
+      fields: "id, name, size, mimeType",
+      supportsAllDrives: true,
+    });
 
-  if (!res.data.id) {
-    throw new Error("Failed to receive Google Drive file ID after upload.");
+    if (!res.data.id) {
+      throw new Error("Failed to receive Google Drive file ID after upload.");
+    }
+
+    return {
+      driveFileId: res.data.id,
+      fileName: res.data.name || fileName,
+      fileSize: res.data.size ? parseInt(res.data.size, 10) : undefined,
+    };
+  } catch (err: any) {
+    const errMsg = err?.message || String(err);
+    if (errMsg.includes("invalid_grant")) {
+      // Try fallback to Service Account if OAuth token expired
+      try {
+        const saDrive = getDriveClient(true);
+        const res = await saDrive.files.create({
+          requestBody: { name: fileName, parents: targetParents },
+          media: { mimeType, body: stream },
+          fields: "id, name, size, mimeType",
+          supportsAllDrives: true,
+        });
+        if (res.data.id) {
+          return {
+            driveFileId: res.data.id,
+            fileName: res.data.name || fileName,
+            fileSize: res.data.size ? parseInt(res.data.size, 10) : undefined,
+          };
+        }
+      } catch (saErr) {
+        console.error("[GoogleDrive] Fallback Service Account upload also failed:", saErr);
+      }
+      throw new Error("Google Drive OAuth refresh token expired (invalid_grant). Please renew GOOGLE_DRIVE_REFRESH_TOKEN in .env or configure a Google Service Account.");
+    }
+    throw err;
   }
-
-  return {
-    driveFileId: res.data.id,
-    fileName: res.data.name || fileName,
-    fileSize: res.data.size ? parseInt(res.data.size, 10) : undefined,
-  };
 }
 
 /**

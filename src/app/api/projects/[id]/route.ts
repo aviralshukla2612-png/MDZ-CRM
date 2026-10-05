@@ -122,6 +122,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     const body = await req.json();
     const updateData: any = {};
     if (body.name !== undefined) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.scopeText !== undefined) updateData.scopeText = body.scopeText;
+    if (body.scopeItems !== undefined) {
+      if (Array.isArray(body.scopeItems)) {
+        updateData.scopeText = body.scopeItems.filter((s: any) => typeof s === "string" && s.trim().length > 0).join("\n");
+      } else if (typeof body.scopeItems === "string") {
+        updateData.scopeText = body.scopeItems;
+      }
+    }
+    if (body.contractValue !== undefined) {
+      updateData.contractValue = body.contractValue !== null && body.contractValue !== "" ? parseFloat(body.contractValue) : 0;
+    }
     if (body.progressPercentage !== undefined) updateData.progressPercentage = body.progressPercentage;
     if (body.status !== undefined) updateData.status = body.status;
     if (body.priority !== undefined) updateData.priority = body.priority;

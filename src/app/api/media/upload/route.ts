@@ -146,8 +146,12 @@ export async function POST(req: NextRequest) {
     }
   } catch (error: any) {
     console.error("[MediaUpload] Unhandled upload error:", error);
+    let errorMsg = error?.message || "Internal server error during upload.";
+    if (errorMsg === "invalid_grant" || errorMsg.includes("invalid_grant")) {
+      errorMsg = "Google Drive authorization expired (invalid_grant). Please refresh GOOGLE_DRIVE_REFRESH_TOKEN in your .env file or use a Google Service Account.";
+    }
     return NextResponse.json(
-      { success: false, error: error?.message || "Internal server error during upload." },
+      { success: false, error: errorMsg },
       { status: 500 }
     );
   }

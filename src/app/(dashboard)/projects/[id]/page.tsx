@@ -51,6 +51,12 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
 
+  // Scope editing state
+  const [isEditingScope, setIsEditingScope] = useState(false);
+  const [scopeItemsInput, setScopeItemsInput] = useState("");
+  const [savingScope, setSavingScope] = useState(false);
+  const canEditScope = isAdminOrSubAdmin || userRole === "SALES" || userRole === "TM" || userRole === "OWNER";
+
   // Daily Progress Update Modal state
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
 
@@ -127,6 +133,33 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       showToast("Network error updating URLs", "error");
     } finally {
       setUpdatingUrls(false);
+    }
+  };
+
+  const handleSaveScope = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    try {
+      setSavingScope(true);
+      const res = await fetch(`/mdz-crm/api/projects/${params.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scopeText: scopeItemsInput.trim() || null,
+          description: scopeItemsInput.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Project scope & requirements updated!", "success");
+        setIsEditingScope(false);
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to update project scope", "error");
+      }
+    } catch (e) {
+      showToast("Network error updating scope", "error");
+    } finally {
+      setSavingScope(false);
     }
   };
 
@@ -373,11 +406,16 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [taskAssigneeId, setTaskAssigneeId] = useState("");
   const [taskPriority, setTaskPriority] = useState("MEDIUM");
   const [taskStatus, setTaskStatus] = useState("PLANNING");
+  const [taskDeadline, setTaskDeadline] = useState<string>(new Date().toISOString().slice(0, 10));
   const [submittingTask, setSubmittingTask] = useState(false);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskTitle.trim()) return;
+    if (!taskDeadline) {
+      showToast("Task Due Date / Deadline is compulsory.", "error");
+      return;
+    }
 
     try {
       setSubmittingTask(true);
@@ -389,6 +427,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           priority: taskPriority,
           status: taskStatus,
           assignedToId: taskAssigneeId || undefined,
+          deadline: taskDeadline,
         }),
       });
       const json = await res.json();
@@ -827,14 +866,101 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Project Scope & Core Requirements</h3>
-            <ol className="list-decimal list-inside space-y-2.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-              {project.scopeItems?.map((item: any, idx: number) => (
-                <li key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-                  {item}
-                </li>
-              ))}
-            </ol>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <FileText className="w-4.5 h-4.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Project Scope & Core Requirements</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Detailed technical specifications and key deliverables for this project
+                </p>
+              </div>
+              {canEditScope && !isEditingScope && (
+                <button
+                  onClick={() => {
+                    setScopeItemsInput(project.scopeItems?.join("\n") || project.scopeText || project.description || "");
+                    setIsEditingScope(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 font-bold text-xs border border-indigo-200 dark:border-indigo-800 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                  title="Edit or add project scope requirements"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>{project.scopeItems && project.scopeItems.length > 0 ? "Edit Scope" : "+ Add Scope"}</span>
+                </button>
+              )}
+            </div>
+
+            {isEditingScope ? (
+              <form onSubmit={handleSaveScope} className="space-y-3 pt-1">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                    Project Deliverables & Requirements (One requirement per line)
+                  </label>
+                  <textarea
+                    rows={6}
+                    value={scopeItemsInput}
+                    onChange={(e) => setScopeItemsInput(e.target.value)}
+                    placeholder="1. E-Commerce Storefront Next.js App Router&#10;2. Custom Admin Dashboard for Inventory Management&#10;3. Payment Gateway Integration (Razorpay/Stripe)"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-mono text-xs leading-relaxed"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Enter each deliverable on a separate line. They will be formatted into structured requirement items.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingScope(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingScope}
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>{savingScope ? "Saving..." : "Save Scope & Requirements"}</span>
+                  </button>
+                </div>
+              </form>
+            ) : project.scopeItems && project.scopeItems.length > 0 ? (
+              <ol className="space-y-2.5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
+                {project.scopeItems.map((item: any, idx: number) => (
+                  <li key={idx} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
+                    <span className="shrink-0 w-6 h-6 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-extrabold font-mono text-[11px] flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <span className="flex-1 pt-0.5">{item}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="py-8 px-4 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
+                <div className="w-10 h-10 mx-auto rounded-full bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">No Scope or Core Requirements Defined Yet</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
+                    Define key deliverables, tech stack, and scope requirements so your team and client are completely aligned.
+                  </p>
+                </div>
+                {canEditScope && (
+                  <button
+                    onClick={() => {
+                      setScopeItemsInput(project.scopeItems?.join("\n") || project.scopeText || project.description || "");
+                      setIsEditingScope(true);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs inline-flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>+ Add Project Scope & Requirements</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -1586,6 +1712,19 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               <option value="REVISION">🔄 Revision</option>
               <option value="COMPLETED">✅ Complete</option>
             </select>
+          </div>
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1 flex items-center justify-between">
+              <span>Task Due Date / Deadline <span className="text-rose-500">*</span></span>
+              <span className="text-[10px] text-rose-500 font-bold">Compulsory</span>
+            </label>
+            <input
+              type="date"
+              required
+              value={taskDeadline}
+              onChange={(e) => setTaskDeadline(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-semibold text-xs"
+            />
           </div>
           <button
             type="submit"

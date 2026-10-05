@@ -252,6 +252,14 @@ export async function POST(req: Request) {
     const projectCount = await prisma.project.count();
     const uniqueCode = `PRJ-${new Date().getFullYear()}-${String(projectCount + 1).padStart(3, "0")}-${Math.floor(100 + Math.random() * 900)}`;
 
+    const projectDeadlineVal = body.deadline || body.targetDeadline;
+    if (!projectDeadlineVal) {
+      return NextResponse.json(
+        { success: false, error: "Project target deadline is compulsory and required." },
+        { status: 400 }
+      );
+    }
+
     const data: any = {
       projectNumber: uniqueCode,
       name: body.name || "New Digital Solution",

@@ -128,6 +128,14 @@ export async function POST(
       );
     }
 
+    const taskDeadlineVal = body.deadline || body.dueDate || body.targetDeadline;
+    if (!taskDeadlineVal) {
+      return NextResponse.json(
+        { success: false, error: "Task deadline (due date) is compulsory and required." },
+        { status: 400 }
+      );
+    }
+
     // Security check: Only OWNER or ADMIN can set isMostImportant on task creation
     if (body.isMostImportant !== undefined && !isAdminOrOwner) {
       return NextResponse.json(

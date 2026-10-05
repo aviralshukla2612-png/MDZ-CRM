@@ -332,15 +332,15 @@ export function ProjectTaskCalendar({
   };
 
   // Map tasks by date string (YYYY-MM-DD)
-  // Priority order for task date: deadline -> startDate -> createdAt
+  // Priority order for task date: for completed tasks, completedAt -> deadline -> startDate -> createdAt; for active tasks, deadline -> startDate -> createdAt
   const tasksByDateMap = useMemo(() => {
     const map = new Map<string, TaskCalendarItem[]>();
 
     filteredTasks.forEach((task) => {
-      const dateKey =
-        getDateKey(task.deadline) ||
-        getDateKey(task.startDate) ||
-        getDateKey(task.createdAt);
+      const isCompleted = task.status === "COMPLETED" || task.status === "DONE";
+      const dateKey = isCompleted
+        ? (getDateKey(task.completedAt) || getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt))
+        : (getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt));
 
       if (dateKey) {
         const list = map.get(dateKey) || [];

@@ -166,29 +166,24 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
           }
 
           if (generalStatus !== status) {
-            // Do not overwrite ON_BREAK with WORKING locally unless they just logged in
-            if (status === "ON_BREAK" && generalStatus === "WORKING" && isLoaded) {
-              // Preserve ON_BREAK
-            } else {
-              setStatus(generalStatus);
-              if (generalStatus === "NOT_PUNCHED_IN") {
-                setWorkSeconds(0);
-                setBreakSeconds(0);
-                setTimeline([]);
-              } else if (generalStatus === "DAY_COMPLETE" && json.data.punchOut && !punchOutTime) {
-                const serverTime = new Date(json.data.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                setPunchOutTime(serverTime);
-                setTimeline((prev) => [
-                  ...prev,
-                  {
-                    id: `evt-${Date.now()}`,
-                    time: serverTime,
-                    type: "PUNCH_OUT",
-                    title: "Punch Out",
-                    subtitle: `Day Complete at ${serverTime}`,
-                  },
-                ]);
-              }
+            setStatus(generalStatus);
+            if (generalStatus === "NOT_PUNCHED_IN") {
+              setWorkSeconds(0);
+              setBreakSeconds(0);
+              setTimeline([]);
+            } else if (generalStatus === "DAY_COMPLETE" && json.data.punchOut && !punchOutTime) {
+              const serverTime = new Date(json.data.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              setPunchOutTime(serverTime);
+              setTimeline((prev) => [
+                ...prev,
+                {
+                  id: `evt-${Date.now()}`,
+                  time: serverTime,
+                  type: "PUNCH_OUT",
+                  title: "Punch Out",
+                  subtitle: `Day Complete at ${serverTime}`,
+                },
+              ]);
             }
           }
         }
@@ -374,6 +369,8 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
   const resumeWork = async () => {
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setStatus("WORKING");
+    showToast("✓ Work session resumed!", "success");
+
     setTimeline((prev) => [
       ...prev,
       {
@@ -388,15 +385,15 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
     // Send to database for Admin visibility
     try {
       const employeeId = session?.user?.employeeId;
-      if (!employeeId) return;
       await fetch("/mdz-crm/api/attendance/breaks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          employeeId,
+          employeeId: employeeId || undefined,
           action: "END",
         }),
       });
+      await pollStatus();
     } catch (e) {
       console.error("Failed to log break end", e);
     }

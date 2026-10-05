@@ -25,6 +25,7 @@ export function EditProjectModal({
   const { showToast } = useToast();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [scopeText, setScopeText] = useState("");
   const [status, setStatus] = useState("IN_PROGRESS");
   const [priority, setPriority] = useState("HIGH");
   const [contractValue, setContractValue] = useState("");
@@ -37,7 +38,9 @@ export function EditProjectModal({
   useEffect(() => {
     if (project) {
       setName(project.name || "");
-      setDescription(project.description || "");
+      const initialScope = project.scopeText || (project.scopeItems && project.scopeItems.length > 0 ? project.scopeItems.join("\n") : "") || project.description || "";
+      setScopeText(initialScope);
+      setDescription(project.description || initialScope);
       setStatus(project.status || "IN_PROGRESS");
       setPriority(project.priority || "HIGH");
       setContractValue(project.contractValue !== undefined && project.contractValue !== null ? String(project.contractValue) : "");
@@ -62,6 +65,11 @@ export function EditProjectModal({
       return;
     }
 
+    if (!targetDeadline) {
+      showToast("Project Target Deadline is compulsory.", "error");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(`/mdz-crm/api/projects/${project.id}`, {
@@ -69,7 +77,8 @@ export function EditProjectModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
-          description: description.trim() || null,
+          description: description.trim() || scopeText.trim() || null,
+          scopeText: scopeText.trim() || null,
           status,
           priority,
           contractValue: contractValue ? parseFloat(contractValue) : undefined,
@@ -176,10 +185,11 @@ export function EditProjectModal({
           <div>
             <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Target Deadline</span>
+              <span>Target Deadline <span className="text-rose-500">*</span></span>
             </label>
             <input
               type="date"
+              required
               value={targetDeadline}
               onChange={(e) => setTargetDeadline(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium"
@@ -232,17 +242,24 @@ export function EditProjectModal({
           </div>
         </div>
 
-        {/* Description / Scope */}
+        {/* Project Scope & Core Requirements */}
         <div>
-          <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5">
-            Project Description / Scope Notes
+          <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1 flex items-center justify-between">
+            <span>Project Scope & Core Requirements</span>
+            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-mono font-normal">One requirement per line</span>
           </label>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
+            Each line will be displayed as a requirement item under the Project Scope & Overview tab.
+          </p>
           <textarea
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Brief scope summary or client deliverables..."
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 resize-none font-medium"
+            rows={5}
+            value={scopeText}
+            onChange={(e) => {
+              setScopeText(e.target.value);
+              setDescription(e.target.value);
+            }}
+            placeholder="1. E-Commerce Storefront Next.js App Router&#10;2. Custom Admin Dashboard for Inventory & Order Management&#10;3. Payment Gateway Integration (Razorpay/Stripe)&#10;4. Automated Email Notifications for Order Status Updates"
+            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-mono text-xs leading-relaxed"
           />
         </div>
 

@@ -107,6 +107,14 @@ export async function POST(req: Request) {
       );
     }
 
+    const taskDeadlineVal = body.deadline || body.dueDate || body.targetDeadline;
+    if (!taskDeadlineVal) {
+      return NextResponse.json(
+        { success: false, error: "Task deadline (due date) is compulsory and required." },
+        { status: 400 }
+      );
+    }
+
     // Role check: Only OWNER, ADMIN, SALES, or team members of this project can add tasks
     if (authRes.activeRole === "EMPLOYEE") {
       const membership = await prisma.projectMembership.findFirst({

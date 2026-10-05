@@ -63,6 +63,11 @@ export function EditTaskModal({
       return;
     }
 
+    if (!deadline) {
+      showToast("Task Due Date / Deadline is compulsory.", "error");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const targetProjectId = projectId || task?.projectId;
@@ -193,10 +198,11 @@ export function EditTaskModal({
         <div>
           <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5 flex items-center gap-1">
             <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Task Due Date / Deadline</span>
+            <span>Task Due Date / Deadline <span className="text-rose-500">*</span></span>
           </label>
           <input
             type="date"
+            required
             value={deadline}
             onChange={(e) => setDeadline(e.target.value)}
             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium"

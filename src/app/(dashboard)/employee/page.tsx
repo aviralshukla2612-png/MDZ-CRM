@@ -52,6 +52,7 @@ export default function EmployeeDeskPage() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskPriority, setNewTaskPriority] = useState("MEDIUM");
   const [newTaskStatus, setNewTaskStatus] = useState("PLANNING");
+  const [newTaskDeadline, setNewTaskDeadline] = useState<string>(new Date().toISOString().slice(0, 10));
   const [submittingTask, setSubmittingTask] = useState(false);
 
   // Daily Progress Update Modal state
@@ -178,6 +179,10 @@ export default function EmployeeDeskPage() {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim() || !selectedProjectId) return;
+    if (!newTaskDeadline) {
+      showToast("Task Due Date / Deadline is compulsory.", "error");
+      return;
+    }
 
     try {
       setSubmittingTask(true);
@@ -188,6 +193,7 @@ export default function EmployeeDeskPage() {
           title: newTaskTitle.trim(),
           priority: newTaskPriority,
           status: newTaskStatus,
+          deadline: newTaskDeadline,
         }),
       });
       const json = await res.json();
@@ -717,6 +723,20 @@ export default function EmployeeDeskPage() {
               <option value="REVISION">🔄 Revision</option>
               <option value="COMPLETED">✅ Complete</option>
             </select>
+          </div>
+
+          <div>
+            <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1 flex items-center justify-between">
+              <span>Task Due Date / Deadline <span className="text-rose-500">*</span></span>
+              <span className="text-[10px] text-rose-500 font-bold">Compulsory</span>
+            </label>
+            <input
+              type="date"
+              required
+              value={newTaskDeadline}
+              onChange={(e) => setNewTaskDeadline(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-semibold text-xs"
+            />
           </div>
 
           <button

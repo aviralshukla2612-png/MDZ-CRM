@@ -174,6 +174,10 @@ export default function ProjectsDirectoryPage() {
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!deadline) {
+      showToast("Project Target Deadline is compulsory.", "error");
+      return;
+    }
     try {
       const res = await fetch("/mdz-crm/api/projects", {
         method: "POST",
@@ -185,7 +189,7 @@ export default function ProjectsDirectoryPage() {
           priority,
           status: "PLANNING",
           assigneeId: assigneeId || undefined,
-          deadline: deadline || undefined,
+          deadline: deadline,
         }),
       });
       const json = await res.json();
@@ -481,17 +485,18 @@ export default function ProjectsDirectoryPage() {
           </div>
           <div>
             <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1.5 flex items-center justify-between">
-              <span>Target Deadline</span>
-              <span className="text-[11px] font-normal text-slate-400 dark:text-slate-500">Optional (Admin / Sub Admin)</span>
+              <span>Target Deadline <span className="text-rose-500">*</span></span>
+              <span className="text-[11px] font-normal text-rose-500 font-bold">Compulsory</span>
             </label>
             <input
               type="date"
+              required
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              Leave blank if no deadline is set yet. Automatic deadlines will not be selected.
+              Select the compulsory delivery target deadline for this project.
             </p>
           </div>
           {!isEmployee && (
