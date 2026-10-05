@@ -1243,7 +1243,7 @@ export function EmployeeProjectKanban({
                     handleDropProject(pId, col.id);
                   }
                 }}
-                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3.5 space-y-3 flex flex-col min-h-[440px] transition-all w-[280px] sm:w-[310px] min-w-[270px] shrink-0"
+                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3 space-y-3 flex flex-col min-h-[440px] transition-all flex-1 min-w-[210px] max-w-[340px] shrink-0 xl:shrink flex-grow"
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/80 dark:border-slate-800">

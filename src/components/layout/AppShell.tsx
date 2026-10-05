@@ -98,7 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onCloseMobile={() => setIsMobileMenuOpen(false)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pb-8">
+        <main className="flex-1 overflow-y-auto p-2.5 sm:p-4 md:p-5 w-full max-w-[1920px] mx-auto pb-8">
           {shouldGate ? (
             <div className="p-8 bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-900/60 shadow-lg space-y-4 text-center max-w-xl mx-auto my-12">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">

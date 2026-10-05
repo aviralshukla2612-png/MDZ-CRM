@@ -169,7 +169,7 @@ export function LeadPipelineBoard({
           return (
             <div
               key={stage.id}
-              className="w-72 shrink-0 bg-slate-100/60 dark:bg-slate-950/40 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800/60 space-y-3 flex flex-col"
+              className="flex-1 min-w-[200px] max-w-[320px] bg-slate-100/60 dark:bg-slate-950/40 rounded-2xl p-3 border border-slate-200/80 dark:border-slate-800/60 space-y-3 flex flex-col shrink-0 xl:shrink flex-grow"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.currentTarget.classList.add("border-indigo-500/50", "bg-indigo-50/50", "dark:bg-indigo-950/20");
