@@ -72,7 +72,7 @@ export default function SalesDashboardPage() {
       const res = await fetch(`/mdz-crm/api/leads/${leadId}`, { method: "DELETE" });
       const json = await res.json();
       if (!json.success) {
-        showToast("Failed to delete lead", "error");
+        showToast(json.error || "Failed to delete lead", "error");
         fetchLeads();
       } else {
         showToast("Lead permanently deleted", "success");

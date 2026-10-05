@@ -124,12 +124,35 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (authRes instanceof NextResponse) return authRes;
 
   try {
-    await prisma.lead.delete({
-      where: { id: params.id },
+    const targetLead = await prisma.lead.findFirst({
+      where: { OR: [{ id: params.id }, { leadNumber: params.id }] },
     });
 
+    if (!targetLead) {
+      return NextResponse.json({ success: false, error: "Lead not found" }, { status: 404 });
+    }
+
+    await prisma.$transaction([
+      prisma.leadFollowup.deleteMany({ where: { leadId: targetLead.id } }),
+      prisma.leadActivity.deleteMany({ where: { leadId: targetLead.id } }),
+      prisma.mediaFile.deleteMany({
+        where: {
+          OR: [
+            { leadId: targetLead.id },
+            { entityType: "LEAD", entityId: targetLead.id },
+            { entityType: "LEADS", entityId: targetLead.id },
+          ],
+        },
+      }),
+      prisma.lead.delete({ where: { id: targetLead.id } }),
+    ]);
+
     return NextResponse.json({ success: true, message: "Lead deleted successfully" });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to delete lead" }, { status: 500 });
+  } catch (error: any) {
+    console.error("DELETE /api/leads/[id] error:", error);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to delete lead" },
+      { status: 500 }
+    );
   }
 }
