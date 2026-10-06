@@ -120,7 +120,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const authRes = await requireRole(["OWNER", "SALES", "ADMIN", "SUB_ADMIN"]);
+  const authRes = await requireRole(["OWNER", "SALES", "ADMIN", "SUB_ADMIN", "EMPLOYEE"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -139,6 +139,14 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         where: {
           OR: [
             { leadId: targetLead.id },
+            { entityType: "LEAD", entityId: targetLead.id },
+            { entityType: "LEADS", entityId: targetLead.id },
+          ],
+        },
+      }),
+      prisma.activityEvent.deleteMany({
+        where: {
+          OR: [
             { entityType: "LEAD", entityId: targetLead.id },
             { entityType: "LEADS", entityId: targetLead.id },
           ],

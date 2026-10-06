@@ -213,15 +213,62 @@ export function LeadPipelineBoard({
                       }}
                       className="p-3.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800/80 shadow-xs hover:border-indigo-500/50 dark:hover:border-indigo-500/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/90 hover:scale-[1.01] hover:shadow-sm transition-all duration-200 space-y-2 group cursor-pointer active:cursor-grabbing"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] font-bold text-slate-400">{lead.leadNumber}</span>
+                      <div className="space-y-1.5">
+                        {/* Top Bar: Lead Number on Left, Actions on Right */}
+                        <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/60 pb-1.5">
+                          <span className="font-mono text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate">
+                            {lead.leadNumber}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setEditingLead(lead);
+                              }}
+                              className="p-1 rounded-md text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-all cursor-pointer"
+                              title="Edit Lead Parameters"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                router.push(`/leads/${lead.id}`);
+                              }}
+                              className="p-1 rounded-md text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-all cursor-pointer"
+                              title="View Lead Details"
+                            >
+                              <ArrowUpRight className="w-3.5 h-3.5" />
+                            </button>
+
+                            {deleteLeadApi && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setDeleteLeadId(lead.id);
+                                }}
+                                className="p-1 rounded-md text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/60 transition-all cursor-pointer"
+                                title="Delete Lead"
+                              >
+                                <Trash className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Badges Row: Source + Priority */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full font-mono flex items-center gap-1 border ${badge.className}`}>
                             <span>{badge.icon}</span>
                             <span>{badge.label}</span>
                           </span>
-                        </div>
-                        <div className="flex items-center gap-1">
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded font-mono uppercase ${
                             lead.leadPriority === "HOT"
                               ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
@@ -231,35 +278,6 @@ export function LeadPipelineBoard({
                           }`}>
                             {lead.leadPriority}
                           </span>
-                          
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setEditingLead(lead);
-                            }}
-                            className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 transition-colors ml-0.5 cursor-pointer"
-                            title="Edit Lead Parameters"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-
-                          <ArrowUpRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-200 shrink-0" />
-
-                          {deleteLeadApi && (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setDeleteLeadId(lead.id);
-                              }}
-                              className="p-1 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/20 transition-colors ml-0.5 cursor-pointer"
-                              title="Delete Lead"
-                            >
-                              <Trash className="w-3.5 h-3.5" />
-                            </button>
-                          )}
                         </div>
                       </div>
 
