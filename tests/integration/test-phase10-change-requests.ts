@@ -141,6 +141,7 @@ async function runChangeRequestTests() {
     where: { key: "additionalChangeRequestFee" },
     update: { value: "5000" },
     create: {
+      id: "additionalChangeRequestFee",
       key: "additionalChangeRequestFee",
       value: "5000",
     },

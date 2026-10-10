@@ -169,6 +169,8 @@ export default function SettingsPage() {
   const handleSaveBranding = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingBranding(true);
+    // Optimistically update layout immediately
+    updateBrandingOptimistic(brandForm);
     try {
       const res = await fetch("/mdz-crm/api/admin/branding", {
         method: "POST",
@@ -179,11 +181,16 @@ export default function SettingsPage() {
       if (json.success) {
         showToast("✓ White-label branding & theme saved and applied across system!", "success");
         await refreshBranding();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("mdz_branding_updated", { detail: brandForm }));
+        }
       } else {
         showToast(json.error || "Failed to save branding settings", "error");
+        await refreshBranding(); // Rollback if error
       }
     } catch {
       showToast("Network error saving branding settings", "error");
+      await refreshBranding(); // Rollback if error
     } finally {
       setSavingBranding(false);
     }
@@ -204,6 +211,9 @@ export default function SettingsPage() {
       if (json.success) {
         showToast("✓ Branding restored to default Millionaire OS", "success");
         await refreshBranding();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("mdz_branding_updated", { detail: json.data }));
+        }
       } else {
         showToast(json.error || "Failed to reset branding", "error");
       }
@@ -846,7 +856,7 @@ export default function SettingsPage() {
                   />
                 ) : (
                   <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${THEME_PALETTES[brandForm.themeColor]?.swatchBg || "from-emerald-500 to-amber-500"} text-white font-black flex items-center justify-center text-sm shadow-sm`}>
-                    {brandForm.companyName.charAt(0)}
+                    {(brandForm.companyName || "C").charAt(0)}
                   </div>
                 )}
                 <span className="font-extrabold text-lg tracking-tight flex items-center gap-1.5">

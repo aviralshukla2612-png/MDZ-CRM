@@ -143,7 +143,35 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchBranding();
+
+    const handleUpdate = () => {
+      fetchBranding();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("mdz_branding_updated", handleUpdate);
+      window.addEventListener("storage", handleUpdate);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("mdz_branding_updated", handleUpdate);
+        window.removeEventListener("storage", handleUpdate);
+      }
+    };
   }, [fetchBranding]);
+
+  useEffect(() => {
+    if (typeof document !== "undefined" && (branding.faviconUrl || branding.logoUrl)) {
+      const fav = branding.faviconUrl || branding.logoUrl;
+      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.appendChild(link);
+      }
+      link.href = fav;
+    }
+  }, [branding.faviconUrl, branding.logoUrl]);
 
   const updateBrandingOptimistic = useCallback((partial: Partial<BrandingConfig>) => {
     setBranding((prev) => {

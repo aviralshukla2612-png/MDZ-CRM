@@ -36,15 +36,19 @@ export async function POST(req: NextRequest) {
       });
 
       // Audit Event
-      await prisma.activityEvent.create({
-        data: {
-          eventType: "BRANDING_RESET_DEFAULT",
-          actorId,
-          entityType: "SYSTEM_BRANDING",
-          entityId: "global",
-          metadataJson: JSON.stringify({ message: "Reset system branding to default Millionaire OS" }),
-        },
-      });
+      try {
+        await prisma.activityEvent.create({
+          data: {
+            eventType: "BRANDING_RESET_DEFAULT",
+            actorId,
+            entityType: "SYSTEM_BRANDING",
+            entityId: "global",
+            metadataJson: JSON.stringify({ message: "Reset system branding to default Millionaire OS" }),
+          },
+        });
+      } catch (auditErr) {
+        console.warn("Branding reset audit log warning:", auditErr);
+      }
 
       return NextResponse.json({
         success: true,
@@ -84,33 +88,37 @@ export async function POST(req: NextRequest) {
       await prisma.systemSetting.upsert({
         where: { key },
         update: { value },
-        create: { key, value },
+        create: { id: key, key, value },
       });
     }
 
-    // Audit Event
-    await prisma.activityEvent.create({
-      data: {
-        eventType: "BRANDING_UPDATED",
-        actorId,
-        entityType: "SYSTEM_BRANDING",
-        entityId: "global",
-        metadataJson: JSON.stringify({
-          companyName: updates["brand_company_name"],
-          brandTagline: updates["brand_tagline"],
-          themeColor: updates["brand_theme"],
-          hasLogo: Boolean(updates["brand_logo_url"]),
-        }),
-      },
-    });
+    // Audit Event (Non-blocking)
+    try {
+      await prisma.activityEvent.create({
+        data: {
+          eventType: "BRANDING_UPDATED",
+          actorId,
+          entityType: "SYSTEM_BRANDING",
+          entityId: "global",
+          metadataJson: JSON.stringify({
+            companyName: updates["brand_company_name"],
+            brandTagline: updates["brand_tagline"],
+            themeColor: updates["brand_theme"],
+            hasLogo: Boolean(updates["brand_logo_url"]),
+          }),
+        },
+      });
+    } catch (auditErr) {
+      console.warn("Branding audit log warning:", auditErr);
+    }
 
     return NextResponse.json({
       success: true,
       message: "Branding settings saved successfully",
       data: updates,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("POST /api/admin/branding error:", error);
-    return NextResponse.json({ success: false, error: "Failed to save branding settings" }, { status: 500 });
+    return NextResponse.json({ success: false, error: error?.message || "Failed to save branding settings" }, { status: 500 });
   }
 }

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
         const setting = await prisma.systemSetting.upsert({
           where: { key },
           update: { value: String(value) },
-          create: { key, value: String(value) },
+          create: { id: key, key, value: String(value) },
         });
         results.push(setting);
       }
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const setting = await prisma.systemSetting.upsert({
       where: { key },
       update: { value: String(value) },
-      create: { key, value: String(value) }
+      create: { id: key, key, value: String(value) },
     });
 
     return NextResponse.json({ success: true, data: setting });

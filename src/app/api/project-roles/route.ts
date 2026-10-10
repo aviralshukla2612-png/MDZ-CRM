@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       await prisma.systemSetting.upsert({
         where: { key: "CUSTOM_PROJECT_ROLES" },
         update: { value: JSON.stringify(customRoles) },
-        create: { key: "CUSTOM_PROJECT_ROLES", value: JSON.stringify(customRoles) },
+        create: { id: "CUSTOM_PROJECT_ROLES", key: "CUSTOM_PROJECT_ROLES", value: JSON.stringify(customRoles) },
       });
     }
 

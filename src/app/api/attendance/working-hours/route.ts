@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
       await prisma.systemSetting.upsert({
         where: { key: "default_daily_working_hours" },
         update: { value: String(parsedDefault) },
-        create: { key: "default_daily_working_hours", value: String(parsedDefault) },
+        create: { id: "default_daily_working_hours", key: "default_daily_working_hours", value: String(parsedDefault) },
       });
 
       if (applyToAll) {
