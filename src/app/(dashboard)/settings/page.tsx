@@ -889,7 +889,7 @@ export default function SettingsPage() {
               {/* Column 1: Logo & Company Name */}
               <div className="space-y-4">
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <ImageIcon className="w-4 h-4 text-indigo-500" />
+                  <ImageIcon className={`w-4 h-4 ${themeStyle.sidebarActiveIcon}`} />
                   <span>Company Logo & Brand Identity</span>
                 </h3>
 
@@ -915,7 +915,7 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="flex-1 space-y-2">
-                      <label className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-xs font-bold cursor-pointer transition-all">
+                      <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl ${themeStyle.accentBadge} hover:opacity-85 text-xs font-bold cursor-pointer transition-all`}>
                         <Upload className="w-3.5 h-3.5" />
                         <span>Upload Logo File (PNG / JPG)</span>
                         <input
@@ -972,7 +972,7 @@ export default function SettingsPage() {
               {/* Column 2: Theme Palettes & Support Details */}
               <div className="space-y-4">
                 <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Palette className="w-4 h-4 text-amber-500" />
+                  <Palette className={`w-4 h-4 ${themeStyle.sidebarActiveIcon}`} />
                   <span>Theme Color Palette & Accents</span>
                 </h3>
 
@@ -983,10 +983,13 @@ export default function SettingsPage() {
                     return (
                       <div
                         key={key}
-                        onClick={() => setBrandForm((f) => ({ ...f, themeColor: key as any }))}
+                        onClick={() => {
+                          setBrandForm((f) => ({ ...f, themeColor: key as any }));
+                          updateBrandingOptimistic({ themeColor: key as any });
+                        }}
                         className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center gap-3 select-none ${
                           isSelected
-                            ? "ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50/40 dark:bg-indigo-950/30 shadow-sm"
+                            ? `ring-2 ${theme.ringClass} border-transparent ${theme.cardHighlight} shadow-md`
                             : "border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-950/30 hover:border-slate-300 dark:hover:border-slate-700"
                         }`}
                       >
@@ -1042,7 +1045,7 @@ export default function SettingsPage() {
               <button
                 type="submit"
                 disabled={savingBranding}
-                className="w-full sm:w-auto px-8 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+                className={`w-full sm:w-auto px-8 py-3 rounded-xl ${themeStyle.primaryButton} font-bold text-xs shadow-md flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer`}
               >
                 {savingBranding ? (
                   <>

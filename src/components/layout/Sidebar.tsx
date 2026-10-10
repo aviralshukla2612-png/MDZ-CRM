@@ -166,7 +166,7 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       )}
 
       <aside
-        className={`w-64 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-r border-amber-200/80 dark:border-amber-900/40 flex flex-col justify-between p-4 select-none transition-all duration-300 shrink-0 h-full overflow-y-auto ${
+        className={`w-64 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-r ${themeStyle.sidebarBorder} flex flex-col justify-between p-4 select-none transition-all duration-300 shrink-0 h-full overflow-y-auto ${
           isMobileOpen
             ? "fixed inset-y-0 left-0 shadow-2xl z-50 flex md:hidden animate-slide-right"
             : "hidden md:flex z-30"
@@ -174,14 +174,14 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       >
         <div className="space-y-6">
           {/* Navigation Group Header */}
-          <div className="px-3 py-1 flex items-center justify-between border-b border-amber-100 dark:border-amber-900/30 pb-3">
-            <span className="text-[10px] font-extrabold tracking-widest text-amber-600 dark:text-amber-400 uppercase font-mono">
+          <div className={`px-3 py-1 flex items-center justify-between border-b ${themeStyle.sidebarHeaderBorder} pb-3`}>
+            <span className={`text-[10px] font-extrabold tracking-widest ${themeStyle.sidebarHeaderLabel} uppercase font-mono`}>
               {role === "SUB_ADMIN" ? "SUB ADMIN" : role} WORKSPACE
             </span>
             {isMobileOpen && (
               <button
                 onClick={onCloseMobile}
-                className="md:hidden text-amber-500 hover:text-amber-800 dark:hover:text-white text-xs font-bold"
+                className={`md:hidden ${themeStyle.sidebarActiveIcon} hover:opacity-80 text-xs font-bold`}
               >
                 ✕
               </button>
@@ -202,18 +202,18 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
                   }}
                   className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all relative ${
                     isActive
-                      ? "bg-amber-50 dark:bg-amber-500/15 text-amber-900 dark:text-amber-300 font-bold shadow-xs dark:shadow-lg border border-amber-200 dark:border-amber-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-amber-500 dark:before:bg-amber-400 before:rounded-r-full"
-                      : "text-stone-600 dark:text-stone-400 hover:bg-amber-50/60 dark:hover:bg-amber-950/40 hover:text-amber-900 dark:hover:text-amber-200"
+                      ? themeStyle.sidebarActive
+                      : `text-stone-600 dark:text-stone-400 ${themeStyle.sidebarHover}`
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <span className={isActive ? "text-amber-600 dark:text-amber-400" : "text-stone-400 dark:text-stone-500"}>{item.icon}</span>
+                    <span className={isActive ? themeStyle.sidebarActiveIcon : "text-stone-400 dark:text-stone-500"}>{item.icon}</span>
                     <span>{item.title}</span>
                   </div>
                   {item.badge && (
                     <span
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                        item.badgeColor || "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                        item.badgeColor || themeStyle.accentBadge
                       }`}
                     >
                       {item.badge}
@@ -226,9 +226,9 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
         </div>
 
         {/* Footer Banner */}
-        <div className="bg-gradient-to-br from-amber-50/80 to-stone-50 dark:from-amber-950/30 dark:to-stone-900/40 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 text-xs space-y-1.5 backdrop-blur-xl shadow-xs dark:shadow-xl">
-          <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300">
-            <Sparkles className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse shrink-0" />
+        <div className={`${themeStyle.sidebarFooterCard} p-4 rounded-2xl border text-xs space-y-1.5 backdrop-blur-xl shadow-xs dark:shadow-xl`}>
+          <div className={`flex items-center gap-2 font-bold ${themeStyle.sidebarFooterTitle}`}>
+            <Sparkles className={`w-4 h-4 ${themeStyle.sidebarFooterIcon} animate-pulse shrink-0`} />
             <span className="font-extrabold tracking-tight truncate">{branding.companyFullTitle}</span>
           </div>
           <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed font-normal">

@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { BrandingConfig, DEFAULT_BRANDING } from "@/lib/branding";
 
-interface ThemeStyleDefinition {
+export interface ThemeStyleDefinition {
   name: string;
   label: string;
   primaryGradient: string;
@@ -13,6 +13,19 @@ interface ThemeStyleDefinition {
   cardHighlight: string;
   activeNavGlow: string;
   swatchBg: string;
+  primaryHex: string;
+  primaryHoverHex: string;
+  primarySoftHex: string;
+  sidebarBorder: string;
+  sidebarHeaderLabel: string;
+  sidebarHeaderBorder: string;
+  sidebarActive: string;
+  sidebarActiveIcon: string;
+  sidebarHover: string;
+  sidebarFooterCard: string;
+  sidebarFooterIcon: string;
+  sidebarFooterTitle: string;
+  primaryButton: string;
 }
 
 export const THEME_PALETTES: Record<string, ThemeStyleDefinition> = {
@@ -26,6 +39,19 @@ export const THEME_PALETTES: Record<string, ThemeStyleDefinition> = {
     cardHighlight: "border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-950/20",
     activeNavGlow: "text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/30 before:bg-emerald-500",
     swatchBg: "from-emerald-500 to-amber-500",
+    primaryHex: "#059669",
+    primaryHoverHex: "#10B981",
+    primarySoftHex: "rgba(5, 150, 105, 0.15)",
+    sidebarBorder: "border-emerald-200/80 dark:border-emerald-900/40",
+    sidebarHeaderLabel: "text-emerald-700 dark:text-emerald-400",
+    sidebarHeaderBorder: "border-emerald-100 dark:border-emerald-900/30",
+    sidebarActive: "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-950 dark:text-emerald-200 font-bold shadow-xs dark:shadow-lg border border-emerald-200 dark:border-emerald-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-emerald-500 dark:before:bg-emerald-400 before:rounded-r-full",
+    sidebarActiveIcon: "text-emerald-600 dark:text-emerald-400",
+    sidebarHover: "hover:bg-emerald-50/60 dark:hover:bg-emerald-950/40 hover:text-emerald-900 dark:hover:text-emerald-200",
+    sidebarFooterCard: "bg-gradient-to-br from-emerald-50/80 to-teal-50 dark:from-emerald-950/30 dark:to-teal-900/40 border-emerald-200/80 dark:border-emerald-900/40",
+    sidebarFooterIcon: "text-emerald-500 dark:text-emerald-400",
+    sidebarFooterTitle: "text-emerald-900 dark:text-emerald-300",
+    primaryButton: "bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-600/20",
   },
   amber: {
     name: "amber",
@@ -37,6 +63,19 @@ export const THEME_PALETTES: Record<string, ThemeStyleDefinition> = {
     cardHighlight: "border-amber-500/40 bg-amber-50/20 dark:bg-amber-950/20",
     activeNavGlow: "text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/30 before:bg-amber-500",
     swatchBg: "from-amber-500 to-orange-500",
+    primaryHex: "#D97706",
+    primaryHoverHex: "#F59E0B",
+    primarySoftHex: "rgba(217, 119, 6, 0.15)",
+    sidebarBorder: "border-amber-200/80 dark:border-amber-900/40",
+    sidebarHeaderLabel: "text-amber-700 dark:text-amber-400",
+    sidebarHeaderBorder: "border-amber-100 dark:border-amber-900/30",
+    sidebarActive: "bg-amber-50 dark:bg-amber-500/15 text-amber-950 dark:text-amber-200 font-bold shadow-xs dark:shadow-lg border border-amber-200 dark:border-amber-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-amber-500 dark:before:bg-amber-400 before:rounded-r-full",
+    sidebarActiveIcon: "text-amber-600 dark:text-amber-400",
+    sidebarHover: "hover:bg-amber-50/60 dark:hover:bg-amber-950/40 hover:text-amber-900 dark:hover:text-amber-200",
+    sidebarFooterCard: "bg-gradient-to-br from-amber-50/80 to-yellow-50 dark:from-amber-950/30 dark:to-stone-900/40 border-amber-200/80 dark:border-amber-900/40",
+    sidebarFooterIcon: "text-amber-500 dark:text-amber-400",
+    sidebarFooterTitle: "text-amber-900 dark:text-amber-300",
+    primaryButton: "bg-amber-600 hover:bg-amber-500 active:scale-95 text-white shadow-amber-600/20",
   },
   indigo: {
     name: "indigo",
@@ -48,6 +87,19 @@ export const THEME_PALETTES: Record<string, ThemeStyleDefinition> = {
     cardHighlight: "border-indigo-500/40 bg-indigo-50/20 dark:bg-indigo-950/20",
     activeNavGlow: "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/15 border-indigo-200 dark:border-indigo-500/30 before:bg-indigo-500",
     swatchBg: "from-indigo-500 to-cyan-500",
+    primaryHex: "#4F46E5",
+    primaryHoverHex: "#6366F1",
+    primarySoftHex: "rgba(79, 70, 229, 0.15)",
+    sidebarBorder: "border-indigo-200/80 dark:border-indigo-900/40",
+    sidebarHeaderLabel: "text-indigo-700 dark:text-indigo-400",
+    sidebarHeaderBorder: "border-indigo-100 dark:border-indigo-900/30",
+    sidebarActive: "bg-indigo-50 dark:bg-indigo-500/15 text-indigo-950 dark:text-indigo-200 font-bold shadow-xs dark:shadow-lg border border-indigo-200 dark:border-indigo-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-indigo-500 dark:before:bg-indigo-400 before:rounded-r-full",
+    sidebarActiveIcon: "text-indigo-600 dark:text-indigo-400",
+    sidebarHover: "hover:bg-indigo-50/60 dark:hover:bg-indigo-950/40 hover:text-indigo-900 dark:hover:text-indigo-200",
+    sidebarFooterCard: "bg-gradient-to-br from-indigo-50/80 to-cyan-50 dark:from-indigo-950/30 dark:to-cyan-950/40 border-indigo-200/80 dark:border-indigo-900/40",
+    sidebarFooterIcon: "text-indigo-500 dark:text-indigo-400",
+    sidebarFooterTitle: "text-indigo-900 dark:text-indigo-300",
+    primaryButton: "bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white shadow-indigo-600/20",
   },
   blue: {
     name: "blue",
@@ -59,6 +111,19 @@ export const THEME_PALETTES: Record<string, ThemeStyleDefinition> = {
     cardHighlight: "border-blue-500/40 bg-blue-50/20 dark:bg-blue-950/20",
     activeNavGlow: "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/15 border-blue-200 dark:border-blue-500/30 before:bg-blue-500",
     swatchBg: "from-blue-600 to-cyan-400",
+    primaryHex: "#2563EB",
+    primaryHoverHex: "#3B82F6",
+    primarySoftHex: "rgba(37, 99, 235, 0.15)",
+    sidebarBorder: "border-blue-200/80 dark:border-blue-900/40",
+    sidebarHeaderLabel: "text-blue-700 dark:text-blue-400",
+    sidebarHeaderBorder: "border-blue-100 dark:border-blue-900/30",
+    sidebarActive: "bg-blue-50 dark:bg-blue-500/15 text-blue-950 dark:text-blue-200 font-bold shadow-xs dark:shadow-lg border border-blue-200 dark:border-blue-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-blue-500 dark:before:bg-blue-400 before:rounded-r-full",
+    sidebarActiveIcon: "text-blue-600 dark:text-blue-400",
+    sidebarHover: "hover:bg-blue-50/60 dark:hover:bg-blue-950/40 hover:text-blue-900 dark:hover:text-blue-200",
+    sidebarFooterCard: "bg-gradient-to-br from-blue-50/80 to-sky-50 dark:from-blue-950/30 dark:to-sky-950/40 border-blue-200/80 dark:border-blue-900/40",
+    sidebarFooterIcon: "text-blue-500 dark:text-blue-400",
+    sidebarFooterTitle: "text-blue-900 dark:text-blue-300",
+    primaryButton: "bg-blue-600 hover:bg-blue-500 active:scale-95 text-white shadow-blue-600/20",
   },
   rose: {
     name: "rose",
@@ -70,6 +135,19 @@ export const THEME_PALETTES: Record<string, ThemeStyleDefinition> = {
     cardHighlight: "border-rose-500/40 bg-rose-50/20 dark:bg-rose-950/20",
     activeNavGlow: "text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/15 border-rose-200 dark:border-rose-500/30 before:bg-rose-500",
     swatchBg: "from-rose-500 to-amber-500",
+    primaryHex: "#E11D48",
+    primaryHoverHex: "#F43F5E",
+    primarySoftHex: "rgba(225, 29, 72, 0.15)",
+    sidebarBorder: "border-rose-200/80 dark:border-rose-900/40",
+    sidebarHeaderLabel: "text-rose-700 dark:text-rose-400",
+    sidebarHeaderBorder: "border-rose-100 dark:border-rose-900/30",
+    sidebarActive: "bg-rose-50 dark:bg-rose-500/15 text-rose-950 dark:text-rose-200 font-bold shadow-xs dark:shadow-lg border border-rose-200 dark:border-rose-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-rose-500 dark:before:bg-rose-400 before:rounded-r-full",
+    sidebarActiveIcon: "text-rose-600 dark:text-rose-400",
+    sidebarHover: "hover:bg-rose-50/60 dark:hover:bg-rose-950/40 hover:text-rose-900 dark:hover:text-rose-200",
+    sidebarFooterCard: "bg-gradient-to-br from-rose-50/80 to-pink-50 dark:from-rose-950/30 dark:to-pink-950/40 border-rose-200/80 dark:border-rose-900/40",
+    sidebarFooterIcon: "text-rose-500 dark:text-rose-400",
+    sidebarFooterTitle: "text-rose-900 dark:text-rose-300",
+    primaryButton: "bg-rose-600 hover:bg-rose-500 active:scale-95 text-white shadow-rose-600/20",
   },
   violet: {
     name: "violet",
@@ -81,6 +159,19 @@ export const THEME_PALETTES: Record<string, ThemeStyleDefinition> = {
     cardHighlight: "border-purple-500/40 bg-purple-50/20 dark:bg-purple-950/20",
     activeNavGlow: "text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/15 border-purple-200 dark:border-purple-500/30 before:bg-purple-500",
     swatchBg: "from-purple-500 to-fuchsia-500",
+    primaryHex: "#9333EA",
+    primaryHoverHex: "#A855F7",
+    primarySoftHex: "rgba(147, 51, 234, 0.15)",
+    sidebarBorder: "border-purple-200/80 dark:border-purple-900/40",
+    sidebarHeaderLabel: "text-purple-700 dark:text-purple-400",
+    sidebarHeaderBorder: "border-purple-100 dark:border-purple-900/30",
+    sidebarActive: "bg-purple-50 dark:bg-purple-500/15 text-purple-950 dark:text-purple-200 font-bold shadow-xs dark:shadow-lg border border-purple-200 dark:border-purple-500/30 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-purple-500 dark:before:bg-purple-400 before:rounded-r-full",
+    sidebarActiveIcon: "text-purple-600 dark:text-purple-400",
+    sidebarHover: "hover:bg-purple-50/60 dark:hover:bg-purple-950/40 hover:text-purple-900 dark:hover:text-purple-200",
+    sidebarFooterCard: "bg-gradient-to-br from-purple-50/80 to-fuchsia-50 dark:from-purple-950/30 dark:to-fuchsia-950/40 border-purple-200/80 dark:border-purple-900/40",
+    sidebarFooterIcon: "text-purple-500 dark:text-purple-400",
+    sidebarFooterTitle: "text-purple-900 dark:text-purple-300",
+    primaryButton: "bg-purple-600 hover:bg-purple-500 active:scale-95 text-white shadow-purple-600/20",
   },
   slate: {
     name: "slate",
@@ -92,6 +183,19 @@ export const THEME_PALETTES: Record<string, ThemeStyleDefinition> = {
     cardHighlight: "border-slate-500/40 bg-slate-50/20 dark:bg-slate-800/20",
     activeNavGlow: "text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800/60 border-slate-300 dark:border-slate-700 before:bg-slate-700",
     swatchBg: "from-slate-800 to-slate-500",
+    primaryHex: "#475569",
+    primaryHoverHex: "#64748B",
+    primarySoftHex: "rgba(71, 85, 105, 0.15)",
+    sidebarBorder: "border-slate-300/80 dark:border-slate-800/80",
+    sidebarHeaderLabel: "text-slate-800 dark:text-slate-300",
+    sidebarHeaderBorder: "border-slate-200 dark:border-slate-800",
+    sidebarActive: "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold shadow-xs dark:shadow-lg border border-slate-300 dark:border-slate-700 before:absolute before:left-0 before:top-2 before:bottom-2 before:w-1.5 before:bg-slate-800 dark:before:bg-slate-200 before:rounded-r-full",
+    sidebarActiveIcon: "text-slate-800 dark:text-slate-200",
+    sidebarHover: "hover:bg-slate-100/60 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-100",
+    sidebarFooterCard: "bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900/60 dark:to-slate-800/60 border-slate-300 dark:border-slate-700",
+    sidebarFooterIcon: "text-slate-600 dark:text-slate-300",
+    sidebarFooterTitle: "text-slate-900 dark:text-slate-100",
+    primaryButton: "bg-slate-800 hover:bg-slate-700 active:scale-95 text-white shadow-slate-800/20",
   },
 };
 
@@ -186,6 +290,16 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
   const themeStyle = useMemo(() => {
     return THEME_PALETTES[branding.themeColor] || THEME_PALETTES.emerald;
   }, [branding.themeColor]);
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      root.style.setProperty("--primary-main", themeStyle.primaryHex);
+      root.style.setProperty("--primary-hover", themeStyle.primaryHoverHex);
+      root.style.setProperty("--primary-soft", themeStyle.primarySoftHex);
+      root.setAttribute("data-theme", branding.themeColor);
+    }
+  }, [themeStyle, branding.themeColor]);
 
   return (
     <BrandingContext.Provider

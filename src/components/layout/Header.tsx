@@ -170,14 +170,14 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-b border-amber-200/80 dark:border-amber-900/40 px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs dark:shadow-2xl transition-all shrink-0 h-16 w-full">
+    <header className={`sticky top-0 z-40 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-b ${themeStyle.sidebarBorder} px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs dark:shadow-2xl transition-all shrink-0 h-16 w-full`}>
       {/* Left Brand Logo & Context */}
       <div className="flex items-center gap-3 shrink-0">
         {/* Mobile Menu Toggle Button */}
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
-            className="md:hidden p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 touch-target"
+            className={`md:hidden p-2 rounded-xl ${themeStyle.accentBadge} hover:opacity-80 transition-all touch-target`}
             title="Toggle Menu"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
