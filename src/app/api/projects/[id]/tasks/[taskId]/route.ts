@@ -12,7 +12,7 @@ export async function PATCH(
 
   const { id: projectId, taskId } = params;
 
-  const isAdminOrOwner = authRes.activeRole === "OWNER" || (authRes.activeRole as string) === "ADMIN" || authRes.activeRole === "SALES";
+  const isAdminOrOwner = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES"].includes(authRes.activeRole as string);
 
   // Authorization: OWNER, ADMIN, SALES or assigned EMPLOYEE / task assignee
   if (!isAdminOrOwner) {
@@ -210,7 +210,7 @@ export async function DELETE(
         { status: 403 }
       );
     }
-  } else if (authRes.activeRole !== "OWNER") {
+  } else if (!["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole as string)) {
     return NextResponse.json(
       { success: false, error: "Forbidden: Insufficient permissions" },
       { status: 403 }

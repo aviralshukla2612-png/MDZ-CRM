@@ -217,6 +217,32 @@ export function EmployeeProjectKanban({
     taskId: string,
     nextStatus: string
   ) => {
+    // Optimistic visual update
+    setOptimisticProjects((prev) => {
+      const base = prev ? [...prev] : [...displayedProjects];
+      return base.map((p) => {
+        if (p.id !== projectId) return p;
+        const updatedTasks = (p.tasks || []).map((t: any) =>
+          t.id === taskId ? { ...t, status: nextStatus } : t
+        );
+        const completedTasks = updatedTasks.filter(
+          (t: any) => t.status === "COMPLETED" || t.status === "DONE"
+        ).length;
+        const totalTasks = updatedTasks.length;
+        const progress =
+          totalTasks > 0
+            ? Math.round((completedTasks / totalTasks) * 100)
+            : p.progress;
+        return {
+          ...p,
+          tasks: updatedTasks,
+          completedTasks,
+          progress,
+          progressPercentage: progress,
+        };
+      });
+    });
+
     try {
       const res = await fetch(`/mdz-crm/api/projects/${projectId}/tasks/${taskId}`, {
         method: "PATCH",
@@ -229,9 +255,11 @@ export function EmployeeProjectKanban({
         onRefresh();
       } else {
         showToast(json.error || "Failed to update task", "error");
+        setOptimisticProjects(null);
       }
     } catch (e) {
       showToast("Error updating task status", "error");
+      setOptimisticProjects(null);
     }
   };
 
@@ -429,7 +457,7 @@ export function EmployeeProjectKanban({
     if (!proj) return;
 
     const currentStage = (proj.status || "PLANNING").toUpperCase();
-    if (currentStage === targetStage) return;
+    if (currentStage === targetStage && proj.status === targetStage) return;
 
     // Optimistic visual update (0ms lag)
     setOptimisticProjects((prev) => {
@@ -1132,21 +1160,9 @@ export function EmployeeProjectKanban({
         {/* KANBAN BOARD (Columns by Status with Drop Zones) */}
         <div className="flex overflow-x-auto gap-4 items-start pb-4 scrollbar-thin max-w-full">
           {KANBAN_COLUMNS.map((col) => {
-            const isProjectPastDeadline = (p: ProjectCardItem) => {
-              const s = (p.status || "").toUpperCase();
-              const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
-              if (isCompleted) return false;
-              if (!p.targetDeadline || p.targetDeadline === "No Deadline" || !p.targetDeadline.trim()) return false;
-              const parsed = new Date(p.targetDeadline);
-              if (isNaN(parsed.getTime())) return false;
-              parsed.setHours(23, 59, 59, 999);
-              return parsed.getTime() < Date.now();
-            };
-
             const colProjects = projectsToRender.filter((p) => {
               const s = (p.status || "").toUpperCase();
               const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
-              const isOverdue = isProjectPastDeadline(p);
 
               // 1. Completed column always displays completed projects
               if (col.id === "COMPLETED") {
@@ -1156,23 +1172,27 @@ export function EmployeeProjectKanban({
               // Completed projects do not show in other stages
               if (isCompleted) return false;
 
-              // 2. Incomplete column displays explicitly incomplete projects OR any project not completed past its deadline
+              // 2. Incomplete column displays explicitly incomplete / dropped / cancelled projects
               if (col.id === "INCOMPLETE") {
                 return (
                   s === "INCOMPLETE" ||
                   s === "DROPPED" ||
                   s === "CANCELLED" ||
-                  s.includes("INCOMPLETE") ||
-                  isOverdue
+                  s.includes("INCOMPLETE")
                 );
               }
 
-              // Overdue projects automatically move to the Incomplete column
-              if (isOverdue) {
-                return false;
+              // 3. In Progress column
+              if (col.id === "IN_PROGRESS") {
+                return s === "IN_PROGRESS" || s === "ACTIVE" || s === "CURRENT" || s.includes("PROGRESS");
               }
 
-              // 3. Other stages
+              // 4. On Hold / Revision column
+              if (col.id === "ON_HOLD") {
+                return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED" || s === "REVISION";
+              }
+
+              // 5. Planning column
               if (col.id === "PLANNING") {
                 const isOther =
                   s === "IN_PROGRESS" ||
@@ -1198,12 +1218,7 @@ export function EmployeeProjectKanban({
                   !isOther
                 );
               }
-              if (col.id === "IN_PROGRESS") {
-                return s === "IN_PROGRESS" || s === "ACTIVE" || s === "CURRENT" || s.includes("PROGRESS");
-              }
-              if (col.id === "ON_HOLD") {
-                return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED" || s === "REVISION";
-              }
+
               return s === col.id;
             });
             const totalVal = colProjects.reduce((acc, curr) => acc + (curr.contractValue || 0), 0);
