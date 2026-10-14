@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   FolderKanban,
@@ -197,6 +198,7 @@ export function EmployeeProjectKanban({
   onRefresh,
   initialSelectedEmployeeId,
 }: EmployeeProjectKanbanProps) {
+  const router = useRouter();
   const { data: session } = useSession();
   const userRole = ((session?.user as any)?.role || "").toUpperCase();
   const isAdminOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(userRole);
@@ -1337,44 +1339,44 @@ export function EmployeeProjectKanban({
                     handleDropProject(pId, col.id);
                   }
                 }}
-                className="bg-slate-50/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-3.5 space-y-3 flex flex-col min-h-[500px] transition-all w-[320px] min-w-[300px] shrink-0"
+                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-3 flex flex-col min-h-[580px] max-h-[calc(100vh-210px)] transition-all w-[330px] shrink-0 shadow-xs"
               >
-                {/* Column Header */}
-                <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/80 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${
+                {/* Sticky Column Header */}
+                <div className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md pb-2.5 pt-0.5 border-b border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                       col.id === "IN_PROGRESS"
-                        ? "bg-indigo-500 animate-pulse"
+                        ? "bg-indigo-500 animate-pulse ring-4 ring-indigo-500/20"
                         : col.id === "COMPLETED"
-                        ? "bg-emerald-500"
+                        ? "bg-emerald-500 ring-4 ring-emerald-500/20"
                         : col.id === "ON_HOLD"
-                        ? "bg-amber-500"
+                        ? "bg-amber-500 ring-4 ring-amber-500/20"
                         : col.id === "INCOMPLETE"
-                        ? "bg-rose-500"
-                        : "bg-blue-500"
+                        ? "bg-rose-500 ring-4 ring-rose-500/20"
+                        : "bg-blue-500 ring-4 ring-blue-500/20"
                     }`} />
-                    <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                    <h3 className="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
                       {col.title}
                     </h3>
                   </div>
 
-                  <span className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full border ${col.badgeBg}`}>
-                    {colProjects.length}
-                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isAdminOrSubAdmin && totalVal > 0 && (
+                      <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
+                        ₹{totalVal >= 100000 ? `${(totalVal / 100000).toFixed(1)}L` : totalVal.toLocaleString("en-IN")}
+                      </span>
+                    )}
+                    <span className={`text-[10px] font-mono font-extrabold px-2 py-0.5 rounded-full border ${col.badgeBg}`}>
+                      {colProjects.length}
+                    </span>
+                  </div>
                 </div>
 
-                {/* Total Value Summary for column */}
-                {isAdminOrSubAdmin && totalVal > 0 && (
-                  <div className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 px-1">
-                    Value: ₹{totalVal.toLocaleString("en-IN")}
-                  </div>
-                )}
-
-                {/* Cards Container */}
-                <div className="space-y-3 flex-1 overflow-y-auto max-h-[calc(100vh-270px)] pr-1 scrollbar-thin">
+                {/* Cards Container with smooth scrolling and top padding so cards never clip */}
+                <div className="space-y-2.5 flex-1 overflow-y-auto pt-2.5 pb-4 pr-1 scrollbar-thin scroll-smooth">
                   {colProjects.length === 0 ? (
-                    <div className="h-40 rounded-2xl border-2 border-dashed border-slate-300/80 dark:border-slate-700/80 flex flex-col items-center justify-center text-center p-4 text-slate-500 dark:text-slate-400 text-xs space-y-1">
-                      <span className="font-semibold">No projects in this stage</span>
+                    <div className="h-40 rounded-xl border-2 border-dashed border-slate-300/70 dark:border-slate-700/70 flex flex-col items-center justify-center text-center p-4 text-slate-400 dark:text-slate-500 text-xs space-y-1">
+                      <span className="font-medium">No projects in this stage</span>
                       <span className="text-[10px] text-slate-400 dark:text-slate-500">Drop cards here to change stage</span>
                     </div>
                   ) : (
@@ -1429,20 +1431,21 @@ export function EmployeeProjectKanban({
                             e.dataTransfer.effectAllowed = "move";
                           }}
                           onDragEnd={() => setDraggedProjectId(null)}
-                          className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 hover:border-indigo-400 dark:hover:border-indigo-500/80 p-3.5 shadow-xs hover:shadow-lg transition-all space-y-3 group cursor-grab active:cursor-grabbing relative ${
+                          onClick={() => router.push(`/projects/${proj.id}`)}
+                          className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800/90 hover:border-indigo-400 dark:hover:border-indigo-500/80 p-3.5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 space-y-2.5 group cursor-pointer relative ${
                             isBeingDragged ? "opacity-30 scale-95 border-dashed border-indigo-500" : ""
                           }`}
                         >
                           {/* Top Badges & Quick Stage Move */}
-                          <div className="flex items-center justify-between gap-1.5">
+                          <div className="flex items-center justify-between gap-1.5" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1.5 shrink-0 min-w-0">
-                              <GripVertical className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors shrink-0" />
+                              <GripVertical className="w-3.5 h-3.5 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors shrink-0 cursor-grab active:cursor-grabbing" />
                               <span
-                                className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 ${priorityColor}`}
+                                className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border whitespace-nowrap shrink-0 ${priorityColor}`}
                               >
                                 {proj.priority}
                               </span>
-                              <span className="text-[10px] font-mono font-semibold text-slate-400 dark:text-slate-500 truncate max-w-[85px]">
+                              <span className="text-[10px] font-mono font-semibold text-slate-400 dark:text-slate-500 truncate max-w-[90px]">
                                 {proj.projectNumber || proj.id.slice(0, 8)}
                               </span>
                             </div>
@@ -1462,8 +1465,7 @@ export function EmployeeProjectKanban({
                                     : "PLANNING"
                                 }
                                 onChange={(e) => handleDropProject(proj.id, e.target.value)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer transition-colors"
+                                className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:text-slate-300 outline-none cursor-pointer transition-colors shadow-2xs"
                                 title="Move Stage"
                               >
                                 <option value="PLANNING">Planning</option>
@@ -1474,15 +1476,11 @@ export function EmployeeProjectKanban({
                               </select>
 
                               {/* Edit Project Button for Admins */}
-                              {((session?.user as any)?.role === "OWNER" ||
-                                (session?.user as any)?.role === "ADMIN" ||
-                                (session?.user as any)?.role === "SUB_ADMIN" ||
-                                (session?.user as any)?.role === "SALES") && (
+                              {isAdminOrSubAdmin && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    e.preventDefault();
                                     const rawProj = allProjects.find((p) => p.id === proj.id) || proj;
                                     setEditingProject(rawProj);
                                   }}
@@ -1497,29 +1495,33 @@ export function EmployeeProjectKanban({
 
                           {/* Project Name & Client */}
                           <div className="space-y-1">
-                            <Link
-                              href={`/projects/${proj.id}`}
-                              className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors block line-clamp-2 leading-snug"
-                            >
+                            <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 leading-snug">
                               {proj.name}
-                            </Link>
-                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-                              <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                              <span className="truncate">{proj.clientName}</span>
+                            </h4>
+                            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                <span className="truncate">{proj.clientName}</span>
+                              </div>
+                              {isAdminOrSubAdmin && proj.contractValue > 0 && (
+                                <span className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300 shrink-0 ml-1">
+                                  ₹{proj.contractValue >= 100000 ? `${(proj.contractValue / 100000).toFixed(1)}L` : proj.contractValue.toLocaleString("en-IN")}
+                                </span>
+                              )}
                             </div>
                           </div>
 
-                          {/* Progress Bar */}
+                          {/* Slim Progress Bar */}
                           <div className="space-y-1">
-                            <div className="flex justify-between items-center text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
+                            <div className="flex justify-between items-center text-[10px] font-mono font-bold text-slate-400 dark:text-slate-500">
                               <span>Progress</span>
-                              <span className="text-indigo-600 dark:text-indigo-400 font-black">
+                              <span className="text-slate-700 dark:text-slate-300 font-extrabold">
                                 {proj.progress || proj.progressPercentage || 0}%
                               </span>
                             </div>
-                            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div className="w-full h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all"
+                                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 dark:from-indigo-400 dark:to-indigo-500 rounded-full transition-all duration-300"
                                 style={{
                                   width: `${proj.progress || proj.progressPercentage || 0}%`,
                                 }}
@@ -1550,13 +1552,13 @@ export function EmployeeProjectKanban({
                             ).length;
 
                             return (
-                              <div className="space-y-1.5 pt-1">
+                              <div className="space-y-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
                                 {activeCardTasks.length > 0 && (
                                   <div className="space-y-1">
                                     {activeCardTasks.slice(0, 2).map((tsk: any) => (
                                       <div
                                         key={tsk.id}
-                                        className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 text-xs group"
+                                        className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 text-xs group/task"
                                       >
                                         <span className="truncate font-medium text-slate-800 dark:text-slate-200 text-[11px] flex-1">
                                           {tsk.title}
@@ -1585,7 +1587,7 @@ export function EmployeeProjectKanban({
                                             className="p-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
                                             title="Edit or Reassign Task"
                                           >
-                                            <Edit3 className="w-3.5 h-3.5" />
+                                            <Edit3 className="w-3 h-3" />
                                           </button>
                                           <button
                                             type="button"
@@ -1594,9 +1596,9 @@ export function EmployeeProjectKanban({
                                               handleUpdateTaskFromKanban(proj.id, tsk.id, "COMPLETED");
                                             }}
                                             className="p-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 transition-colors shrink-0 cursor-pointer"
-                                            title="Complete task and move to Calendar"
+                                            title="Complete task"
                                           >
-                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            <CheckCircle2 className="w-3 h-3" />
                                           </button>
                                         </div>
                                       </div>
@@ -1610,10 +1612,10 @@ export function EmployeeProjectKanban({
                                 )}
 
                                 {completedTasksCount > 0 && (
-                                  <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 px-2 py-1 rounded-lg">
+                                  <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 px-2 py-0.5 rounded-md">
                                     <span className="flex items-center gap-1">
                                       <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                      <span>{completedTasksCount} task{completedTasksCount > 1 ? "s" : ""} completed</span>
+                                      <span>{completedTasksCount} task{completedTasksCount > 1 ? "s" : ""} done</span>
                                     </span>
                                     <button
                                       type="button"
@@ -1623,7 +1625,7 @@ export function EmployeeProjectKanban({
                                       }}
                                       className="underline hover:text-emerald-900 dark:hover:text-emerald-200 font-bold flex items-center gap-0.5 cursor-pointer"
                                     >
-                                      <span>In Calendar</span>
+                                      <span>Calendar</span>
                                       <ArrowRight className="w-2.5 h-2.5" />
                                     </button>
                                   </div>
@@ -1632,8 +1634,8 @@ export function EmployeeProjectKanban({
                             );
                           })()}
 
-                          {/* Card Footer: Metadata (Tasks, Overdue/Deadline, Team Avatars) */}
-                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+                          {/* Card Footer: Metadata (Tasks, Overdue/Deadline, Team Avatars, Subtle Arrow) */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs" onClick={(e) => e.stopPropagation()}>
                             {/* Left: Tasks count & Target Deadline */}
                             <div className="flex items-center gap-2 flex-wrap min-w-0">
                               <span
@@ -1646,7 +1648,6 @@ export function EmployeeProjectKanban({
 
                               <Link
                                 href={`/projects/${proj.id}?tab=chat`}
-                                onClick={(e) => e.stopPropagation()}
                                 className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors shrink-0"
                                 title="Project Team Chat & Discussion"
                               >
@@ -1685,51 +1686,46 @@ export function EmployeeProjectKanban({
                               })()}
                             </div>
 
-                            {/* Right: Assigned Team Avatars Stack */}
-                            <div className="flex items-center -space-x-1.5 shrink-0" title={teamTooltip}>
-                              {activeTeamMembers.slice(0, 3).map((m: any, idx: number) => (
-                                <div
-                                  key={m.id || idx}
-                                  className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-2xs shrink-0"
-                                  title={`${m.name} (${m.role || "Developer"})`}
-                                >
-                                  {m.name.charAt(0).toUpperCase()}
-                                </div>
-                              ))}
-                              {activeTeamMembers.length > 3 && (
-                                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-2xs shrink-0">
-                                  +{activeTeamMembers.length - 3}
-                                </div>
-                              )}
-                              {activeTeamMembers.length === 0 && (
-                                <span className="text-[10px] text-slate-400 italic">No team</span>
-                              )}
-                              {!isEmployee && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setAssignProjectId(proj.id);
-                                    setIsAssignModalOpen(true);
-                                  }}
-                                  className="w-6 h-6 rounded-full border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center text-xs font-bold transition-colors shrink-0 ml-1 cursor-pointer bg-white dark:bg-slate-800"
-                                  title="Assign Team Member"
-                                >
-                                  +
-                                </button>
-                              )}
-                            </div>
-                          </div>
+                            {/* Right: Assigned Team Avatars Stack & Sleek Arrow */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="flex items-center -space-x-1.5 shrink-0" title={teamTooltip}>
+                                {activeTeamMembers.slice(0, 3).map((m: any, idx: number) => (
+                                  <div
+                                    key={m.id || idx}
+                                    className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-2xs shrink-0"
+                                    title={`${m.name} (${m.role || "Developer"})`}
+                                  >
+                                    {m.name.charAt(0).toUpperCase()}
+                                  </div>
+                                ))}
+                                {activeTeamMembers.length > 3 && (
+                                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-2xs shrink-0">
+                                    +{activeTeamMembers.length - 3}
+                                  </div>
+                                )}
+                                {activeTeamMembers.length === 0 && (
+                                  <span className="text-[10px] text-slate-400 italic">No team</span>
+                                )}
+                                {!isEmployee && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setAssignProjectId(proj.id);
+                                      setIsAssignModalOpen(true);
+                                    }}
+                                    className="w-5 h-5 rounded-full border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center text-[10px] font-bold transition-colors shrink-0 ml-0.5 cursor-pointer bg-white dark:bg-slate-800"
+                                    title="Assign Team Member"
+                                  >
+                                    +
+                                  </button>
+                                )}
+                              </div>
 
-                          {/* Action Footer: Sleek Workspace Link */}
-                          <div className="pt-1">
-                            <Link
-                              href={`/projects/${proj.id}`}
-                              className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-indigo-50 dark:bg-slate-800/60 dark:hover:bg-indigo-950/50 text-slate-700 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs group/btn"
-                            >
-                              <span>Open Workspace</span>
-                              <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
-                            </Link>
+                              <div className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all">
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </div>
+                            </div>
                           </div>
                         </div>
                       );
