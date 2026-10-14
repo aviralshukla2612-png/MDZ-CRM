@@ -19,7 +19,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [registeredSuccess, setRegisteredSuccess] = useState(false);
   const [isForgotOpen, setIsForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState<string | null>(null);
+  const [forgotDevUrl, setForgotDevUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -297,45 +301,97 @@ export default function LoginPage() {
         onClose={() => {
           setIsForgotOpen(false);
           setForgotSubmitted(false);
+          setForgotError(null);
+          setForgotDevUrl(null);
         }}
         title="Reset Password"
         subtitle="Verification link will be sent to your registered corporate email."
       >
         {forgotSubmitted ? (
-          <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center space-y-2">
+          <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center space-y-3">
             <ShieldCheck className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
-            <h4 className="text-sm font-bold text-emerald-900 dark:text-emerald-300">Reset Link Sent</h4>
+            <h4 className="text-sm font-bold text-emerald-900 dark:text-emerald-300">Reset Instructions Dispatched</h4>
             <p className="text-xs text-slate-600 dark:text-slate-300">
-              Check your inbox for instructions to reset your corporate password.
+              If an account with that email exists, check your inbox for instructions to reset your password.
             </p>
+            {forgotDevUrl && (
+              <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800 space-y-1">
+                <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300 block">
+                  Quick Access Reset Link:
+                </span>
+                <Link
+                  href={forgotDevUrl.replace("https://www.millionairedizital.com/mdz-crm", "").replace("http://localhost:3040/mdz-crm", "") || forgotDevUrl}
+                  onClick={() => setIsForgotOpen(false)}
+                  className="inline-block text-xs font-bold text-amber-600 dark:text-amber-400 underline hover:opacity-80 break-all"
+                >
+                  Click here to set new password now &rarr;
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              setForgotSubmitted(true);
+              setForgotError(null);
+              setForgotDevUrl(null);
+              const targetEmail = (forgotEmail || emailOrId).trim();
+              if (!targetEmail) {
+                setForgotError("Please enter your registered email address.");
+                return;
+              }
+
+              try {
+                setForgotLoading(true);
+                const res = await fetch("/mdz-crm/api/auth/forgot-password", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ email: targetEmail }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  setForgotSubmitted(true);
+                  if (data.devResetUrl) {
+                    setForgotDevUrl(data.devResetUrl);
+                  }
+                } else {
+                  setForgotError(data.error || "Failed to process password reset request.");
+                }
+              } catch {
+                setForgotError("Network error. Please check your connection and try again.");
+              } finally {
+                setForgotLoading(false);
+              }
             }}
             className="space-y-4"
           >
+            {forgotError && (
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-900 text-xs text-rose-700 dark:text-rose-300">
+                {forgotError}
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Email
+                Registered Email
               </label>
               <input
-                type="text"
+                type="email"
                 required
-                defaultValue={emailOrId}
-                placeholder="Enter your email"
+                value={forgotEmail || emailOrId}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                placeholder="Enter your registered email (e.g. name@company.com)"
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs"
+              disabled={forgotLoading}
+              className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
             >
               <KeyRound className="w-4 h-4" />
-              <span>Send Reset Instructions</span>
+              <span>{forgotLoading ? "Sending..." : "Send Reset Instructions"}</span>
             </button>
           </form>
         )}
