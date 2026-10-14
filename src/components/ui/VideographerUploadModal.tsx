@@ -43,7 +43,7 @@ export function VideographerUploadModal({
   useEffect(() => {
     if (isOpen) {
       // Fetch editors
-      fetch("/api/videographer/footage-upload")
+      fetch("/mdz-crm/api/videographer/footage-upload")
         .then((res) => res.json())
         .then((json) => {
           if (json.success && json.editors) {
@@ -67,7 +67,7 @@ export function VideographerUploadModal({
       setLoading(true);
       const selectedEditor = editors.find((ed) => ed.id === selectedEditorId);
 
-      const res = await fetch("/api/videographer/footage-upload", {
+      const res = await fetch("/mdz-crm/api/videographer/footage-upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

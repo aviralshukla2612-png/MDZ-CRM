@@ -62,7 +62,7 @@ export default function SalesPersonalNotesPage() {
   const fetchNotes = async () => {
     try {
       setLoading(true);
-      let url = "/api/sales/notes";
+      let url = "/mdz-crm/api/sales/notes";
       const params = new URLSearchParams();
       if (selectedCategory !== "ALL") {
         params.append("category", selectedCategory);
@@ -128,13 +128,13 @@ export default function SalesPersonalNotesPage() {
 
       let res;
       if (activeNote?.id) {
-        res = await fetch(`/api/sales/notes/${activeNote.id}`, {
+        res = await fetch(`/mdz-crm/api/sales/notes/${activeNote.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
       } else {
-        res = await fetch("/api/sales/notes", {
+        res = await fetch("/mdz-crm/api/sales/notes", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -158,7 +158,7 @@ export default function SalesPersonalNotesPage() {
     if (!confirm("Are you sure you want to delete this personal draft note?")) return;
 
     try {
-      const res = await fetch(`/api/sales/notes/${id}`, {
+      const res = await fetch(`/mdz-crm/api/sales/notes/${id}`, {
         method: "DELETE",
       });
       const json = await res.json();
@@ -176,7 +176,7 @@ export default function SalesPersonalNotesPage() {
   const handleTogglePin = async (note: Note, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const res = await fetch(`/api/sales/notes/${note.id}`, {
+      const res = await fetch(`/mdz-crm/api/sales/notes/${note.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isPinned: !note.isPinned }),

@@ -245,7 +245,7 @@ export default function EventManagementPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/events");
+      const res = await fetch("/mdz-crm/api/events");
       const json = await res.json();
       if (json.success && json.data) {
         setEvents(json.data);
@@ -263,7 +263,7 @@ export default function EventManagementPage() {
   // Fetch active event detail
   const fetchActiveEventDetail = async (id: string) => {
     try {
-      const res = await fetch(`/api/events/${id}`);
+      const res = await fetch(`/mdz-crm/api/events/${id}`);
       const json = await res.json();
       if (json.success && json.data) {
         setActiveEvent(json.data);
@@ -300,7 +300,7 @@ export default function EventManagementPage() {
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("/api/events", {
+      const res = await fetch("/mdz-crm/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newEventData),
@@ -339,7 +339,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/timeline`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/timeline`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(timelineData),
@@ -358,7 +358,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/run-of-show`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/run-of-show`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(runOfShowData),
@@ -377,7 +377,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/crew`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/crew`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(crewData),
@@ -394,7 +394,7 @@ export default function EventManagementPage() {
 
   const handleCrewAction = async (memberId: string, action: string) => {
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/crew`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/crew`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memberId, action }),
@@ -412,7 +412,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/vendors`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/vendors`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(vendorData),
@@ -431,7 +431,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/budget`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/budget`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(budgetData),
@@ -450,7 +450,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/marketing`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/marketing`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(marketingData),
@@ -469,7 +469,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/guests`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/guests`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(guestData),
@@ -486,7 +486,7 @@ export default function EventManagementPage() {
 
   const handleToggleCheckIn = async (guestId: string) => {
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/guests`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/guests`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ guestId, action: "TOGGLE_CHECK_IN" }),
@@ -504,7 +504,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/incidents`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/incidents`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(incidentData),
@@ -521,7 +521,7 @@ export default function EventManagementPage() {
 
   const handleResolveIncident = async (incidentId: string) => {
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/incidents`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/incidents`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ incidentId, status: "RESOLVED" }),
@@ -539,7 +539,7 @@ export default function EventManagementPage() {
     e.preventDefault();
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/media`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(mediaData),
@@ -557,7 +557,7 @@ export default function EventManagementPage() {
   const handleSaveClosure = async (isFinalSignOff = false) => {
     if (!selectedEventId) return;
     try {
-      const res = await fetch(`/api/events/${selectedEventId}/closure`, {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}/closure`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...closureData, isFinalSignOff }),
