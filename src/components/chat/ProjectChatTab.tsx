@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { Send, Paperclip, Loader2, Trash2, FileText, Download } from "lucide-react";
+import { Send, Paperclip, Loader2, Trash2, FileText, Download, MessageSquare } from "lucide-react";
 import { useChatSocket } from "@/lib/useChatSocket";
 import { useToast } from "@/components/ui/Toast";
 
@@ -23,6 +23,7 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
   const [inputText, setInputText] = useState("");
   const [uploadingFile, setUploadingFile] = useState(false);
   const [attachments, setAttachments] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -43,6 +44,7 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
     let isMounted = true;
     const initChat = async () => {
       setLoading(true);
+      setError(null);
       try {
         const res = await fetch("/mdz-crm/api/chat/conversations", {
           method: "POST",
@@ -63,9 +65,12 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
             // Mark as read
             fetch(`/mdz-crm/api/chat/conversations/${json.data.id}/read`, { method: "PATCH" });
           }
+        } else if (isMounted) {
+          setError(json.error || "Failed to load project chat");
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to load project chat:", err);
+        if (isMounted) setError(err.message || "Network error loading project chat");
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -214,6 +219,55 @@ export function ProjectChatTab({ projectId, projectName }: Props) {
       <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mb-2" />
         <p className="text-sm text-slate-500 dark:text-slate-400">Loading project chat...</p>
+      </div>
+    );
+  }
+
+  if (error || !conversation) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs space-y-3 text-center">
+        <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-500 mx-auto flex items-center justify-center">
+          <MessageSquare className="w-6 h-6" />
+        </div>
+        <div>
+          <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">Project Chat Connecting</h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
+            {error || "Project communication channel is being established."}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const reInit = async () => {
+              setLoading(true);
+              setError(null);
+              try {
+                const res = await fetch("/mdz-crm/api/chat/conversations", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ type: "PROJECT", projectId }),
+                });
+                const json = await res.json();
+                if (json.success && json.data) {
+                  setConversation(json.data);
+                  const msgRes = await fetch(`/mdz-crm/api/chat/conversations/${json.data.id}/messages`);
+                  const msgJson = await msgRes.json();
+                  if (msgJson.success) setMessages(msgJson.data || []);
+                } else {
+                  setError(json.error || "Failed to initialize conversation");
+                }
+              } catch (e: any) {
+                setError(e.message || "Failed to connect");
+              } finally {
+                setLoading(false);
+              }
+            };
+            reInit();
+          }}
+          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-all shadow-xs cursor-pointer"
+        >
+          Connect to Project Chat
+        </button>
       </div>
     );
   }

@@ -6,30 +6,30 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string; requestId: string } }
 ) {
-  const authRes = await requireRole(["OWNER"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
-  const projectId = params.id;
+  const rawId = params.id;
   const requestId = params.requestId;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      const changeRequest = await tx.changeRequest.findFirst({
-        where: { id: requestId, projectId },
-        include: { items: true },
-      });
-
-      if (!changeRequest) {
-        throw { status: 404, message: "Change request not found for this project." };
-      }
-
-      const project = await tx.project.findUnique({
-        where: { id: projectId },
+      const project = await tx.project.findFirst({
+        where: { OR: [{ id: rawId }, { projectNumber: rawId }] },
         select: { id: true, name: true, contractValue: true },
       });
 
       if (!project) {
         throw { status: 404, message: "Project not found." };
+      }
+
+      const changeRequest = await tx.changeRequest.findFirst({
+        where: { id: requestId, projectId: project.id },
+        include: { items: true },
+      });
+
+      if (!changeRequest) {
+        throw { status: 404, message: "Change request not found for this project." };
       }
 
       // IDEMPOTENCY CHECK: If already approved, return without double-increasing budget!
@@ -65,7 +65,7 @@ export async function POST(
 
       // 2. Increase Project contractValue
       const updatedProject = await tx.project.update({
-        where: { id: projectId },
+        where: { id: project.id },
         data: {
           contractValue: newContractValue,
         },

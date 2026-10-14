@@ -27,9 +27,10 @@ import {
   Calendar,
   ExternalLink,
   Edit3,
+  MessageSquare,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
 import { EditProjectModal } from "@/components/projects/EditProjectModal";
 import { EditTaskModal } from "@/components/projects/EditTaskModal";
@@ -43,6 +44,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const userRole = ((session?.user as any)?.role || "").toUpperCase();
   const isAdminOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(userRole);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +52,10 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any | null>(null);
+
+  // Quick message state in overview
+  const [quickMessageText, setQuickMessageText] = useState("");
+  const [sendingQuickMsg, setSendingQuickMsg] = useState(false);
 
   // Scope editing state
   const [isEditingScope, setIsEditingScope] = useState(false);
@@ -319,6 +325,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       const json = await res.json();
       if (json.success) {
         setChangeReqsData(json);
+        setProject((prev: any) => prev ? { ...prev, changeRequests: json.changeRequests || [] } : prev);
       }
     } catch (e) {
       console.error(e);
@@ -367,11 +374,14 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           tmName: p.memberships?.find((m: any) => m.roleInProject === "TM" && m.isActive)?.employee?.user?.name || "Unassigned",
           teamMembers: p.memberships?.filter((m: any) => m.isActive).map((m: any) => ({
             id: m.id,
+            membershipId: m.id,
             employeeId: m.employeeId,
+            userId: m.employee?.userId || m.employee?.user?.id,
             name: m.employee?.user?.name || "Unknown",
             email: m.employee?.user?.email,
             phone: m.employee?.phone || "+91 98765 43210",
             role: m.roleInProject,
+            designation: m.employee?.user?.designation || m.roleInProject || "Developer",
             active: m.isActive,
             compensationAmount: m.compensationAmount,
             assignedDate: m.assignedAt ? new Date(m.assignedAt).toLocaleDateString() : "Unknown",
@@ -389,6 +399,22 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           changeRequests: p.changeRequests || [],
           clientUpdates: p.clientUpdates || [],
         });
+
+        // Pre-sync change requests so tab is populated immediately
+        if (p.changeRequests && p.changeRequests.length > 0) {
+          const submittedRequests = p.changeRequests.filter(
+            (cr: any) => cr.status !== "DRAFT" && cr.status !== "CANCELLED"
+          );
+          const usedCount = submittedRequests.length;
+          setChangeReqsData({
+            changeRequests: p.changeRequests,
+            quota: {
+              includedCount: 3,
+              usedCount,
+              remainingCount: Math.max(0, 3 - usedCount),
+            },
+          });
+        }
       }
     } catch (e) {
       console.error(e);
@@ -400,6 +426,59 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const [activeTab, setActiveTab] = useState<
     "overview" | "workflow" | "tasks" | "chat" | "updates" | "team" | "docs" | "notes" | "calls" | "changes" | "payments" | "media"
   >("overview");
+
+  // Sync tab from ?tab= query parameter
+  React.useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam && ["overview", "workflow", "tasks", "chat", "updates", "team", "docs", "notes", "calls", "changes", "payments", "media"].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [searchParams]);
+
+  // Quick message sender for Overview tab
+  const handleQuickSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickMessageText.trim() || !project) return;
+
+    setSendingQuickMsg(true);
+    try {
+      let convId = project.conversation?.id;
+      if (!convId) {
+        const convRes = await fetch("/mdz-crm/api/chat/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "PROJECT", projectId: project.id || params.id }),
+        });
+        const convData = await convRes.json();
+        if (convData.success && convData.data?.id) {
+          convId = convData.data.id;
+        }
+      }
+
+      if (!convId) {
+        showToast("Failed to initialize project conversation", "error");
+        return;
+      }
+
+      const res = await fetch(`/mdz-crm/api/chat/conversations/${convId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: quickMessageText.trim() }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setQuickMessageText("");
+        showToast("✓ Message sent to project team!", "success");
+        fetchProject();
+      } else {
+        showToast(json.error || "Failed to send message", "error");
+      }
+    } catch {
+      showToast("Network error sending message", "error");
+    } finally {
+      setSendingQuickMsg(false);
+    }
+  };
 
   const [isTaskSheetOpen, setIsTaskSheetOpen] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
@@ -600,13 +679,13 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
     { id: "overview", label: "Overview & Scope" },
     { id: "workflow", label: "Workflow Playbook" },
     { id: "tasks", label: isEmployee ? `My Tasks (${visibleTasks.length})` : `Task Stack (${project.tasks?.length || 0})` },
-    { id: "chat", label: "Team Chat 💬" },
+    { id: "chat", label: project.messageCount ? `Team Chat 💬 (${project.messageCount})` : "Team Chat 💬" },
     { id: "updates", label: `Daily Updates (${project.clientUpdates?.length || 0})` },
     { id: "team", label: isEmployee ? `Team Members (${project.teamMembers?.length || 0})` : `Team & Removal History (${project.teamMembers?.length || 0})` },
     { id: "docs", label: `Living Docs (${project.livingDocs?.length || 0})` },
     { id: "notes", label: "Work Notes" },
     { id: "calls", label: "Client Calls" },
-    { id: "changes", label: `Change Requests (${project.changeRequests?.length || 0})`, adminOnly: true },
+    { id: "changes", label: `Change Requests (${changeReqsData.changeRequests?.length || project.changeRequests?.length || 0})` },
     { id: "payments", label: "Payment Milestones", adminOnly: true },
     { id: "media", label: "Drive Assets & Files" },
   ];
@@ -752,6 +831,16 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Quick Team Chat Header Button */}
+            <button
+              onClick={() => setActiveTab("chat")}
+              className="px-3 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 font-bold text-xs transition-colors flex items-center gap-1.5 shadow-2xs border border-indigo-200 dark:border-indigo-800 cursor-pointer"
+              title="Open Project Team Chat"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Team Chat {project.messageCount ? `(${project.messageCount})` : ""}</span>
+            </button>
+
             {isAdminOrOwner && (
               <button
                 onClick={() => setIsEditProjectOpen(true)}
@@ -865,6 +954,30 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       {/* Tab 1: Overview */}
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Client Changes Alert Banner */}
+          {(changeReqsData.changeRequests?.length || project.changeRequests?.length || 0) > 0 && (
+            <div className="md:col-span-3 p-4 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/30 border border-amber-300 dark:border-amber-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-xs">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⚡</span>
+                <div>
+                  <strong className="text-slate-900 dark:text-slate-100 font-extrabold text-sm block">
+                    Client Submitted Change Requests ({changeReqsData.changeRequests?.length || project.changeRequests?.length} Active Request{(changeReqsData.changeRequests?.length || project.changeRequests?.length) === 1 ? "" : "s"})
+                  </strong>
+                  <p className="text-slate-600 dark:text-slate-400 text-xs mt-0.5">
+                    The client has submitted project revisions/changes. Review all scope modifications and requirement items in the Change Requests tab.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveTab("changes")}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <span>View Change Requests</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div>
@@ -1110,6 +1223,83 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Project Team Chat & Quick Discussion Card in Overview */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  <span>Project Team Discussion</span>
+                  {project.messageCount > 0 && (
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                      {project.messageCount} msg{project.messageCount > 1 ? "s" : ""}
+                    </span>
+                  )}
+                </h3>
+                <button
+                  onClick={() => setActiveTab("chat")}
+                  className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Full Chat</span>
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+
+              {/* Recent messages feed */}
+              {project.conversation?.recentMessages && project.conversation.recentMessages.length > 0 ? (
+                <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                  {project.conversation.recentMessages.slice(-4).map((msg: any) => {
+                    const isMe = msg.senderId === (session?.user as any)?.id;
+                    return (
+                      <div
+                        key={msg.id}
+                        className={`p-2.5 rounded-xl border text-xs ${
+                          isMe
+                            ? "bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800/60 ml-3"
+                            : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 mr-3"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="font-bold text-[11px] text-slate-900 dark:text-slate-100 truncate">
+                            {isMe ? "You" : msg.sender?.name || "Team Member"}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-700 dark:text-slate-300 break-words leading-relaxed">
+                          {msg.content}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-4 text-center text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <p className="font-medium text-xs text-slate-700 dark:text-slate-300">No messages in this project yet.</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Post an update or question to your team!</p>
+                </div>
+              )}
+
+              {/* Quick message sender */}
+              <form onSubmit={handleQuickSendMessage} className="flex items-center gap-1.5 pt-1">
+                <input
+                  type="text"
+                  value={quickMessageText}
+                  onChange={(e) => setQuickMessageText(e.target.value)}
+                  placeholder="Type a quick message to project team..."
+                  className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium"
+                />
+                <button
+                  type="submit"
+                  disabled={sendingQuickMsg || !quickMessageText.trim()}
+                  className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white transition-all disabled:opacity-40 cursor-pointer shadow-xs"
+                  title="Send Message"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                </button>
+              </form>
             </div>
           </div>
         </div>
@@ -1604,12 +1794,18 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleApproveBudget(cr.id)}
-                        className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold text-xs shadow-xs transition-all shrink-0"
-                      >
-                        Approve & Add Budget
-                      </button>
+                      {!isEmployee ? (
+                        <button
+                          onClick={() => handleApproveBudget(cr.id)}
+                          className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 text-white font-bold text-xs shadow-xs transition-all shrink-0 cursor-pointer"
+                        >
+                          Approve & Add Budget
+                        </button>
+                      ) : (
+                        <span className="text-[11px] font-mono font-bold text-amber-700 dark:text-amber-400 bg-amber-100/80 dark:bg-amber-900/60 px-3 py-1.5 rounded-lg border border-amber-300 dark:border-amber-700">
+                          Awaiting Admin Budget Approval
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1655,7 +1851,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
       {/* Team Chat Tab */}
       {activeTab === "chat" && (
         <div className="space-y-4">
-          <ProjectChatTab projectId={params.id} projectName={project.name} />
+          <ProjectChatTab projectId={project.id || params.id} projectName={project.name} />
         </div>
       )}
 
@@ -2038,7 +2234,22 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
           onClose={() => setEditingTask(null)}
           task={editingTask}
           projectId={project.id}
-          employees={project.teamMembers || []}
+          employees={
+            availableEmployees && availableEmployees.length > 0
+              ? [
+                  ...(project.teamMembers || []),
+                  ...availableEmployees.map((ae: any) => ({
+                    id: ae.id,
+                    userId: ae.id,
+                    employeeId: ae.id,
+                    name: ae.name,
+                    role: ae.designation || ae.role || "Developer",
+                    designation: ae.designation || ae.role || "Developer",
+                    email: ae.email,
+                  })),
+                ]
+              : project.teamMembers || []
+          }
           onSuccess={() => {
             fetchProject();
           }}

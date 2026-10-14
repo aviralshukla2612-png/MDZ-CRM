@@ -64,15 +64,27 @@ export function NotificationListener() {
 
   if (!activeNotification) return null;
 
-  // Determine type. Right now we only have PROJECT_ASSIGNMENT.
-  const isProject = activeNotification?.title?.toLowerCase()?.includes("project");
-  const type = isProject ? "PROJECT_ASSIGNMENT" : "LUNCH";
+  const titleLower = activeNotification?.title?.toLowerCase() || "";
+  const isChangeRequest =
+    titleLower.includes("change request") || titleLower.includes("revision");
+  const isProject =
+    titleLower.includes("project") || titleLower.includes("assignment");
+  const isDailyUpdate =
+    titleLower.includes("daily update") || titleLower.includes("task");
+
+  const type = isChangeRequest
+    ? "CHANGE_REQUEST"
+    : isProject
+    ? "PROJECT_ASSIGNMENT"
+    : isDailyUpdate
+    ? "DAILY_UPDATE"
+    : "NOTIFICATION";
 
   return (
     <PremiumReminderModal
       isOpen={!!activeNotification}
       onClose={handleClose}
-      type={type as any}
+      type={type}
       title={activeNotification.title}
       message={activeNotification.message}
     />

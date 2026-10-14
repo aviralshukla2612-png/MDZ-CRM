@@ -14,9 +14,22 @@ export async function GET(
 
   const projectId = params.id;
 
+  const project = await prisma.project.findFirst({
+    where: {
+      OR: [{ id: projectId }, { projectNumber: projectId }],
+    },
+    select: { id: true, name: true, clientId: true },
+  });
+
+  if (!project) {
+    return NextResponse.json({ success: false, error: "Project not found" }, { status: 404 });
+  }
+
+  const actualProjectId = project.id;
+
   // Authorization Checks
   if (authRes.activeRole === "CLIENT") {
-    const isAuthorized = await verifyClientProjectAccess(authRes.email, projectId);
+    const isAuthorized = await verifyClientProjectAccess(authRes.email, actualProjectId);
     if (!isAuthorized) {
       return NextResponse.json({ success: false, error: "Access denied" }, { status: 403 });
     }
@@ -27,7 +40,7 @@ export async function GET(
 
     const membership = await prisma.projectMembership.findFirst({
       where: {
-        projectId,
+        projectId: actualProjectId,
         employeeId: authRes.employeeId,
         isActive: true,
       },
@@ -46,10 +59,15 @@ export async function GET(
   try {
     const tasks = await prisma.task.findMany({
       where: {
-        projectId,
+        projectId: actualProjectId,
         status: { not: "ARCHIVED" },
-        ...(authRes.activeRole === "EMPLOYEE" && authRes.employeeId
-          ? { assignedToId: authRes.employeeId }
+        ...(authRes.activeRole === "EMPLOYEE"
+          ? {
+              OR: [
+                { assignedToId: authRes.id },
+                ...(authRes.employeeId ? [{ assignedToId: authRes.employeeId }] : []),
+              ],
+            }
           : {}),
       },
       orderBy: [{ isMostImportant: "desc" }, { orderInt: "asc" }, { createdAt: "asc" }],
@@ -63,7 +81,7 @@ export async function GET(
       },
     });
 
-    const progress = await recalculateProjectProgress(projectId);
+    const progress = await recalculateProjectProgress(actualProjectId);
 
     return NextResponse.json({
       success: true,
@@ -88,6 +106,18 @@ export async function POST(
 
   const projectId = params.id;
 
+  const project = await prisma.project.findFirst({
+    where: {
+      OR: [{ id: projectId }, { projectNumber: projectId }],
+    },
+    select: { id: true, name: true },
+  });
+
+  if (!project) {
+    return NextResponse.json({ success: false, error: "Project not found" }, { status: 404 });
+  }
+
+  const actualProjectId = project.id;
   const isAdminOrOwner = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES"].includes(authRes.activeRole as string);
 
   // Authorization: OWNER, ADMIN, SALES, or assigned EMPLOYEE
@@ -99,7 +129,7 @@ export async function POST(
 
       const membership = await prisma.projectMembership.findFirst({
         where: {
-          projectId,
+          projectId: actualProjectId,
           employeeId: authRes.employeeId,
           isActive: true,
         },
@@ -144,20 +174,56 @@ export async function POST(
       );
     }
 
+    // Robust resolution of assignedToId
+    let resolvedAssignedToId: string | null = null;
+    const rawAssigneeId = body.assignedToId ? String(body.assignedToId).trim() : "";
+    if (rawAssigneeId && rawAssigneeId !== "null" && rawAssigneeId !== "undefined") {
+      const userById = await prisma.user.findUnique({
+        where: { id: rawAssigneeId },
+        select: { id: true },
+      });
+      if (userById) {
+        resolvedAssignedToId = userById.id;
+      } else {
+        const emp = await prisma.employee.findFirst({
+          where: {
+            OR: [
+              { id: rawAssigneeId },
+              { userId: rawAssigneeId },
+              { employeeIdCode: rawAssigneeId },
+            ],
+          },
+          select: { userId: true },
+        });
+        if (emp?.userId) {
+          resolvedAssignedToId = emp.userId;
+        } else {
+          const mem = await prisma.projectMembership.findUnique({
+            where: { id: rawAssigneeId },
+            include: { employee: { select: { userId: true } } },
+          });
+          if (mem?.employee?.userId) {
+            resolvedAssignedToId = mem.employee.userId;
+          }
+        }
+      }
+    } else if (authRes.activeRole === "EMPLOYEE") {
+      resolvedAssignedToId = authRes.id;
+    }
+
     // Determine initial task order
-    const taskCount = await prisma.task.count({ where: { projectId } });
+    const taskCount = await prisma.task.count({ where: { projectId: actualProjectId } });
 
     const newTask = await prisma.task.create({
       data: {
-        projectId,
+        projectId: actualProjectId,
         title: body.title.trim(),
         description: body.description ? String(body.description).trim() : null,
-        priority: body.priority || "MEDIUM",
+        priority: (body.deadline && new Date(body.deadline).getTime() < Date.now()) ? "URGENT" : (body.priority || "MEDIUM"),
         status: ["PLANNING", "CURRENT", "REVISION", "COMPLETED", "TODO", "IN_PROGRESS", "DONE"].includes(body.status)
           ? body.status
           : "PLANNING",
-        assignedToId:
-          body.assignedToId || (authRes.activeRole === "EMPLOYEE" ? authRes.employeeId : null),
+        assignedToId: resolvedAssignedToId,
         createdById: authRes.id,
         orderInt: typeof body.orderInt === "number" ? body.orderInt : taskCount + 1,
         completedAt: body.status === "COMPLETED" || body.status === "DONE" ? new Date() : null,
@@ -171,21 +237,50 @@ export async function POST(
       },
     });
 
+    // If assigned to an employee user, ensure they have membership on the project
+    if (resolvedAssignedToId) {
+      try {
+        const targetEmp = await prisma.employee.findUnique({
+          where: { userId: resolvedAssignedToId },
+          select: { id: true },
+        });
+        if (targetEmp) {
+          const existingMem = await prisma.projectMembership.findFirst({
+            where: { projectId: actualProjectId, employeeId: targetEmp.id },
+          });
+          if (!existingMem) {
+            await prisma.projectMembership.create({
+              data: {
+                projectId: actualProjectId,
+                employeeId: targetEmp.id,
+                roleInProject: "MEMBER",
+                isActive: true,
+                assignedById: authRes.id,
+              },
+            });
+          } else if (!existingMem.isActive) {
+            await prisma.projectMembership.update({
+              where: { id: existingMem.id },
+              data: { isActive: true, removedAt: null, removalReason: null },
+            });
+          }
+        }
+      } catch (memErr) {
+        console.warn("[TaskCreation] Auto membership creation failed:", memErr);
+      }
+    }
+
     // Recalculate Progress Engine & Update Project Cache
-    const progress = await recalculateProjectProgress(projectId);
+    const progress = await recalculateProjectProgress(actualProjectId);
 
     // If created by employee, notify Admins & Sub-Admins
     if (authRes.activeRole === "EMPLOYEE") {
       try {
-        const project = await prisma.project.findUnique({
-          where: { id: projectId },
-          select: { name: true },
-        });
         await sendNotificationToAdmins({
           title: "📌 New Task Added by Employee",
           message: `${authRes.name} added task "${newTask.title}" to project "${project?.name || 'Project'}".`,
           urgency: "LOW",
-          linkUrl: `/projects/${projectId}`,
+          linkUrl: `/projects/${actualProjectId}`,
           excludeUserId: authRes.id,
         });
       } catch (notifErr) {

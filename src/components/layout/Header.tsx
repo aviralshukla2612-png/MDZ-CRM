@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Search, ChevronDown, LogOut, Coffee, Play, Power, Sparkles, Clock, ShieldCheck, Camera, MessageSquare } from "lucide-react";
+import { Search, ChevronDown, LogOut, Coffee, Play, Power, Sparkles, Clock, ShieldCheck, Camera, MessageSquare, Loader2, Film } from "lucide-react";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { BottomSheet } from "../ui/BottomSheet";
 import { useWorkClock } from "@/lib/workClockContext";
@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { NotificationBell } from "./NotificationBell";
 import { AvatarUploadModal } from "../ui/AvatarUploadModal";
 import { UnclosedShiftModal } from "../attendance/UnclosedShiftModal";
+import { VideographerUploadModal } from "../ui/VideographerUploadModal";
 import { useBranding } from "@/components/providers/BrandingProvider";
 
 interface Props {
@@ -31,7 +32,7 @@ interface Props {
 
 export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout }: Props) {
   const { branding, themeStyle } = useBranding();
-  const { status, workSeconds, breakSeconds, breakType, formatHMS, punchIn, startBreak, resumeWork, punchOut, confirmPunchOutAnyway, markPunchOutPending, unclosedShift, refreshStatus } = useWorkClock();
+  const { status, workSeconds, breakSeconds, breakType, formatHMS, punchIn, startBreak, resumeWork, punchOut, confirmPunchOutAnyway, markPunchOutPending, unclosedShift, refreshStatus, isBreakActionLoading, isVideographer } = useWorkClock();
   const { showToast } = useToast();
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -40,14 +41,23 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
   const [activeUnclosedRecord, setActiveUnclosedRecord] = useState<any>(null);
   const [currentPhoto, setCurrentPhoto] = useState<string | null | undefined>(currentUser.avatarUrl);
 
-  React.useEffect(() => {
-    setCurrentPhoto(currentUser.avatarUrl);
-  }, [currentUser.avatarUrl]);
-
   const [isBreakSheetOpen, setIsBreakSheetOpen] = useState(false);
   const [isPunchOutConfirmOpen, setIsPunchOutConfirmOpen] = useState(false);
   const [punchOutReason, setPunchOutReason] = useState("");
   const [isPunchingIn, setIsPunchingIn] = useState(false);
+
+  // Videographer detection & Shoot footage modal state
+  const designationLower = (currentUser.designation || "").toLowerCase();
+  const isVideographerUser =
+    Boolean(isVideographer) ||
+    designationLower.includes("videograph") ||
+    designationLower.includes("video graph") ||
+    designationLower.includes("cameraman") ||
+    designationLower.includes("camera") ||
+    designationLower.includes("shooter");
+
+  const [isVideographerUploadModalOpen, setIsVideographerUploadModalOpen] = useState(false);
+  const [lastShootDurationStr, setLastShootDurationStr] = useState<string>("");
 
   // Track active breaks for owner notifications
   const knownBreakStarts = React.useRef<Set<string>>(new Set());
@@ -122,7 +132,6 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
       }
       
       punchIn();
-      await refreshStatus();
       showToast("✓ Punched In successfully!", "success");
     } catch (e) {
       showToast("Network error while punching in.", "error");
@@ -132,6 +141,21 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
   };
 
   const handlePunchOutClick = async () => {
+    if (isVideographerUser) {
+      // Videographers can punch out anytime with 0 early restrictions or approval blocks
+      const success = await confirmPunchOutAnyway("Videographer shoot completed");
+      await refreshStatus();
+      if (success) {
+        const totalMinutes = Math.floor(workSeconds / 60);
+        const hrs = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        const dur = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+        setLastShootDurationStr(dur);
+        setIsVideographerUploadModalOpen(true);
+      }
+      return;
+    }
+
     const res = punchOut();
     if (res.requiresConfirmation) {
       setIsPunchOutConfirmOpen(true);
@@ -261,12 +285,21 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
               {/* Direct 1-Click Lunch Break Button */}
               <button
                 type="button"
+                disabled={isBreakActionLoading}
                 onClick={() => startBreak("Lunch")}
-                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 cursor-pointer"
+                className={`px-3 py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 ${
+                  isBreakActionLoading
+                    ? "bg-amber-400 cursor-not-allowed opacity-80"
+                    : "bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer"
+                }`}
                 title="Take Lunch Break (1-Click)"
               >
-                <Coffee className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">Lunch Break</span>
+                {isBreakActionLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                ) : (
+                  <Coffee className="w-3.5 h-3.5 shrink-0" />
+                )}
+                <span className="hidden sm:inline">{isBreakActionLoading ? "Starting Lunch..." : "Lunch Break"}</span>
               </button>
 
               <button
@@ -293,11 +326,20 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
 
               <button
                 onClick={resumeWork}
-                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-indigo-600/20 active:scale-95 transition-all touch-target shrink-0"
+                disabled={isBreakActionLoading}
+                className={`px-3 py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-indigo-600/20 active:scale-95 transition-all touch-target shrink-0 ${
+                  isBreakActionLoading
+                    ? "bg-indigo-400 cursor-not-allowed opacity-80"
+                    : "bg-indigo-600 hover:bg-indigo-500 active:scale-95 cursor-pointer"
+                }`}
                 title="Resume Work Session"
               >
-                <Play className="w-3.5 h-3.5 fill-white shrink-0" />
-                <span className="hidden sm:inline">Resume</span>
+                {isBreakActionLoading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                ) : (
+                  <Play className="w-3.5 h-3.5 fill-white shrink-0" />
+                )}
+                <span className="hidden sm:inline">{isBreakActionLoading ? "Resuming..." : "Resume"}</span>
               </button>
             </div>
           )}
@@ -315,9 +357,32 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           )}
 
           {status === "DAY_COMPLETE" && (
-            <div className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold text-xs flex items-center gap-1.5 border border-slate-200 dark:border-slate-700/80 cursor-not-allowed shrink-0 select-none">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              <span>Shift Complete</span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold text-xs flex items-center gap-1.5 border border-slate-200 dark:border-slate-700/80 cursor-default shrink-0 select-none">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span>Shift Complete</span>
+              </div>
+              {isVideographerUser && (
+                <>
+                  <button
+                    onClick={handlePunchInClick}
+                    disabled={isPunchingIn}
+                    className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-orange-600/20 active:scale-95 transition-all touch-target shrink-0"
+                    title="Punch in for next shoot anytime"
+                  >
+                    <Play className="w-3 h-3 fill-white shrink-0" />
+                    <span>New Shoot</span>
+                  </button>
+                  <button
+                    onClick={() => setIsVideographerUploadModalOpen(true)}
+                    className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-1.5 hover:bg-amber-500/20 active:scale-95 transition-all shrink-0"
+                    title="Upload Raw Shoot Footage for Video Editors"
+                  >
+                    <Film className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="hidden md:inline">Upload Footage</span>
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -475,11 +540,12 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                 {["Lunch", "Tea", "Client Call", "Meeting"].map((type) => (
                   <button
                     key={type}
-                    onClick={() => {
-                      startBreak(type);
+                    disabled={isBreakActionLoading}
+                    onClick={async () => {
                       setIsBreakSheetOpen(false);
+                      await startBreak(type);
                     }}
-                    className="p-3 rounded-xl bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 text-violet-900 dark:text-violet-300 font-semibold text-xs border border-violet-200 dark:border-violet-500/20 flex items-center justify-center gap-2 transition-all"
+                    className="p-3 rounded-xl bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 text-violet-900 dark:text-violet-300 font-semibold text-xs border border-violet-200 dark:border-violet-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
                   >
                     <Coffee className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                     <span>{type}</span>
@@ -489,7 +555,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
 
               <button
                 onClick={handlePunchOutClick}
-                className="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all mt-2"
+                className="w-full py-3.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all mt-2 cursor-pointer"
               >
                 <Power className="w-4 h-4" />
                 <span>Punch Out for Today</span>
@@ -497,14 +563,19 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
             </div>
           ) : (
             <button
-              onClick={() => {
-                resumeWork();
+              disabled={isBreakActionLoading}
+              onClick={async () => {
                 setIsBreakSheetOpen(false);
+                await resumeWork();
               }}
-              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all"
+              className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
             >
-              <Play className="w-4 h-4 fill-white" />
-              <span>Resume Work Session</span>
+              {isBreakActionLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+              ) : (
+                <Play className="w-4 h-4 fill-white shrink-0" />
+              )}
+              <span>{isBreakActionLoading ? "Resuming..." : "Resume Work Session"}</span>
             </button>
           )}
         </div>
@@ -551,6 +622,14 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           setActiveUnclosedRecord(null);
           await refreshStatus();
         }}
+      />
+
+      {/* Videographer Shoot Footage Upload Modal */}
+      <VideographerUploadModal
+        isOpen={isVideographerUploadModalOpen}
+        onClose={() => setIsVideographerUploadModalOpen(false)}
+        videographerName={currentUser.name}
+        workedDurationStr={lastShootDurationStr}
       />
     </header>
   );

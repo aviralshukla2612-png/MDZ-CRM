@@ -1,30 +1,99 @@
-import React from "react";
-import Link from "next/link";
-import { ShieldCheck, FileText, ArrowLeft } from "lucide-react";
+"use client";
 
-export const metadata = {
-  title: "Terms and Conditions | MDZ OS",
-  description: "Terms and Conditions of Service for MDZ OS Client Portal access.",
-};
+import React, { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { ShieldCheck, FileText, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function TermsAndConditionsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { data: session } = useSession();
+
+  const [accepting, setAccepting] = useState(false);
+  const [acceptedSuccess, setAcceptedSuccess] = useState(false);
+
+  const role = (session?.user as any)?.role || (session?.user as any)?.activeRole;
+  const fromUrl = searchParams.get("from") || searchParams.get("returnUrl");
+
+  // Determine intelligent return destination
+  const getFallbackUrl = () => {
+    if (fromUrl) return fromUrl;
+    if (role === "CLIENT") return "/client";
+    if (role === "EMPLOYEE") return "/employee";
+    if (["OWNER", "ADMIN", "SUB_ADMIN", "SALES"].includes(role)) return "/";
+    return "/login";
+  };
+
+  const handleBack = () => {
+    if (fromUrl) {
+      router.push(fromUrl);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 2) {
+      router.back();
+    } else {
+      router.push(getFallbackUrl());
+    }
+  };
+
+  const getBackLabel = () => {
+    if (fromUrl?.includes("client") || role === "CLIENT") {
+      return "Back to Client Dashboard";
+    }
+    if (fromUrl?.includes("employee") || role === "EMPLOYEE") {
+      return "Back to Employee Portal";
+    }
+    if (session?.user) {
+      return "Back to Dashboard";
+    }
+    return "Back to Login";
+  };
+
+  const handleAcceptTerms = async () => {
+    setAccepting(true);
+    try {
+      const res = await fetch("/mdz-crm/api/client/terms-accept", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAcceptedSuccess(true);
+        setTimeout(() => {
+          router.push(fromUrl || "/client");
+        }, 1200);
+      } else {
+        router.push(getFallbackUrl());
+      }
+    } catch (err) {
+      console.error("Acceptance error:", err);
+      router.push(getFallbackUrl());
+    } finally {
+      setAccepting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#090E18] text-slate-900 dark:text-slate-100 p-4 sm:p-8 font-sans">
       <div className="max-w-4xl mx-auto space-y-6">
+        {/* Navigation Bar */}
         <div className="flex items-center justify-between">
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+          <button
+            type="button"
+            onClick={handleBack}
+            className="inline-flex items-center gap-2 text-xs font-bold px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-700 shadow-2xs transition-all touch-target cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Login</span>
-          </Link>
-          <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400">
-            <ShieldCheck className="w-4 h-4" />
+            <span>{getBackLabel()}</span>
+          </button>
+
+          <div className="flex items-center gap-2 text-xs font-mono font-bold px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
             <span>Verified Terms v1.0</span>
           </div>
         </div>
 
+        {/* Content Box */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 sm:p-10 shadow-xs space-y-6">
           <div className="border-b border-slate-200 dark:border-slate-800 pb-6">
             <div className="flex items-center gap-3">
@@ -77,6 +146,52 @@ export default function TermsAndConditionsPage() {
                 Accepting these Terms and Conditions confirms your authorization to act on behalf of your designated client organization for project tracking and communication within MDZ OS.
               </p>
             </section>
+          </div>
+
+          {/* Action Footer */}
+          <div className="pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              Need assistance? Contact our engineering & operations team at{" "}
+              <a href="mailto:support@millionairedizital.com" className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline">
+                support@millionairedizital.com
+              </a>
+            </div>
+
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              {role === "CLIENT" && (
+                <button
+                  type="button"
+                  disabled={accepting || acceptedSuccess}
+                  onClick={handleAcceptTerms}
+                  className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer disabled:opacity-70"
+                >
+                  {accepting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Recording Acceptance...</span>
+                    </>
+                  ) : acceptedSuccess ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                      <span>Accepted! Redirecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Accept & Return to Dashboard</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleBack}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors cursor-pointer text-center"
+              >
+                {role === "CLIENT" ? "Back to Dashboard" : "Back to Previous Page"}
+              </button>
+            </div>
           </div>
         </div>
       </div>

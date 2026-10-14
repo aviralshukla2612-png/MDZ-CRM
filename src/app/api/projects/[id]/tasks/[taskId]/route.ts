@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { recalculateProjectProgress } from "@/lib/progressEngine";
+import { sendNotificationToUser } from "@/lib/notifications";
 
 export async function PATCH(
   req: Request,
@@ -12,25 +13,40 @@ export async function PATCH(
 
   const { id: projectId, taskId } = params;
 
+  const project = await prisma.project.findFirst({
+    where: {
+      OR: [{ id: projectId }, { projectNumber: projectId }],
+    },
+    select: { id: true, name: true },
+  });
+
+  if (!project) {
+    return NextResponse.json(
+      { success: false, error: "Project not found" },
+      { status: 404 }
+    );
+  }
+
+  const actualProjectId = project.id;
   const isAdminOrOwner = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES"].includes(authRes.activeRole as string);
 
   // Authorization: OWNER, ADMIN, SALES or assigned EMPLOYEE / task assignee
   if (!isAdminOrOwner) {
     if (authRes.activeRole === "EMPLOYEE") {
-      if (!authRes.employeeId) {
-        return NextResponse.json({ success: false, error: "Forbidden: Employee profile missing" }, { status: 403 });
-      }
-
       const existingTask = await prisma.task.findUnique({ where: { id: taskId } });
-      const isTaskAssignee = existingTask?.assignedToId === authRes.employeeId;
+      const isTaskAssignee =
+        existingTask?.assignedToId === authRes.id ||
+        (authRes.employeeId && existingTask?.assignedToId === authRes.employeeId);
 
-      const membership = await prisma.projectMembership.findFirst({
-        where: {
-          projectId,
-          employeeId: authRes.employeeId,
-          isActive: true,
-        },
-      });
+      const membership = authRes.employeeId
+        ? await prisma.projectMembership.findFirst({
+            where: {
+              projectId: actualProjectId,
+              employeeId: authRes.employeeId,
+              isActive: true,
+            },
+          })
+        : null;
 
       if (!membership && !isTaskAssignee) {
         return NextResponse.json(
@@ -51,7 +67,7 @@ export async function PATCH(
       where: { id: taskId },
     });
 
-    if (!existingTask || existingTask.projectId !== projectId) {
+    if (!existingTask || existingTask.projectId !== actualProjectId) {
       return NextResponse.json(
         { success: false, error: "Task not found on this project" },
         { status: 404 }
@@ -68,8 +84,62 @@ export async function PATCH(
       );
     }
 
-    const targetAssignedToId = body.assignedToId !== undefined ? (body.assignedToId || null) : existingTask.assignedToId;
-    const isReassigned = body.assignedToId !== undefined && body.assignedToId !== existingTask.assignedToId;
+    // Robust resolution of assignedToId: supports User.id, Employee.id, Employee.userId, or ProjectMembership.id
+    let resolvedAssignedToId: string | null = existingTask.assignedToId;
+    let isReassigned = false;
+
+    if (body.assignedToId !== undefined) {
+      const rawAssigneeId = body.assignedToId ? String(body.assignedToId).trim() : "";
+      if (!rawAssigneeId || rawAssigneeId === "null" || rawAssigneeId === "undefined") {
+        resolvedAssignedToId = null;
+      } else {
+        // 1. Check if rawAssigneeId is already a valid User.id
+        const userById = await prisma.user.findUnique({
+          where: { id: rawAssigneeId },
+          select: { id: true },
+        });
+
+        if (userById) {
+          resolvedAssignedToId = userById.id;
+        } else {
+          // 2. Check if it is an Employee id or code
+          const emp = await prisma.employee.findFirst({
+            where: {
+              OR: [
+                { id: rawAssigneeId },
+                { userId: rawAssigneeId },
+                { employeeIdCode: rawAssigneeId },
+              ],
+            },
+            select: { userId: true },
+          });
+
+          if (emp?.userId) {
+            resolvedAssignedToId = emp.userId;
+          } else {
+            // 3. Check if it is a ProjectMembership id
+            const mem = await prisma.projectMembership.findUnique({
+              where: { id: rawAssigneeId },
+              include: { employee: { select: { userId: true } } },
+            });
+
+            if (mem?.employee?.userId) {
+              resolvedAssignedToId = mem.employee.userId;
+            } else {
+              // 4. Fallback search by email or name
+              const userFallback = await prisma.user.findFirst({
+                where: { OR: [{ email: rawAssigneeId }, { name: rawAssigneeId }] },
+                select: { id: true },
+              });
+              resolvedAssignedToId = userFallback?.id || null;
+            }
+          }
+        }
+      }
+      isReassigned = resolvedAssignedToId !== existingTask.assignedToId;
+    }
+
+    const targetAssignedToId = resolvedAssignedToId;
     const targetStatus = body.status !== undefined ? body.status : existingTask.status;
     const isInactive = targetStatus === "COMPLETED" || targetStatus === "DONE" || targetStatus === "ARCHIVED";
 
@@ -109,13 +179,19 @@ export async function PATCH(
       updateData.priority = body.priority;
     }
     if (body.assignedToId !== undefined) {
-      updateData.assignedToId = body.assignedToId || null;
+      updateData.assignedToId = resolvedAssignedToId;
     }
     if (typeof body.orderInt === "number") {
       updateData.orderInt = body.orderInt;
     }
     if (body.deadline !== undefined) {
       updateData.deadline = body.deadline ? new Date(body.deadline) : null;
+      if (updateData.deadline && new Date(updateData.deadline).getTime() < Date.now()) {
+        const nextStatus = body.status || existingTask.status;
+        if (nextStatus !== "COMPLETED" && nextStatus !== "DONE") {
+          updateData.priority = "URGENT";
+        }
+      }
     }
     if (body.startDate !== undefined) {
       updateData.startDate = body.startDate ? new Date(body.startDate) : null;
@@ -155,6 +231,63 @@ export async function PATCH(
       });
     }
 
+    // If reassigned to a user with an employee profile, ensure they are an active project member
+    if (resolvedAssignedToId && isReassigned) {
+      try {
+        const targetEmployee = await prisma.employee.findUnique({
+          where: { userId: resolvedAssignedToId },
+          select: { id: true },
+        });
+
+        if (targetEmployee) {
+          const existingMem = await prisma.projectMembership.findFirst({
+            where: {
+              projectId,
+              employeeId: targetEmployee.id,
+            },
+          });
+
+          if (!existingMem) {
+            await prisma.projectMembership.create({
+              data: {
+                projectId,
+                employeeId: targetEmployee.id,
+                roleInProject: "MEMBER",
+                isActive: true,
+                assignedById: authRes.id,
+              },
+            });
+          } else if (!existingMem.isActive) {
+            await prisma.projectMembership.update({
+              where: { id: existingMem.id },
+              data: { isActive: true, removedAt: null, removalReason: null },
+            });
+          }
+        }
+      } catch (memErr) {
+        console.warn("[TaskReassign] Failed to auto-assign project membership:", memErr);
+      }
+
+      // Send Realtime & Push Notification to newly assigned employee
+      if (resolvedAssignedToId !== authRes.id) {
+        try {
+          const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            select: { name: true },
+          });
+          await sendNotificationToUser({
+            recipientId: resolvedAssignedToId,
+            title: "📌 Task Reassigned to You",
+            message: `${authRes.name || "A team member"} assigned task "${updateData.title || existingTask.title}" in project "${project?.name || "Project"}" to you.`,
+            urgency: "MEDIUM",
+            linkUrl: `/projects/${projectId}`,
+          });
+        } catch (notifErr) {
+          console.warn("[TaskReassign] Failed to dispatch notification:", notifErr);
+        }
+      }
+    }
+
     const updatedTask = await prisma.task.findUnique({
       where: { id: taskId },
       include: {
@@ -165,7 +298,7 @@ export async function PATCH(
     });
 
     // Recalculate Progress Engine & Update Project Cache
-    const progress = await recalculateProjectProgress(projectId);
+    const progress = await recalculateProjectProgress(actualProjectId);
 
     return NextResponse.json({
       success: true,
@@ -190,6 +323,22 @@ export async function DELETE(
 
   const { id: projectId, taskId } = params;
 
+  const project = await prisma.project.findFirst({
+    where: {
+      OR: [{ id: projectId }, { projectNumber: projectId }],
+    },
+    select: { id: true },
+  });
+
+  if (!project) {
+    return NextResponse.json(
+      { success: false, error: "Project not found" },
+      { status: 404 }
+    );
+  }
+
+  const actualProjectId = project.id;
+
   // Authorization: OWNER or assigned EMPLOYEE
   if (authRes.activeRole === "EMPLOYEE") {
     if (!authRes.employeeId) {
@@ -198,7 +347,7 @@ export async function DELETE(
 
     const membership = await prisma.projectMembership.findFirst({
       where: {
-        projectId,
+        projectId: actualProjectId,
         employeeId: authRes.employeeId,
         isActive: true,
       },
@@ -222,7 +371,7 @@ export async function DELETE(
       where: { id: taskId },
     });
 
-    if (!existingTask || existingTask.projectId !== projectId) {
+    if (!existingTask || existingTask.projectId !== actualProjectId) {
       return NextResponse.json(
         { success: false, error: "Task not found on this project" },
         { status: 404 }
@@ -236,7 +385,7 @@ export async function DELETE(
     });
 
     // Recalculate Progress Engine & Update Project Cache
-    const progress = await recalculateProjectProgress(projectId);
+    const progress = await recalculateProjectProgress(actualProjectId);
 
     return NextResponse.json({
       success: true,

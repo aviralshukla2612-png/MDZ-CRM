@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       },
       include: {
         user: {
-          select: { id: true, name: true }
+          select: { id: true, name: true, designation: true, department: true }
         }
       }
     });
@@ -94,27 +94,51 @@ export async function POST(req: Request) {
       })
     ]);
 
-    // Notify Admins & Sub-Admins of employee punch out
+    const designationLower = (employee.user?.designation || "").toLowerCase();
+    const departmentLower = (employee.user?.department || "").toLowerCase();
+    const isVideographer =
+      designationLower.includes("videograph") ||
+      designationLower.includes("video graph") ||
+      designationLower.includes("cameraman") ||
+      designationLower.includes("camera") ||
+      designationLower.includes("shooter") ||
+      departmentLower.includes("videograph");
+
+    const empName = employee.user?.name || employee.employeeIdCode || "Employee";
+    const timeStr = formatToIST(serverNow);
+    const hours = Math.floor(workedMinutes / 60);
+    const mins = workedMinutes % 60;
+    const durationStr = hours > 0 ? `${hours} hour${hours > 1 ? "s" : ""}${mins > 0 ? ` ${mins}m` : ""}` : `${mins} minutes`;
+
+    // Notify Admins & Sub-Admins of punch out
     try {
-      const empName = employee.user?.name || employee.employeeIdCode || "Employee";
-      const timeStr = formatToIST(serverNow);
-      const hours = Math.floor(workedMinutes / 60);
-      const mins = workedMinutes % 60;
-      const durationStr = `${hours}h ${mins}m`;
-      await sendNotificationToAdmins({
-        title: "🔴 Employee Punched Out",
-        message: `${empName} punched out at ${timeStr}. Total work: ${durationStr}.`,
-        urgency: "MEDIUM",
-        linkUrl: "/attendance",
-        excludeUserId: employee.user?.id,
-      });
+      if (isVideographer) {
+        await sendNotificationToAdmins({
+          title: "🎬 Videographer Shift / Shoot Completed",
+          message: `Videographer ${empName} has punched out (${durationStr} work completed). Waiting for footage upload.`,
+          urgency: "HIGH",
+          linkUrl: "/attendance",
+          excludeUserId: employee.user?.id,
+        });
+      } else {
+        await sendNotificationToAdmins({
+          title: "🔴 Employee Punched Out",
+          message: `${empName} punched out at ${timeStr}. Total work: ${durationStr}.`,
+          urgency: "MEDIUM",
+          linkUrl: "/attendance",
+          excludeUserId: employee.user?.id,
+        });
+      }
     } catch (notifErr) {
       console.warn("[PunchOut] Failed to notify admins:", notifErr);
     }
 
     return NextResponse.json({
       success: true,
-      data: updatedAttendance
+      data: updatedAttendance,
+      isVideographer,
+      durationStr,
+      workedMinutes,
     });
   } catch (error) {
     console.error("Normal Punch Out Error:", error);

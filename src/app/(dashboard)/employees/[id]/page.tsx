@@ -25,6 +25,9 @@ import {
   AlertCircle,
   LogOut,
   LogIn,
+  Users,
+  Target,
+  TrendingUp,
 } from "lucide-react";
 
 import { isApplicableHoliday } from "@/lib/holidayHelpers";
@@ -43,6 +46,21 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
   const [editDesignation, setEditDesignation] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
   const [editSalary, setEditSalary] = useState<number>(0);
+
+  // 2 Compulsory Emergency Relatives Contacts
+  const [editRel1Name, setEditRel1Name] = useState("");
+  const [editRel1Relation, setEditRel1Relation] = useState("Father");
+  const [editRel1Phone, setEditRel1Phone] = useState("");
+  const [editRel2Name, setEditRel2Name] = useState("");
+  const [editRel2Relation, setEditRel2Relation] = useState("Mother");
+  const [editRel2Phone, setEditRel2Phone] = useState("");
+
+  // Daily Target Quota States
+  const [editTargetTitle, setEditTargetTitle] = useState("Shoot Reels");
+  const [editTargetCount, setEditTargetCount] = useState<number>(4);
+  const [editTargetUnit, setEditTargetUnit] = useState("reels");
+  const [editTargetNotes, setEditTargetNotes] = useState("");
+
   const [confirmStatus, setConfirmStatus] = useState(false);
 
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -335,6 +353,12 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
           designation: e.user?.designation || "Developer",
           department: e.user?.department || "Engineering",
           phone: e.user?.phone || e.phone || "",
+          relative1Name: e.relative1Name || "",
+          relative1Relation: e.relative1Relation || "",
+          relative1Phone: e.relative1Phone || "",
+          relative2Name: e.relative2Name || "",
+          relative2Relation: e.relative2Relation || "",
+          relative2Phone: e.relative2Phone || "",
           punchedIn: isPunchedIn,
           shiftCompleted: isShiftCompleted,
           punchInTime: todayAtt[0]?.punchIn ? new Date(todayAtt[0].punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "09:00 AM",
@@ -366,6 +390,18 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
         setEditDesignation(e.user?.designation || "");
         setEditDepartment(e.user?.department || "");
         setEditSalary(e.salaryMonthly || 0);
+
+        setEditRel1Name(e.relative1Name || "");
+        setEditRel1Relation(e.relative1Relation || "Father");
+        setEditRel1Phone(e.relative1Phone || "");
+        setEditRel2Name(e.relative2Name || "");
+        setEditRel2Relation(e.relative2Relation || "Mother");
+        setEditRel2Phone(e.relative2Phone || "");
+
+        setEditTargetTitle(e.dailyTargetTitle || "Shoot Reels");
+        setEditTargetCount(e.dailyTargetCount || 0);
+        setEditTargetUnit(e.dailyTargetUnit || "reels");
+        setEditTargetNotes(e.dailyTargetNotes || "");
 
         const projs = (e.memberships || []).map((m: any) => {
           const activeTasks = (m.project?.tasks || []).filter((t: any) => t.status !== "ARCHIVED");
@@ -421,6 +457,12 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
 
   const handleUpdateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!editRel1Phone.trim() || !editRel2Phone.trim()) {
+      showToast("Both Relative 1 and Relative 2 phone numbers are compulsory!", "error");
+      return;
+    }
+
     try {
       const res = await fetch(`/mdz-crm/api/employees/${params.id}`, {
         method: "PATCH",
@@ -432,17 +474,49 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
           designation: editDesignation,
           department: editDepartment,
           salaryMonthly: editSalary,
+          relative1Name: editRel1Name.trim(),
+          relative1Relation: editRel1Relation.trim(),
+          relative1Phone: editRel1Phone.trim(),
+          relative2Name: editRel2Name.trim(),
+          relative2Relation: editRel2Relation.trim(),
+          relative2Phone: editRel2Phone.trim(),
+          dailyTargetTitle: editTargetTitle.trim(),
+          dailyTargetCount: editTargetCount,
+          dailyTargetUnit: editTargetUnit.trim(),
+          dailyTargetNotes: editTargetNotes.trim(),
         }),
       });
       const json = await res.json();
       if (json.success) {
-        showToast("Employee profile updated successfully", "success");
+        showToast("✓ Employee profile, quota & relative contacts updated successfully", "success");
         setIsEditOpen(false);
         fetchEmployee();
       } else {
         showToast(json.error || "Failed to update employee", "error");
       }
     } catch (e) {
+      showToast("Network error", "error");
+    }
+  };
+
+  const handleQuickIncrementToday = async (incrementBy: number) => {
+    try {
+      const res = await fetch("/mdz-crm/api/employees/targets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: employee?.id,
+          incrementBy,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || "Progress updated", "success");
+        fetchEmployee();
+      } else {
+        showToast(json.error || "Failed to update", "error");
+      }
+    } catch (err) {
       showToast("Network error", "error");
     }
   };
@@ -554,6 +628,221 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
           <p className="text-slate-800 dark:text-slate-200 font-medium leading-relaxed">
             "{employee.currentTask}"
           </p>
+        </div>
+
+        {/* 2 Compulsory Relatives Emergency Contacts (Admin & Sub-Admin View) */}
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-50/80 via-orange-50/60 to-amber-50/80 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 border border-amber-200/80 dark:border-amber-900/50 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/60 dark:border-amber-900/40 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                <Users className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                  Compulsory Emergency Relatives Contacts (2 Required)
+                </h3>
+                <p className="text-[11px] text-amber-800 dark:text-amber-400 font-medium">
+                  Direct telephone links to 2 verified emergency relatives for safety & HR compliance.
+                </p>
+              </div>
+            </div>
+            {employee.relative1Phone && employee.relative2Phone ? (
+              <span className="self-start sm:self-auto px-2.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-300 dark:border-emerald-800">
+                ✓ 2 NUMBERS VERIFIED
+              </span>
+            ) : (
+              <span className="self-start sm:self-auto px-2.5 py-0.5 rounded-md bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 text-[10px] font-bold border border-rose-300 dark:border-rose-800 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                <span>INCOMPLETE — 2 NUMBERS REQUIRED</span>
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            {/* Relative 1 */}
+            <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3.5 border border-amber-200 dark:border-slate-800 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  RELATIVE 1: {employee.relative1Relation || "Relative 1"}
+                </span>
+                {employee.relative1Phone && (
+                  <a
+                    href={`tel:${employee.relative1Phone}`}
+                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 transition-colors"
+                    title="Direct Call Relative 1"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+              <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                {employee.relative1Name || "Name not recorded"}
+              </div>
+              <div>
+                {employee.relative1Phone ? (
+                  <a
+                    href={`tel:${employee.relative1Phone}`}
+                    className="font-mono font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 text-xs"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{employee.relative1Phone}</span>
+                  </a>
+                ) : (
+                  <span className="text-xs text-rose-500 font-mono italic">
+                    ⚠️ Phone number missing (compulsory)
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Relative 2 */}
+            <div className="bg-white dark:bg-slate-900/90 rounded-xl p-3.5 border border-amber-200 dark:border-slate-800 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  RELATIVE 2: {employee.relative2Relation || "Relative 2"}
+                </span>
+                {employee.relative2Phone && (
+                  <a
+                    href={`tel:${employee.relative2Phone}`}
+                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 transition-colors"
+                    title="Direct Call Relative 2"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
+              <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+                {employee.relative2Name || "Name not recorded"}
+              </div>
+              <div>
+                {employee.relative2Phone ? (
+                  <a
+                    href={`tel:${employee.relative2Phone}`}
+                    className="font-mono font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 text-xs"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>{employee.relative2Phone}</span>
+                  </a>
+                ) : (
+                  <span className="text-xs text-rose-500 font-mono italic">
+                    ⚠️ Phone number missing (compulsory)
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Daily Output Target & Quota Section (Admin & Sub-Admin Managed) */}
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3.5 shadow-2xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                <Target className="w-4 h-4" />
+              </span>
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span>Daily Work Target Quota</span>
+                  {employee?.dailyTargetCount > 0 ? (
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 text-[10px] font-mono font-bold">
+                      {employee.dailyTargetCount} {employee.dailyTargetUnit || "units"} / day
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-mono">
+                      Not Configured
+                    </span>
+                  )}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Target: {employee?.dailyTargetTitle || "Daily Output"} · Managed by Admin & Sub-Admin
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsEditOpen(true)}
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold transition-all"
+              >
+                Configure Quota
+              </button>
+            </div>
+          </div>
+
+          {employee?.dailyTargetCount > 0 ? (
+            <div className="space-y-2.5">
+              {(() => {
+                const today = new Date();
+                const todayLog = (employee.dailyWorkLogs || []).find((l: any) => {
+                  const d = new Date(l.date);
+                  return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+                });
+                const achieved = todayLog?.achievedCount || 0;
+                const target = employee.dailyTargetCount || 1;
+                const progressPct = Math.min(100, Math.round((achieved / target) * 100));
+                const remaining = Math.max(0, target - achieved);
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-slate-700 dark:text-slate-300">
+                        Today's Output Progress ({employee.dailyTargetTitle})
+                      </span>
+                      <span className="font-mono font-black text-indigo-600 dark:text-indigo-400 text-sm">
+                        {achieved} / {target} {employee.dailyTargetUnit}
+                      </span>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden border border-slate-200 dark:border-slate-700">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          progressPct >= 100
+                            ? "bg-emerald-500"
+                            : progressPct >= 50
+                            ? "bg-amber-500"
+                            : "bg-indigo-600"
+                        }`}
+                        style={{ width: `${progressPct}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1">
+                      <span className={`text-[11px] font-bold ${progressPct >= 100 ? "text-emerald-600" : "text-slate-500"}`}>
+                        {progressPct >= 100
+                          ? "✓ Daily Target Met!"
+                          : `${remaining} ${employee.dailyTargetUnit} remaining to hit daily goal`}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleQuickIncrementToday(1)}
+                          className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-colors shadow-2xs"
+                        >
+                          +1 {employee.dailyTargetUnit}
+                        </button>
+                        <button
+                          onClick={() => handleQuickIncrementToday(-1)}
+                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold transition-colors"
+                        >
+                          -1
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-dashed border-slate-200 dark:border-slate-800 text-center space-y-1 text-xs text-slate-500">
+              <p>No target quota set for this employee yet (e.g. 4 reels for shooter, 3 edits for editor).</p>
+              <button
+                onClick={() => setIsEditOpen(true)}
+                className="text-indigo-600 font-bold hover:underline"
+              >
+                Click here to configure daily target quota →
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1039,6 +1328,183 @@ export default function EmployeeDetailPage({ params }: { params: { id: string } 
                 onChange={(e) => setEditSalary(Number(e.target.value))}
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 transition-all font-medium"
               />
+            </div>
+          )}
+
+          {/* COMPULSORY 2 RELATIVES EMERGENCY PHONE NUMBERS */}
+          <div className="p-4 rounded-2xl bg-amber-50/80 dark:bg-amber-950/40 border-2 border-amber-300/80 dark:border-amber-700/60 space-y-3 mt-3">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-amber-700 dark:text-amber-400" />
+              <div>
+                <h4 className="font-extrabold text-amber-950 dark:text-amber-200 text-xs uppercase tracking-wide">
+                  Compulsory Relatives Emergency Contacts (2 Required)
+                </h4>
+                <p className="text-[11px] text-amber-800 dark:text-amber-400 font-medium">
+                  Both phone numbers are mandatory for all employees and visible to Admin and Sub-Admin.
+                </p>
+              </div>
+            </div>
+
+            {/* Relative 1 */}
+            <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-900/60 space-y-2.5">
+              <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                Relative 1 (Mandatory *)
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                    Relative 1 Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editRel1Name}
+                    onChange={(e) => setEditRel1Name(e.target.value)}
+                    placeholder="e.g. Ramesh Sharma"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                    Relationship
+                  </label>
+                  <select
+                    value={editRel1Relation}
+                    onChange={(e) => setEditRel1Relation(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 text-xs font-medium"
+                  >
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Brother">Brother</option>
+                    <option value="Sister">Sister</option>
+                    <option value="Guardian">Guardian</option>
+                    <option value="Other Relative">Other Relative</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-rose-600 dark:text-rose-400 block mb-1">
+                  Relative 1 Phone Number * (Required)
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={editRel1Phone}
+                  onChange={(e) => setEditRel1Phone(e.target.value)}
+                  placeholder="e.g. +91 98765 11111"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-rose-300 dark:border-rose-900/60 rounded-lg p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-mono text-xs font-semibold"
+                />
+              </div>
+            </div>
+
+            {/* Relative 2 */}
+            <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-amber-200 dark:border-amber-900/60 space-y-2.5">
+              <div className="font-bold text-[11px] text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
+                Relative 2 (Mandatory *)
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                    Relative 2 Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editRel2Name}
+                    onChange={(e) => setEditRel2Name(e.target.value)}
+                    placeholder="e.g. Sunita Sharma"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 text-xs"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 block mb-1">
+                    Relationship
+                  </label>
+                  <select
+                    value={editRel2Relation}
+                    onChange={(e) => setEditRel2Relation(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 text-xs font-medium"
+                  >
+                    <option value="Mother">Mother</option>
+                    <option value="Father">Father</option>
+                    <option value="Spouse">Spouse</option>
+                    <option value="Brother">Brother</option>
+                    <option value="Sister">Sister</option>
+                    <option value="Guardian">Guardian</option>
+                    <option value="Other Relative">Other Relative</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-rose-600 dark:text-rose-400 block mb-1">
+                  Relative 2 Phone Number * (Required)
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={editRel2Phone}
+                  onChange={(e) => setEditRel2Phone(e.target.value)}
+                  placeholder="e.g. +91 98765 22222"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border-2 border-rose-300 dark:border-rose-900/60 rounded-lg p-2.5 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-mono text-xs font-semibold"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* DAILY TARGET QUOTA SETTINGS (Admin, Sub-Admin, and Owner Managed) */}
+          {(session?.user?.role === "OWNER" || session?.user?.role === "ADMIN" || session?.user?.role === "SUB_ADMIN") && (
+            <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-3 mt-3">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <div>
+                  <h4 className="font-extrabold text-indigo-950 dark:text-indigo-200 text-xs uppercase tracking-wide">
+                    Daily Work Target Quota (Admin & Sub-Admin Managed)
+                  </h4>
+                  <p className="text-[11px] text-indigo-800 dark:text-indigo-300">
+                    Set daily expected output (e.g. 4 reels for shooter, 3 edits for editor, 5 tasks for developer).
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Target Metric Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editTargetTitle}
+                    onChange={(e) => setEditTargetTitle(e.target.value)}
+                    placeholder="e.g. Shoot Reels"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Daily Limit / Count
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={editTargetCount}
+                    onChange={(e) => setEditTargetCount(Number(e.target.value))}
+                    placeholder="e.g. 4"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Unit
+                  </label>
+                  <input
+                    type="text"
+                    value={editTargetUnit}
+                    onChange={(e) => setEditTargetUnit(e.target.value)}
+                    placeholder="e.g. reels / edits"
+                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs font-semibold"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

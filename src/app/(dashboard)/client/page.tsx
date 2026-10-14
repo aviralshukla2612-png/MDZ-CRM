@@ -107,19 +107,23 @@ export default function ClientDashboardPage() {
             {client?.companyName || "My Client Projects"}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Track real-time progress, assigned developers, and daily updates for your active projects.
+            Track real-time progress, milestones, and daily updates for your active projects.
           </p>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
           {contact?.termsAccepted ? (
-            <span className="text-xs font-mono px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5">
+            <Link
+              href="/terms-and-conditions?from=/client"
+              className="text-xs font-mono px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-colors"
+              title="Click to review accepted terms"
+            >
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Terms Accepted (v1.0)</span>
-            </span>
+            </Link>
           ) : (
             <Link
-              href="/terms-and-conditions"
+              href="/terms-and-conditions?from=/client"
               className="text-xs font-mono px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1.5 hover:underline"
             >
               <FileText className="w-3.5 h-3.5" />
@@ -134,13 +138,13 @@ export default function ClientDashboardPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <FolderKanban className="w-5 h-5 text-indigo-500" />
-            <span>Assigned Projects ({projects.length})</span>
+            <span>My Projects ({projects.length})</span>
           </h2>
         </div>
 
         {projects.length === 0 ? (
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 text-center space-y-2">
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No active projects assigned yet.</p>
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No active projects found.</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               When a project is created for your account, it will appear here with live progress metrics.
             </p>
@@ -173,7 +177,11 @@ export default function ClientDashboardPage() {
                     <span className="text-slate-600 dark:text-slate-400">
                       {p.totalTasks > 0
                         ? `${p.completedTasks} / ${p.totalTasks} Tasks Completed`
-                        : "Task Completion Progress"}
+                        : p.status === "COMPLETED" || p.progressPercentage === 100
+                          ? "Project Completed"
+                          : p.progressPercentage > 0
+                            ? `Progress: ${p.progressPercentage}%`
+                            : "Task Completion Progress"}
                     </span>
                     <span className="font-mono text-indigo-600 dark:text-indigo-400">{p.progressPercentage}%</span>
                   </div>

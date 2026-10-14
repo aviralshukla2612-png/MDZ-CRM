@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isStandalonePage =
     normalizedPath === "/login" ||
     normalizedPath === "/client-register" ||
-    normalizedPath === "/terms-and-conditions" ||
+    (normalizedPath === "/terms-and-conditions" && !session?.user) ||
     normalizedPath === "/inquiry" ||
     normalizedPath.startsWith("/inquiry") ||
     normalizedPath.startsWith("/portal");
@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           email: session?.user?.email || "",
           name: session?.user?.name || "User",
           role: currentRole,
-          designation: "Employee",
+          designation: (session?.user as any)?.designation || "Employee",
           employeeId: session?.user?.employeeId || undefined,
           avatarUrl: (session?.user as any)?.avatarUrl || (session?.user as any)?.image || null,
           icon: null,

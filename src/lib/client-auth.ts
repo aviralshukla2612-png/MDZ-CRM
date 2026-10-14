@@ -93,9 +93,9 @@ export async function verifyClientProjectAccess(userEmail: string, projectId: st
   const clientCtx = await getClientAccountForUser(userEmail);
   if (!clientCtx) return false;
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { clientId: true },
+  const project = await prisma.project.findFirst({
+    where: { OR: [{ id: projectId }, { projectNumber: projectId }] },
+    select: { id: true, clientId: true },
   });
 
   return Boolean(project && project.clientId === clientCtx.client.id);

@@ -241,6 +241,7 @@ export async function uploadStreamToDrive({
   } catch (err: any) {
     const errMsg = err?.message || String(err);
     if (errMsg.includes("invalid_grant")) {
+      clearDriveClientInstance();
       // Try fallback to Service Account if OAuth token expired
       try {
         const saDrive = getDriveClient(true);
@@ -266,6 +267,10 @@ export async function uploadStreamToDrive({
   }
 }
 
+export function clearDriveClientInstance() {
+  driveClientInstance = null;
+}
+
 /**
  * Streams a file binary directly from Google Drive for authorized CRM-proxied downloads.
  */
@@ -275,30 +280,62 @@ export async function getDriveFileStream(driveFileId: string): Promise<{
   fileName: string;
   size?: number;
 }> {
-  const drive = getDriveClient();
+  let drive = getDriveClient();
 
-  // First fetch metadata to get accurate mimeType, name, and size
-  const metaRes = await drive.files.get({
-    fileId: driveFileId,
-    fields: "id, name, mimeType, size",
-    supportsAllDrives: true,
-  });
-
-  const streamRes = await drive.files.get(
-    {
+  try {
+    // First fetch metadata to get accurate mimeType, name, and size
+    const metaRes = await drive.files.get({
       fileId: driveFileId,
-      alt: "media",
+      fields: "id, name, mimeType, size",
       supportsAllDrives: true,
-    },
-    { responseType: "stream" }
-  );
+    });
 
-  return {
-    stream: streamRes.data as unknown as NodeJS.ReadableStream,
-    mimeType: metaRes.data.mimeType || "application/octet-stream",
-    fileName: metaRes.data.name || "downloaded-file",
-    size: metaRes.data.size ? parseInt(metaRes.data.size, 10) : undefined,
-  };
+    const streamRes = await drive.files.get(
+      {
+        fileId: driveFileId,
+        alt: "media",
+        supportsAllDrives: true,
+      },
+      { responseType: "stream" }
+    );
+
+    return {
+      stream: streamRes.data as unknown as NodeJS.ReadableStream,
+      mimeType: metaRes.data.mimeType || "application/octet-stream",
+      fileName: metaRes.data.name || "downloaded-file",
+      size: metaRes.data.size ? parseInt(metaRes.data.size, 10) : undefined,
+    };
+  } catch (err: any) {
+    const errMsg = err?.message || String(err);
+    if (errMsg.includes("invalid_grant")) {
+      clearDriveClientInstance();
+      // Try fallback to Service Account if configured
+      try {
+        const saDrive = getDriveClient(true);
+        const metaRes = await saDrive.files.get({
+          fileId: driveFileId,
+          fields: "id, name, mimeType, size",
+          supportsAllDrives: true,
+        });
+        const streamRes = await saDrive.files.get(
+          { fileId: driveFileId, alt: "media", supportsAllDrives: true },
+          { responseType: "stream" }
+        );
+        return {
+          stream: streamRes.data as unknown as NodeJS.ReadableStream,
+          mimeType: metaRes.data.mimeType || "application/octet-stream",
+          fileName: metaRes.data.name || "downloaded-file",
+          size: metaRes.data.size ? parseInt(metaRes.data.size, 10) : undefined,
+        };
+      } catch (saErr) {
+        console.error("[GoogleDrive] Fallback Service Account download also failed:", saErr);
+      }
+      throw new Error(
+        "Google Drive OAuth refresh token expired (invalid_grant). Please renew GOOGLE_DRIVE_REFRESH_TOKEN in .env or configure a Google Service Account."
+      );
+    }
+    throw err;
+  }
 }
 
 /**

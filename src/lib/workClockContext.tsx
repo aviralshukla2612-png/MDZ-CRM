@@ -38,10 +38,12 @@ interface WorkClockContextType {
   simulatedDeviceError: boolean;
   timeline: TimelineEvent[];
   unclosedShift: { id: string; date: string | Date; punchIn: string | Date } | null;
+  isBreakActionLoading: boolean;
+  isVideographer: boolean;
   // Actions
   punchIn: () => void;
-  startBreak: (type: string, reason?: string) => void;
-  resumeWork: () => void;
+  startBreak: (type: string, reason?: string) => Promise<void>;
+  resumeWork: () => Promise<void>;
   changeWork: (project: string, task: string) => void;
   punchOut: () => { success: boolean; requiresConfirmation: boolean; remainingSeconds: number };
   confirmPunchOutAnyway: (reason?: string) => Promise<boolean>;
@@ -59,6 +61,7 @@ const INITIAL_TIMELINE: TimelineEvent[] = [];
 
 export function WorkClockProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<ClockState>("NOT_PUNCHED_IN");
+  const [isVideographer, setIsVideographer] = useState<boolean>(false);
   const [workSeconds, setWorkSeconds] = useState<number>(0); 
   const [breakSeconds, setBreakSeconds] = useState<number>(0);
   const [breakType, setBreakType] = useState<string>("Lunch");
@@ -101,8 +104,12 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
   const [unclosedShift, setUnclosedShift] = useState<{ id: string; date: string | Date; punchIn: string | Date } | null>(null);
 
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isBreakActionLoading, setIsBreakActionLoading] = useState(false);
+  const isActionPendingRef = React.useRef<boolean>(false);
   const lastPunchOutStatusRef = React.useRef<string | null>(null);
-  const statusRef = React.useRef<ClockState>("WORKING");
+  const statusRef = React.useRef<ClockState>(status);
+  const punchInTimeRef = React.useRef<string | null>(punchInTime);
+  const punchOutTimeRef = React.useRef<string | null>(punchOutTime);
   const { showToast } = useToast();
   const { data: session } = useSession();
   const currentEmployeeId = session?.user?.employeeId;
@@ -111,16 +118,36 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
     statusRef.current = status;
   }, [status]);
 
+  useEffect(() => {
+    punchInTimeRef.current = punchInTime;
+  }, [punchInTime]);
+
+  useEffect(() => {
+    punchOutTimeRef.current = punchOutTime;
+  }, [punchOutTime]);
+
   const pollStatus = React.useCallback(async () => {
     try {
       const employeeId = session?.user?.employeeId;
       if (!employeeId) return; // Don't poll if no employee profile
+      
+      // Prevent stale poll responses from overwriting actions currently being processed
+      if (isActionPendingRef.current) return;
+
       const res = await fetch(`/mdz-crm/api/attendance/status?employeeId=${employeeId}&t=${Date.now()}`, { cache: "no-store" });
       const json = await res.json();
+      
+      // Check again after fetch in case user clicked break/punch while fetch was in-flight
+      if (isActionPendingRef.current) return;
+
       if (json.success && json.data) {
         const dbStatus = json.data.punchOutRequestStatus;
         const generalStatus = json.data.status;
         
+        if (json.data.isVideographer !== undefined) {
+          setIsVideographer(Boolean(json.data.isVideographer));
+        }
+
         if (json.data.unclosedShift) {
           setUnclosedShift(json.data.unclosedShift);
         } else {
@@ -161,17 +188,17 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
             );
           }
 
-          if (json.data.punchIn && !punchInTime) {
+          if (json.data.punchIn && !punchInTimeRef.current) {
             setPunchInTime(new Date(json.data.punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
           }
 
-          if (generalStatus !== status) {
+          if (generalStatus !== statusRef.current) {
             setStatus(generalStatus);
             if (generalStatus === "NOT_PUNCHED_IN") {
               setWorkSeconds(0);
               setBreakSeconds(0);
               setTimeline([]);
-            } else if (generalStatus === "DAY_COMPLETE" && json.data.punchOut && !punchOutTime) {
+            } else if (generalStatus === "DAY_COMPLETE" && json.data.punchOut && !punchOutTimeRef.current) {
               const serverTime = new Date(json.data.punchOut).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
               setPunchOutTime(serverTime);
               setTimeline((prev) => [
@@ -191,7 +218,7 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
         lastPunchOutStatusRef.current = dbStatus;
       }
     } catch (err) {}
-  }, [isLoaded, status, punchInTime, punchOutTime, showToast, session?.user?.employeeId]);
+  }, [session?.user?.employeeId, showToast]);
 
   // Polling for Attendance Status
   useEffect(() => {
@@ -311,6 +338,7 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
   };
 
   const punchIn = () => {
+    isActionPendingRef.current = true;
     const now = new Date();
     const formatted = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setPunchInTime(formatted);
@@ -327,9 +355,17 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
         subtitle: "Approved Device • Location Verified",
       },
     ]);
+
+    setTimeout(() => {
+      isActionPendingRef.current = false;
+    }, 2000);
   };
 
   const startBreak = async (type: string, reason?: string) => {
+    if (isActionPendingRef.current) return;
+    isActionPendingRef.current = true;
+    setIsBreakActionLoading(true);
+
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setBreakType(type);
     setBreakReason(reason || "");
@@ -347,26 +383,35 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
       },
     ]);
 
-    // Send to database for Admin visibility
     try {
       const employeeId = session?.user?.employeeId;
-      if (!employeeId) return;
-      await fetch("/mdz-crm/api/attendance/breaks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeId,
-          action: "START",
-          statusType: type,
-          notes: reason
-        }),
-      });
+      if (employeeId) {
+        await fetch("/mdz-crm/api/attendance/breaks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId,
+            action: "START",
+            statusType: type,
+            notes: reason,
+          }),
+        });
+      }
     } catch (e) {
       console.error("Failed to log break start", e);
+    } finally {
+      setTimeout(() => {
+        isActionPendingRef.current = false;
+        setIsBreakActionLoading(false);
+      }, 1200);
     }
   };
 
   const resumeWork = async () => {
+    if (isActionPendingRef.current) return;
+    isActionPendingRef.current = true;
+    setIsBreakActionLoading(true);
+
     const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setStatus("WORKING");
     showToast("✓ Work session resumed!", "success");
@@ -382,7 +427,6 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
       },
     ]);
 
-    // Send to database for Admin visibility
     try {
       const employeeId = session?.user?.employeeId;
       await fetch("/mdz-crm/api/attendance/breaks", {
@@ -393,9 +437,13 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
           action: "END",
         }),
       });
-      await pollStatus();
     } catch (e) {
       console.error("Failed to log break end", e);
+    } finally {
+      setTimeout(() => {
+        isActionPendingRef.current = false;
+        setIsBreakActionLoading(false);
+      }, 1200);
     }
   };
 
@@ -419,6 +467,12 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
   const REQUIRED_WORK_SECONDS = parseInt(process.env.NEXT_PUBLIC_REQUIRED_WORK_HOURS || "9") * 3600;
 
   const punchOut = () => {
+    // Videographers can punch out anytime without shift restriction or admin approval requests
+    if (isVideographer) {
+      confirmPunchOutAnyway();
+      return { success: true, requiresConfirmation: false, remainingSeconds: 0 };
+    }
+
     const totalActiveSeconds = workSeconds + breakSeconds;
     if (totalActiveSeconds >= REQUIRED_WORK_SECONDS) {
       confirmPunchOutAnyway();
@@ -504,6 +558,8 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
         simulatedDeviceError,
         timeline,
         unclosedShift,
+        isBreakActionLoading,
+        isVideographer,
         punchIn,
         startBreak,
         resumeWork,

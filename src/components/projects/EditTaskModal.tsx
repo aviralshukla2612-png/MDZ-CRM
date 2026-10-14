@@ -1,9 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
-import { CheckCircle2, Save, Calendar, User, Star, AlertCircle, FileText } from "lucide-react";
+import { CheckCircle2, Save, Calendar, User, Star, AlertCircle, Sparkles } from "lucide-react";
+
+export interface NormalizedEmployeeOption {
+  value: string; // The User ID used for DB relation
+  userId: string;
+  name: string;
+  designation: string;
+  email?: string;
+  isProjectMember?: boolean;
+}
 
 interface EditTaskModalProps {
   isOpen: boolean;
@@ -31,12 +40,80 @@ export function EditTaskModal({
   const [deadline, setDeadline] = useState("");
   const [isMostImportant, setIsMostImportant] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [allCompanyEmployees, setAllCompanyEmployees] = useState<any[]>([]);
 
+  // Fetch all company employees in background so reassignment can select ANY employee
   useEffect(() => {
-    if (task) {
+    if (!isOpen) return;
+    const targetProjectId = projectId || task?.projectId;
+    if (targetProjectId) {
+      fetch(`/mdz-crm/api/projects/${targetProjectId}/members`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.availableEmployees)) {
+            setAllCompanyEmployees(data.availableEmployees);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen, projectId, task?.projectId]);
+
+  // Build unified, deduplicated list of selectable assignees
+  const assigneeOptions = useMemo<NormalizedEmployeeOption[]>(() => {
+    const map = new Map<string, NormalizedEmployeeOption>();
+
+    // 1. Process passed employees prop (usually project members)
+    (employees || []).forEach((emp: any) => {
+      const uId = emp.userId || emp.user?.id || emp.id;
+      if (!uId) return;
+      const name = emp.name || emp.user?.name || "Team Member";
+      const desig = emp.designation || emp.role || emp.user?.designation || "Developer";
+      map.set(uId, {
+        value: uId,
+        userId: uId,
+        name,
+        designation: desig,
+        email: emp.email || emp.user?.email,
+        isProjectMember: true,
+      });
+    });
+
+    // 2. Process all company employees
+    (allCompanyEmployees || []).forEach((emp: any) => {
+      const uId = emp.userId || emp.user?.id || emp.id;
+      if (!uId) return;
+      if (!map.has(uId)) {
+        map.set(uId, {
+          value: uId,
+          userId: uId,
+          name: emp.name || emp.user?.name || "Employee",
+          designation: emp.designation || emp.role || "Developer",
+          email: emp.email || emp.user?.email,
+          isProjectMember: false,
+        });
+      }
+    });
+
+    // 3. Ensure current assignee from task is present in options
+    if (task?.assignedTo?.id && !map.has(task.assignedTo.id)) {
+      map.set(task.assignedTo.id, {
+        value: task.assignedTo.id,
+        userId: task.assignedTo.id,
+        name: task.assignedTo.name || "Current Assignee",
+        designation: task.assignedTo.designation || "Assignee",
+        isProjectMember: true,
+      });
+    }
+
+    return Array.from(map.values());
+  }, [employees, allCompanyEmployees, task]);
+
+  // Initialize form state when modal opens or task changes
+  useEffect(() => {
+    if (task && isOpen) {
       setTitle(task.title || "");
       setDescription(task.description || "");
-      
+
       let initialStatus = task.status || "PLANNING";
       if (initialStatus === "IN_PROGRESS") initialStatus = "CURRENT";
       if (initialStatus === "DONE") initialStatus = "COMPLETED";
@@ -44,8 +121,26 @@ export function EditTaskModal({
       setStatus(initialStatus);
 
       setPriority(task.priority || "HIGH");
-      setAssignedToId(task.assignedToId || task.assignedTo?.id || "");
-      
+
+      // Robust assignee matching across userId, employeeId, and raw assignedToId
+      const targetId = task.assignedToId || task.assignedTo?.id || "";
+      if (targetId) {
+        // Find if this targetId matches any known option
+        const matched = assigneeOptions.find(
+          (opt) =>
+            opt.value === targetId ||
+            opt.userId === targetId ||
+            (employees || []).some(
+              (e: any) =>
+                (e.id === targetId || e.employeeId === targetId || e.userId === targetId) &&
+                (e.userId === opt.value || e.id === opt.value)
+            )
+        );
+        setAssignedToId(matched ? matched.value : targetId);
+      } else {
+        setAssignedToId("");
+      }
+
       if (task.deadline && !isNaN(new Date(task.deadline).getTime())) {
         setDeadline(new Date(task.deadline).toISOString().slice(0, 10));
       } else {
@@ -54,7 +149,7 @@ export function EditTaskModal({
 
       setIsMostImportant(Boolean(task.isMostImportant));
     }
-  }, [task, isOpen]);
+  }, [task, isOpen, assigneeOptions]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,7 +174,7 @@ export function EditTaskModal({
           description: description.trim() || null,
           status,
           priority,
-          assignedToId: assignedToId || null,
+          assignedToId: assignedToId ? assignedToId.trim() : null,
           deadline: deadline ? new Date(deadline).toISOString() : null,
           isMostImportant,
         }),
@@ -91,7 +186,15 @@ export function EditTaskModal({
         return;
       }
 
-      showToast("✓ Task updated successfully!", "success");
+      const assignedPersonName = assigneeOptions.find((o) => o.value === assignedToId)?.name;
+      if (assignedToId && assignedPersonName) {
+        showToast(`✓ Task reassigned to ${assignedPersonName}!`, "success");
+      } else if (!assignedToId) {
+        showToast("✓ Task unassigned & updated successfully!", "success");
+      } else {
+        showToast("✓ Task updated successfully!", "success");
+      }
+
       onSuccess();
       onClose();
     } catch (err) {
@@ -102,24 +205,36 @@ export function EditTaskModal({
     }
   };
 
+  const currentSelectedAssignee = assigneeOptions.find((o) => o.value === assignedToId);
+
   return (
     <BottomSheet
       isOpen={isOpen}
       onClose={onClose}
-      title="Edit Daily Task / Work Item"
-      subtitle={`Modify task assignment, priority, and status for ${task?.title ? `"${task.title}"` : "Task"}`}
+      title="Edit Task & Reassign Member"
+      subtitle={`Modify task assignment, priority, and schedule for ${task?.title ? `"${task.title}"` : "Task"}`}
     >
       <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-        {/* Task Code & Context */}
+        {/* Task Code & Context Banner */}
         <div className="p-3 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-bold text-indigo-700 dark:text-indigo-300">
               Task ID: {task?.id?.slice(0, 8)}
             </span>
+            {currentSelectedAssignee ? (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-200 flex items-center gap-1">
+                <User className="w-2.5 h-2.5" />
+                <span>{currentSelectedAssignee.name}</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                Unassigned
+              </span>
+            )}
           </div>
           {isMostImportant && (
             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded bg-amber-500 text-white flex items-center gap-1 shadow-2xs">
-              ⭐ MOST IMPORTANT TASK
+              ⭐ MOST IMPORTANT
             </span>
           )}
         </div>
@@ -139,11 +254,16 @@ export function EditTaskModal({
           />
         </div>
 
-        {/* Assignee Dropdown */}
+        {/* Assignee / Reassignment Dropdown */}
         <div>
-          <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5 flex items-center gap-1">
-            <User className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Assigned Team Member</span>
+          <label className="text-slate-700 dark:text-slate-300 font-bold block mb-1.5 flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <User className="w-3.5 h-3.5 text-indigo-500" />
+              <span>Assigned Developer / Employee</span>
+            </span>
+            <span className="text-[11px] text-slate-400 font-normal">
+              Reassign to change active assignee
+            </span>
           </label>
           <select
             value={assignedToId}
@@ -151,12 +271,15 @@ export function EditTaskModal({
             className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-slate-900 dark:text-slate-100 outline-none focus:border-indigo-500 font-medium"
           >
             <option value="">-- Unassigned --</option>
-            {employees.map((emp: any) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.name || emp.user?.name || "Employee"} ({emp.designation || emp.role || "Developer"})
+            {assigneeOptions.map((emp) => (
+              <option key={emp.value} value={emp.value}>
+                {emp.name} — {emp.designation} {emp.isProjectMember ? "★ (Project Team)" : ""}
               </option>
             ))}
           </select>
+          <p className="text-[10px] text-slate-400 mt-1">
+            Selecting a team member immediately reassigns the task and sends them a notification.
+          </p>
         </div>
 
         {/* Status & Priority */}
@@ -241,12 +364,12 @@ export function EditTaskModal({
           </div>
         </label>
 
-        {/* Buttons */}
+        {/* Action Buttons */}
         <div className="flex items-center justify-end gap-2 pt-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition-colors"
+            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition-colors cursor-pointer"
           >
             Cancel
           </button>
@@ -254,10 +377,10 @@ export function EditTaskModal({
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-2 transition-all disabled:opacity-50"
+            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             <Save className="w-3.5 h-3.5" />
-            <span>{submitting ? "Saving..." : "Save Task Changes"}</span>
+            <span>{submitting ? "Saving..." : "Save & Reassign Task"}</span>
           </button>
         </div>
       </form>

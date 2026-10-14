@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getClientAccountForUser } from "@/lib/client-auth";
 import { prisma } from "@/lib/prisma";
+import { calculateProgressFromProjectData, isTaskCompleted, isTaskActive } from "@/lib/progressEngine";
 
 export async function GET() {
   const userOrRes = await requireAuth();
@@ -21,6 +22,16 @@ export async function GET() {
       tasks: {
         select: { id: true, title: true, status: true, assignedToId: true },
       },
+      stages: {
+        select: {
+          id: true,
+          name: true,
+          status: true,
+          progressPercentage: true,
+          weight: true,
+        },
+        orderBy: { orderIndex: "asc" },
+      },
       memberships: {
         where: { isActive: true },
         include: {
@@ -31,6 +42,7 @@ export async function GET() {
                   id: true,
                   name: true,
                   email: true,
+                  phone: true,
                   designation: true,
                   department: true,
                   avatarUrl: true,
@@ -53,6 +65,8 @@ export async function GET() {
           author: {
             select: {
               name: true,
+              email: true,
+              phone: true,
               designation: true,
               avatarUrl: true,
             },
@@ -64,13 +78,16 @@ export async function GET() {
   });
 
   const formattedProjects = projects.map((p) => {
-    const activeTasks = p.tasks.filter((t) => t.status !== "ARCHIVED");
+    const activeTasks = p.tasks.filter((t) => isTaskActive(t.status));
     const totalTasks = activeTasks.length;
-    const completedTasks = activeTasks.filter(
-      (t) => t.status === "COMPLETED" || t.status === "DONE"
-    ).length;
-    const progressPercentage =
-      totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+    const completedTasks = activeTasks.filter((t) => isTaskCompleted(t.status)).length;
+    const progressPercentage = calculateProgressFromProjectData({
+      status: p.status,
+      progressPercentage: p.progressPercentage,
+      tasks: activeTasks,
+      stages: (p as any).stages,
+      clientUpdatesCount: p.clientUpdates?.length,
+    });
 
     // Quota for this project
     const submittedRequests = p.changeRequests.filter(
@@ -85,8 +102,8 @@ export async function GET() {
       const devTasks = activeTasks.filter((t) => t.assignedToId === devUser.id);
       const inProgressTask = devTasks.find((t) => t.status === "IN_PROGRESS");
       const currentTask = inProgressTask || devTasks.find((t) => t.status !== "COMPLETED" && t.status !== "DONE") || null;
-      const empCode = m.employee.employeeIdCode || "01";
-      const phone = (m.employee as any).phone || ("+91 98980 000" + (empCode.length > 3 ? empCode.slice(-2) : "01"));
+      const empCode = m.employee.employeeIdCode || "EMP-01";
+      const phone = devUser.phone?.trim() || (m.employee as any).phone?.trim() || ("+91 98980 " + (empCode.length >= 3 ? empCode.slice(-4) : "10001"));
 
       return {
         membershipId: m.id,
@@ -95,8 +112,10 @@ export async function GET() {
         projectNumber: p.projectNumber,
         roleInProject: m.roleInProject,
         name: devUser.name,
-        email: devUser.email,
+        email: devUser.email || "",
         phone,
+        employeeNumber: empCode,
+        employeeIdCode: empCode,
         designation: devUser.designation || "Software Developer",
         department: devUser.department,
         avatarUrl: devUser.avatarUrl,
@@ -125,7 +144,11 @@ export async function GET() {
       completedTasks,
       progressPercentage,
       zeroTaskMessage:
-        totalTasks === 0 ? "No tasks have been added to this project yet." : null,
+        totalTasks === 0
+          ? progressPercentage > 0
+            ? null
+            : "No tasks have been added to this project yet."
+          : null,
       teamMembers,
       changeRequests: p.changeRequests,
       quota: {

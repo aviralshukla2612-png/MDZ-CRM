@@ -24,7 +24,19 @@ export async function GET(req: NextRequest) {
     }
 
     if (entityId && entityId !== "ALL") {
-      whereClause.entityId = entityId;
+      if (whereClause.entityType === "PROJECT") {
+        const proj = await prisma.project.findFirst({
+          where: { OR: [{ id: entityId }, { projectNumber: entityId }] },
+          select: { id: true, projectNumber: true },
+        });
+        if (proj) {
+          whereClause.entityId = { in: [proj.id, proj.projectNumber] };
+        } else {
+          whereClause.entityId = entityId;
+        }
+      } else {
+        whereClause.entityId = entityId;
+      }
     }
 
     if (category && category !== "ALL") {

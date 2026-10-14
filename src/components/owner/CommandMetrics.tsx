@@ -25,13 +25,15 @@ export function CommandMetrics() {
       if (finRes?.success && finRes.data) {
         const invoices = finRes.data.invoices || [];
         const now = new Date().getTime();
-        const overdueInvoices = invoices.filter((i: any) => i.status === "UNPAID" && new Date(i.dueDate).getTime() < now);
-        const overdueAmount = overdueInvoices.reduce((sum: number, i: any) => sum + i.amount, 0);
+        const overdueInvoices = invoices.filter((i: any) => i.status === "OVERDUE" || (i.status === "UNPAID" && new Date(i.dueDate).getTime() < now));
+        const overdueAmount = finRes.data.metrics?.overdueBilling !== undefined && finRes.data.metrics.overdueBilling > 0
+          ? finRes.data.metrics.overdueBilling
+          : overdueInvoices.reduce((sum: number, i: any) => sum + i.amount, 0);
 
         setFinanceData({
           totalBilling: finRes.data.metrics?.totalBilling || 0,
           totalPending: finRes.data.metrics?.pendingBilling || 0,
-          upcoming: (finRes.data.metrics?.pendingBilling || 0) - overdueAmount,
+          upcoming: Math.max(0, (finRes.data.metrics?.pendingBilling || 0) - overdueAmount),
           overdue: overdueAmount,
           overdueCount: overdueInvoices.length,
         });

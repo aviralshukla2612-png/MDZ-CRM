@@ -27,6 +27,7 @@ import {
   GripVertical,
   Camera,
   Edit3,
+  MessageSquare,
 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
@@ -67,14 +68,18 @@ export interface ProjectCardItem {
 }
 
 function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardItem {
+  const isCompleted = (s: string) =>
+    ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON"].includes(String(s || "").trim().toUpperCase());
   const totalTasks = p.tasks ? p.tasks.length : (p.totalTasks || 0);
   const completedTasks = p.tasks
-    ? p.tasks.filter((t: any) => t.status === "COMPLETED" || t.status === "DONE").length
+    ? p.tasks.filter((t: any) => isCompleted(t.status)).length
     : (p.completedTasks || 0);
   const calcProgress =
-    totalTasks > 0
+    p.status === "COMPLETED"
+      ? 100
+      : totalTasks > 0
       ? Math.round((completedTasks / totalTasks) * 100)
-      : typeof p.progress === "number"
+      : typeof p.progress === "number" && p.progress > 0
       ? p.progress
       : Number(p.progressPercentage) || 0;
 
@@ -206,6 +211,8 @@ export function EmployeeProjectKanban({
   const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
   // Hide left sidebar portion by default so Kanban columns take full 100% width
   const [showSidebar, setShowSidebar] = useState(false);
+  // Option to hide completed projects from Kanban board
+  const [hideCompletedProjects, setHideCompletedProjects] = useState(false);
 
   // Drag and Drop state
   const [draggedProjectId, setDraggedProjectId] = useState<string | null>(null);
@@ -223,14 +230,25 @@ export function EmployeeProjectKanban({
       return base.map((p) => {
         if (p.id !== projectId) return p;
         const updatedTasks = (p.tasks || []).map((t: any) =>
-          t.id === taskId ? { ...t, status: nextStatus } : t
+          t.id === taskId
+            ? {
+                ...t,
+                status: nextStatus,
+                completedAt:
+                  nextStatus === "COMPLETED" || nextStatus === "DONE"
+                    ? t.completedAt || new Date().toISOString()
+                    : null,
+              }
+            : t
         );
-        const completedTasks = updatedTasks.filter(
-          (t: any) => t.status === "COMPLETED" || t.status === "DONE"
-        ).length;
+        const isTaskDone = (s: string) =>
+          ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON"].includes(String(s || "").trim().toUpperCase());
+        const completedTasks = updatedTasks.filter((t: any) => isTaskDone(t.status)).length;
         const totalTasks = updatedTasks.length;
         const progress =
-          totalTasks > 0
+          p.status === "COMPLETED"
+            ? 100
+            : totalTasks > 0
             ? Math.round((completedTasks / totalTasks) * 100)
             : p.progress;
         return {
@@ -251,7 +269,11 @@ export function EmployeeProjectKanban({
       });
       const json = await res.json();
       if (json.success) {
-        showToast(`✓ Task updated to ${nextStatus}`, "success");
+        if (nextStatus === "COMPLETED" || nextStatus === "DONE") {
+          showToast("✓ Task completed & moved to Calendar view!", "success");
+        } else {
+          showToast(`✓ Task updated to ${nextStatus}`, "success");
+        }
         onRefresh();
       } else {
         showToast(json.error || "Failed to update task", "error");
@@ -676,6 +698,23 @@ export function EmployeeProjectKanban({
                 PREMIUM
               </span>
             </button>
+
+            {/* Toggle Hide Completed from Kanban */}
+            {viewMode === "kanban" && (
+              <button
+                type="button"
+                onClick={() => setHideCompletedProjects(!hideCompletedProjects)}
+                className={`px-3 py-2.5 rounded-2xl text-xs font-bold border transition-all flex items-center gap-1.5 shadow-xs cursor-pointer active:scale-95 ${
+                  hideCompletedProjects
+                    ? "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 shadow-xs"
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+                title={hideCompletedProjects ? "Completed projects hidden from Kanban. Click to show." : "Hide completed projects from Kanban (track in Calendar)"}
+              >
+                <CheckCircle2 className={`w-3.5 h-3.5 ${hideCompletedProjects ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`} />
+                <span>{hideCompletedProjects ? "Completed Hidden" : "Hide Completed"}</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -1158,19 +1197,59 @@ export function EmployeeProjectKanban({
         </div>
 
         {/* KANBAN BOARD (Columns by Status with Drop Zones) */}
-        <div className="flex overflow-x-auto gap-4 items-start pb-4 scrollbar-thin max-w-full">
-          {KANBAN_COLUMNS.map((col) => {
-            const colProjects = projectsToRender.filter((p) => {
-              const s = (p.status || "").toUpperCase();
-              const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+        {(() => {
+          const completedProjectsCount = projectsToRender.filter((p) => {
+            const s = (p.status || "").toUpperCase();
+            return s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+          }).length;
 
-              // 1. Completed column always displays completed projects
-              if (col.id === "COMPLETED") {
-                return isCompleted;
-              }
+          const columnsToRender = hideCompletedProjects
+            ? KANBAN_COLUMNS.filter((col) => col.id !== "COMPLETED")
+            : KANBAN_COLUMNS;
 
-              // Completed projects do not show in other stages
-              if (isCompleted) return false;
+          return (
+            <div className="space-y-3">
+              {hideCompletedProjects && (
+                <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/60 text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>
+                      <strong>Completed items hidden from Kanban:</strong> {completedProjectsCount} completed project{completedProjectsCount === 1 ? "" : "s"} & tasks are tracked in the Calendar view.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("calendar")}
+                      className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                    >
+                      <Calendar className="w-3.5 h-3.5" />
+                      <span>View in Calendar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setHideCompletedProjects(false)}
+                      className="text-[11px] underline text-emerald-700 dark:text-emerald-400 font-bold hover:text-emerald-900 cursor-pointer"
+                    >
+                      Show on Kanban
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex overflow-x-auto gap-4 items-start pb-6 pr-4 scrollbar-thin max-w-full">
+                {columnsToRender.map((col) => {
+                  const colProjects = projectsToRender.filter((p) => {
+                    const s = (p.status || "").toUpperCase();
+                    const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+
+                    // 1. Completed column always displays completed projects
+                    if (col.id === "COMPLETED") {
+                      return isCompleted;
+                    }
+
+                    // Completed projects do not show in other stages
+                    if (isCompleted) return false;
 
               // 2. Incomplete column displays explicitly incomplete / dropped / cancelled projects
               if (col.id === "INCOMPLETE") {
@@ -1258,7 +1337,7 @@ export function EmployeeProjectKanban({
                     handleDropProject(pId, col.id);
                   }
                 }}
-                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3 space-y-3 flex flex-col min-h-[440px] transition-all flex-1 min-w-[210px] max-w-[340px] shrink-0 xl:shrink flex-grow"
+                className="bg-slate-50/80 dark:bg-slate-900/50 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-3.5 space-y-3 flex flex-col min-h-[500px] transition-all w-[320px] min-w-[300px] shrink-0"
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/80 dark:border-slate-800">
@@ -1292,7 +1371,7 @@ export function EmployeeProjectKanban({
                 )}
 
                 {/* Cards Container */}
-                <div className="space-y-3 flex-1 overflow-y-auto max-h-[620px] pr-1">
+                <div className="space-y-3 flex-1 overflow-y-auto max-h-[calc(100vh-270px)] pr-1 scrollbar-thin">
                   {colProjects.length === 0 ? (
                     <div className="h-40 rounded-2xl border-2 border-dashed border-slate-300/80 dark:border-slate-700/80 flex flex-col items-center justify-center text-center p-4 text-slate-500 dark:text-slate-400 text-xs space-y-1">
                       <span className="font-semibold">No projects in this stage</span>
@@ -1302,10 +1381,10 @@ export function EmployeeProjectKanban({
                     colProjects.map((proj) => {
                       const priorityColor =
                         proj.priority === "URGENT"
-                          ? "bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-200 border-rose-300 dark:border-rose-700"
+                          ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/80"
                           : proj.priority === "HIGH"
-                          ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
-                          : "bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700";
+                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/80"
+                          : "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/80";
 
                       const isLeadRole = proj.roleInProject === "TM";
                       const isBeingDragged = draggedProjectId === proj.id;
@@ -1350,109 +1429,26 @@ export function EmployeeProjectKanban({
                             e.dataTransfer.effectAllowed = "move";
                           }}
                           onDragEnd={() => setDraggedProjectId(null)}
-                          className={`bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-300 dark:border-slate-700 p-4 shadow-md hover:shadow-xl hover:border-indigo-500/80 transition-all space-y-3.5 group cursor-grab active:cursor-grabbing relative ${
-                            col.id === "IN_PROGRESS"
-                              ? "border-l-4 border-l-indigo-600 dark:border-l-indigo-500"
-                              : col.id === "COMPLETED"
-                              ? "border-l-4 border-l-emerald-600 dark:border-l-emerald-500"
-                              : col.id === "ON_HOLD"
-                              ? "border-l-4 border-l-amber-500 dark:border-l-amber-500"
-                              : col.id === "INCOMPLETE"
-                              ? "border-l-4 border-l-rose-500 dark:border-l-rose-500"
-                              : "border-l-4 border-l-blue-500 dark:border-l-blue-500"
-                          } ${
+                          className={`bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 hover:border-indigo-400 dark:hover:border-indigo-500/80 p-3.5 shadow-xs hover:shadow-lg transition-all space-y-3 group cursor-grab active:cursor-grabbing relative ${
                             isBeingDragged ? "opacity-30 scale-95 border-dashed border-indigo-500" : ""
                           }`}
                         >
-                          {/* Top Badges & Drag Handle */}
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <GripVertical className="w-4 h-4 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors shrink-0" />
+                          {/* Top Badges & Quick Stage Move */}
+                          <div className="flex items-center justify-between gap-1.5">
+                            <div className="flex items-center gap-1.5 shrink-0 min-w-0">
+                              <GripVertical className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors shrink-0" />
                               <span
-                                className={`text-[10px] font-extrabold font-mono px-2.5 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 ${priorityColor}`}
+                                className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 ${priorityColor}`}
                               >
                                 {proj.priority}
+                              </span>
+                              <span className="text-[10px] font-mono font-semibold text-slate-400 dark:text-slate-500 truncate max-w-[85px]">
+                                {proj.projectNumber || proj.id.slice(0, 8)}
                               </span>
                             </div>
 
                             <div className="flex items-center gap-1 shrink-0">
-                              <span
-                                className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border shadow-2xs whitespace-nowrap shrink-0 max-w-[130px] truncate ${
-                                  isLeadRole
-                                    ? "bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700"
-                                    : "bg-indigo-100 dark:bg-indigo-950/80 text-indigo-900 dark:text-indigo-200 border-indigo-300 dark:border-indigo-700"
-                                }`}
-                                title={teamTooltip}
-                              >
-                                {assignedDisplayName ? assignedDisplayName : isLeadRole ? "⭐ TECH LEAD (TM)" : proj.roleInProject || "DEVELOPER"}
-                              </span>
-
-                              {/* Edit Project button for Admins/Sub-Admins/Sales */}
-                              {((session?.user as any)?.role === "OWNER" ||
-                                (session?.user as any)?.role === "ADMIN" ||
-                                (session?.user as any)?.role === "SUB_ADMIN" ||
-                                (session?.user as any)?.role === "SALES") && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    const rawProj = allProjects.find((p) => p.id === proj.id) || proj;
-                                    setEditingProject(rawProj);
-                                  }}
-                                  className="p-1 rounded-md bg-slate-100 dark:bg-slate-800 hover:bg-indigo-100 dark:hover:bg-indigo-950 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-slate-700 transition-colors shrink-0 cursor-pointer"
-                                  title="Edit Project Details"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Project Name & Code */}
-                          <div className="space-y-1.5">
-                            <div className="inline-block text-[11px] font-mono font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 px-2 py-0.5 rounded border border-indigo-200/80 dark:border-indigo-800 whitespace-nowrap shrink-0">
-                              {proj.projectNumber || proj.id.slice(0, 8)}
-                            </div>
-                            <Link
-                              href={`/projects/${proj.id}`}
-                              className="font-black text-sm text-slate-950 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors block line-clamp-2 leading-snug"
-                            >
-                              {proj.name}
-                            </Link>
-                          </div>
-
-                          {/* Client Company */}
-                          <div className="flex items-center gap-2 text-xs text-slate-800 dark:text-slate-200 font-bold truncate">
-                            <Building className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                            <span className="truncate">{proj.clientName}</span>
-                          </div>
-
-                          {/* Progress bar */}
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-xs font-mono font-extrabold">
-                              <span className="text-slate-800 dark:text-slate-200">Progress</span>
-                              <span className="text-indigo-600 dark:text-indigo-400 font-black">
-                                {proj.progress || proj.progressPercentage || 0}%
-                              </span>
-                            </div>
-                            <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden border border-slate-300/80 dark:border-slate-600">
-                              <div
-                                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all"
-                                style={{
-                                  width: `${proj.progress || proj.progressPercentage || 0}%`,
-                                }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Quick Stage Dropdown & Quick Complete Button */}
-                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 flex items-center justify-between text-xs gap-2">
-                            <span className="text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 shrink-0">
-                              <Layers className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                              <span>Stage:</span>
-                            </span>
-                            <div className="flex items-center gap-1.5 flex-1 min-w-0 justify-end">
+                              {/* Quick Stage Dropdown */}
                               <select
                                 value={
                                   proj.status === "IN_PROGRESS" || proj.status === "ACTIVE" || proj.status === "CURRENT"
@@ -1467,112 +1463,71 @@ export function EmployeeProjectKanban({
                                 }
                                 onChange={(e) => handleDropProject(proj.id, e.target.value)}
                                 onClick={(e) => e.stopPropagation()}
-                                className="bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 rounded-xl px-2 py-1 text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer truncate max-w-[130px] shadow-2xs"
-                                title="Change project stage"
+                                className="bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-slate-700 dark:text-slate-300 outline-none cursor-pointer transition-colors"
+                                title="Move Stage"
                               >
-                                <option value="PLANNING">📋 Planning</option>
-                                <option value="IN_PROGRESS">⚡ Current</option>
-                                <option value="ON_HOLD">🔄 Revision</option>
-                                <option value="INCOMPLETE">⚠️ Incomplete</option>
-                                <option value="COMPLETED">✅ Complete</option>
+                                <option value="PLANNING">Planning</option>
+                                <option value="IN_PROGRESS">Active</option>
+                                <option value="ON_HOLD">Review</option>
+                                <option value="INCOMPLETE">Incomplete</option>
+                                <option value="COMPLETED">Delivered</option>
                               </select>
-                              {!isProjComplete && (
+
+                              {/* Edit Project Button for Admins */}
+                              {((session?.user as any)?.role === "OWNER" ||
+                                (session?.user as any)?.role === "ADMIN" ||
+                                (session?.user as any)?.role === "SUB_ADMIN" ||
+                                (session?.user as any)?.role === "SALES") && (
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleDropProject(proj.id, "COMPLETED");
+                                    e.preventDefault();
+                                    const rawProj = allProjects.find((p) => p.id === proj.id) || proj;
+                                    setEditingProject(rawProj);
                                   }}
-                                  className="px-2 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shadow-2xs transition-all shrink-0 flex items-center gap-1"
-                                  title="Mark project stage as Complete"
+                                  className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shrink-0 cursor-pointer"
+                                  title="Edit Project"
                                 >
-                                  <span>✓ Complete</span>
+                                  <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                               )}
                             </div>
                           </div>
 
-                          {/* Assigned Team Members Section */}
-                          <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 space-y-2">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 shrink-0">
-                                <Users className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                                <span>Assigned Team ({activeTeamMembers.length}):</span>
+                          {/* Project Name & Client */}
+                          <div className="space-y-1">
+                            <Link
+                              href={`/projects/${proj.id}`}
+                              className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors block line-clamp-2 leading-snug"
+                            >
+                              {proj.name}
+                            </Link>
+                            <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                              <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                              <span className="truncate">{proj.clientName}</span>
+                            </div>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="space-y-1">
+                            <div className="flex justify-between items-center text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
+                              <span>Progress</span>
+                              <span className="text-indigo-600 dark:text-indigo-400 font-black">
+                                {proj.progress || proj.progressPercentage || 0}%
                               </span>
                             </div>
-
-                            {/* Active Member Pills */}
-                            {activeTeamMembers.length > 0 ? (
-                              <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-0.5">
-                                {activeTeamMembers.map((m: any, idx: number) => (
-                                  <span
-                                    key={m.id || idx}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800/80 text-[11px] font-bold text-indigo-900 dark:text-indigo-200 shadow-2xs"
-                                    title={`${m.name} — ${m.role || "Member"}${m.email ? ` (${m.email})` : ""}`}
-                                  >
-                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
-                                    <span className="truncate max-w-[100px]">{m.name}</span>
-                                    <span className="text-[9px] font-mono opacity-75 shrink-0">({m.role || "Dev"})</span>
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-[11px] text-slate-400 italic">No team members assigned yet</div>
-                            )}
-
-                            {/* Admin / Sub-Admin Quick Add Member Dropdown */}
-                            {!isEmployee && (
-                              <div className="flex items-center gap-1.5 pt-1">
-                                <select
-                                  value=""
-                                  onChange={(e) => {
-                                    if (e.target.value) {
-                                      handleQuickAddMemberToProject(proj.id, e.target.value);
-                                    }
-                                  }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-full bg-white dark:bg-slate-800 border-2 border-slate-300 dark:border-slate-600 hover:border-indigo-500 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-900 dark:text-white outline-none cursor-pointer truncate shadow-2xs transition-colors"
-                                  title="Assign another team member to this project"
-                                >
-                                  <option value="">+ Assign Team Member...</option>
-                                  {employees
-                                    .filter((emp) => !activeTeamMembers.some((m: any) => m.id === emp.id || m.employeeId === emp.id || m.userId === emp.userId))
-                                    .map((emp) => (
-                                      <option key={emp.id} value={emp.id}>
-                                        👤 {emp.name} ({emp.designation || "Developer"})
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
-                            )}
+                            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-full transition-all"
+                                style={{
+                                  width: `${proj.progress || proj.progressPercentage || 0}%`,
+                                }}
+                              />
+                            </div>
                           </div>
 
-                          {/* Tasks summary & Deadline */}
-                          <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-800 dark:text-slate-200 bg-slate-100/90 dark:bg-slate-800/90 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                            <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-extrabold">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                              <span>{proj.completedTasks}/{proj.totalTasks} Tasks</span>
-                            </span>
-
-                            {(() => {
-                              const s = (proj.status || "").toUpperCase();
-                              const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
-                              const isOverdue = !isCompleted && proj.targetDeadline && proj.targetDeadline !== "No Deadline" && !isNaN(new Date(proj.targetDeadline).getTime()) && new Date(proj.targetDeadline).setHours(23, 59, 59, 999) < Date.now();
-                              
-                              if (isOverdue) {
-                                return (
-                                  <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800 text-[11px]" title="Deadline is overdue!">
-                                    ⚠️ {proj.targetDeadline}
-                                  </span>
-                                );
-                              }
-                              return (
-                                <span className="text-slate-700 dark:text-slate-300 font-semibold">{proj.targetDeadline || "No Deadline"}</span>
-                              );
-                            })()}
-                          </div>
-
-                          {/* Project Tasks Quick List (If tasks exist and assigned to employee) */}
+                          {/* Active / Completed Tasks (clean compact representation) */}
                           {(() => {
                             const currentEmpId = (session?.user as any)?.employeeId;
                             const currentEmpName = session?.user?.name;
@@ -1587,94 +1542,193 @@ export function EmployeeProjectKanban({
 
                             if (cardTasks.length === 0) return null;
 
+                            const activeCardTasks = cardTasks.filter(
+                              (tsk: any) => tsk.status !== "COMPLETED" && tsk.status !== "DONE"
+                            );
+                            const completedTasksCount = cardTasks.filter(
+                              (tsk: any) => tsk.status === "COMPLETED" || tsk.status === "DONE"
+                            ).length;
+
                             return (
-                              <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 space-y-1.5">
-                                <div className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-                                  {isEmployee ? "My Tasks:" : "Quick Tasks:"}
-                                </div>
-                                <div className="space-y-1 max-h-32 overflow-y-auto pr-0.5">
-                                  {cardTasks.slice(0, 5).map((tsk: any) => {
-                                  const tskDone = tsk.status === "COMPLETED" || tsk.status === "DONE";
-                                  return (
-                                    <div
-                                      key={tsk.id}
-                                      className="p-2 rounded-xl bg-slate-100/90 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-1.5 text-xs font-semibold"
-                                    >
-                                      <span
-                                        className={`truncate font-bold flex-1 ${
-                                          tskDone ? "line-through text-slate-400 dark:text-slate-500" : "text-slate-900 dark:text-white"
-                                        }`}
+                              <div className="space-y-1.5 pt-1">
+                                {activeCardTasks.length > 0 && (
+                                  <div className="space-y-1">
+                                    {activeCardTasks.slice(0, 2).map((tsk: any) => (
+                                      <div
+                                        key={tsk.id}
+                                        className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 text-xs group"
                                       >
-                                        {tsk.title}
-                                      </span>
-                                      <div className="flex items-center gap-1.5 shrink-0">
-                                        <select
-                                          value={
-                                            tskDone
-                                              ? "COMPLETED"
-                                              : tsk.status === "INCOMPLETE"
-                                              ? "INCOMPLETE"
-                                              : tsk.status === "REVISION" || tsk.status === "ON_HOLD"
-                                              ? "REVISION"
-                                              : tsk.status === "CURRENT" || tsk.status === "IN_PROGRESS"
-                                              ? "CURRENT"
-                                              : "PLANNING"
-                                          }
-                                          onChange={(e) => handleUpdateTaskFromKanban(proj.id, tsk.id, e.target.value)}
-                                          onClick={(e) => e.stopPropagation()}
-                                          className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-1.5 py-0.5 text-[10px] font-bold outline-none cursor-pointer text-slate-900 dark:text-white"
-                                        >
-                                          <option value="PLANNING">Planning</option>
-                                          <option value="CURRENT">Current</option>
-                                          <option value="REVISION">Revision</option>
-                                          <option value="INCOMPLETE">Incomplete</option>
-                                          <option value="COMPLETED">Complete</option>
-                                        </select>
-                                        {!tskDone && (
+                                        <span className="truncate font-medium text-slate-800 dark:text-slate-200 text-[11px] flex-1">
+                                          {tsk.title}
+                                        </span>
+                                        <div className="flex items-center gap-1 shrink-0">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setEditingTask(tsk);
+                                              setEditingTaskProjectId(proj.id);
+                                              setEditingTaskTeamMembers(
+                                                employees && employees.length > 0
+                                                  ? employees.map((emp) => ({
+                                                      id: emp.userId || emp.id,
+                                                      userId: emp.userId || emp.id,
+                                                      employeeId: emp.employeeId || emp.id,
+                                                      name: emp.name,
+                                                      designation: emp.designation || emp.role || "Developer",
+                                                      role: emp.role || emp.designation || "Developer",
+                                                      email: emp.email,
+                                                    }))
+                                                  : proj.teamMembers || []
+                                              );
+                                            }}
+                                            className="p-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-950/60 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                                            title="Edit or Reassign Task"
+                                          >
+                                            <Edit3 className="w-3.5 h-3.5" />
+                                          </button>
                                           <button
                                             type="button"
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               handleUpdateTaskFromKanban(proj.id, tsk.id, "COMPLETED");
                                             }}
-                                            className="px-2 py-0.5 rounded-lg bg-emerald-600 text-white font-bold text-xs shadow-2xs hover:bg-emerald-500 active:scale-95 transition-all cursor-pointer"
-                                            title="Mark task complete"
+                                            className="p-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 transition-colors shrink-0 cursor-pointer"
+                                            title="Complete task and move to Calendar"
                                           >
-                                            ✓
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
                                           </button>
-                                        )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                    {activeCardTasks.length > 2 && (
+                                      <div className="text-[10px] text-slate-400 font-medium text-right pr-0.5">
+                                        +{activeCardTasks.length - 2} more tasks
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
 
-                                        {/* Edit Task Button */}
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingTask(tsk);
-                                            setEditingTaskProjectId(proj.id);
-                                            setEditingTaskTeamMembers(proj.teamMembers || []);
-                                          }}
-                                          className="p-1 rounded-md bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors shrink-0 cursor-pointer"
-                                          title="Edit Task Details"
-                                        >
-                                          <Edit3 className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
+                                {completedTasksCount > 0 && (
+                                  <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 px-2 py-1 rounded-lg">
+                                    <span className="flex items-center gap-1">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      <span>{completedTasksCount} task{completedTasksCount > 1 ? "s" : ""} completed</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewMode("calendar");
+                                      }}
+                                      className="underline hover:text-emerald-900 dark:hover:text-emerald-200 font-bold flex items-center gap-0.5 cursor-pointer"
+                                    >
+                                      <span>In Calendar</span>
+                                      <ArrowRight className="w-2.5 h-2.5" />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             );
                           })()}
 
-                          {/* Action Footer */}
+                          {/* Card Footer: Metadata (Tasks, Overdue/Deadline, Team Avatars) */}
+                          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs">
+                            {/* Left: Tasks count & Target Deadline */}
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              <span
+                                className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 shrink-0"
+                                title={`${proj.completedTasks} of ${proj.totalTasks} tasks completed`}
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                                <span>{proj.completedTasks}/{proj.totalTasks}</span>
+                              </span>
+
+                              <Link
+                                href={`/projects/${proj.id}?tab=chat`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors shrink-0"
+                                title="Project Team Chat & Discussion"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                                <span>Chat</span>
+                              </Link>
+
+                              {(() => {
+                                const s = (proj.status || "").toUpperCase();
+                                const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+                                const isOverdue = !isCompleted && proj.targetDeadline && proj.targetDeadline !== "No Deadline" && !isNaN(new Date(proj.targetDeadline).getTime()) && new Date(proj.targetDeadline).setHours(23, 59, 59, 999) < Date.now();
+
+                                if (isOverdue) {
+                                  return (
+                                    <span
+                                      className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 shrink-0"
+                                      title="Deadline Overdue"
+                                    >
+                                      <AlertTriangle className="w-3 h-3 text-rose-500" />
+                                      <span>{proj.targetDeadline}</span>
+                                    </span>
+                                  );
+                                }
+                                if (proj.targetDeadline && proj.targetDeadline !== "No Deadline") {
+                                  return (
+                                    <span
+                                      className="inline-flex items-center gap-1 text-[10px] font-mono text-slate-500 dark:text-slate-400 shrink-0"
+                                      title="Target Deadline"
+                                    >
+                                      <Calendar className="w-3 h-3 text-slate-400" />
+                                      <span>{proj.targetDeadline}</span>
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
+
+                            {/* Right: Assigned Team Avatars Stack */}
+                            <div className="flex items-center -space-x-1.5 shrink-0" title={teamTooltip}>
+                              {activeTeamMembers.slice(0, 3).map((m: any, idx: number) => (
+                                <div
+                                  key={m.id || idx}
+                                  className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-2xs shrink-0"
+                                  title={`${m.name} (${m.role || "Developer"})`}
+                                >
+                                  {m.name.charAt(0).toUpperCase()}
+                                </div>
+                              ))}
+                              {activeTeamMembers.length > 3 && (
+                                <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-2xs shrink-0">
+                                  +{activeTeamMembers.length - 3}
+                                </div>
+                              )}
+                              {activeTeamMembers.length === 0 && (
+                                <span className="text-[10px] text-slate-400 italic">No team</span>
+                              )}
+                              {!isEmployee && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAssignProjectId(proj.id);
+                                    setIsAssignModalOpen(true);
+                                  }}
+                                  className="w-6 h-6 rounded-full border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center text-xs font-bold transition-colors shrink-0 ml-1 cursor-pointer bg-white dark:bg-slate-800"
+                                  title="Assign Team Member"
+                                >
+                                  +
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Footer: Sleek Workspace Link */}
                           <div className="pt-1">
                             <Link
                               href={`/projects/${proj.id}`}
-                              className="w-full py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-98 text-white font-bold text-xs shadow-sm hover:shadow-md transition-all flex items-center justify-center gap-2"
+                              className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-indigo-50 dark:bg-slate-800/60 dark:hover:bg-indigo-950/50 text-slate-700 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400 border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs group/btn"
                             >
                               <span>Open Workspace</span>
-                              <ArrowRight className="w-3.5 h-3.5" />
+                              <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
                             </Link>
                           </div>
                         </div>
@@ -1683,9 +1737,12 @@ export function EmployeeProjectKanban({
                   )}
                 </div>
               </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
           </>
         )}
       </div>

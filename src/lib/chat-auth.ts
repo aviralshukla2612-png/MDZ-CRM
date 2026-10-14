@@ -65,34 +65,44 @@ export async function canAccessProjectChat(
 
   if (isOwner(user) || isSubAdmin(user)) return true;
 
-  if (user.activeRole === "EMPLOYEE") {
-    let empId = user.employeeId;
-    if (!empId) {
-      const emp = await prisma.employee.findUnique({
-        where: { userId: user.id },
-        select: { id: true },
-      });
-      if (!emp) return false;
-      empId = emp.id;
-    }
+  const project = await prisma.project.findFirst({
+    where: { OR: [{ id: projectId }, { projectNumber: projectId }] },
+    select: { id: true, createdById: true },
+  });
 
-    const membership = await prisma.projectMembership.findFirst({
+  if (!project) return false;
+  const actualProjectId = project.id;
+
+  if (user.activeRole === "SALES") {
+    return project.createdById === user.id;
+  }
+
+  if (user.activeRole === "EMPLOYEE") {
+    const isMember = await prisma.projectMembership.findFirst({
       where: {
-        projectId,
-        employeeId: empId,
+        projectId: actualProjectId,
+        OR: [
+          ...(user.employeeId ? [{ employeeId: user.employeeId }] : []),
+          { employee: { userId: user.id } },
+        ],
         isActive: true,
       },
     });
 
-    return Boolean(membership);
-  }
+    if (isMember) return true;
 
-  if (user.activeRole === "SALES") {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      select: { createdById: true },
+    // Also grant access if employee has any task assigned to them in this project
+    const hasTask = await prisma.task.findFirst({
+      where: {
+        projectId: actualProjectId,
+        OR: [
+          { assignedToId: user.id },
+          ...(user.employeeId ? [{ assignedToId: user.employeeId }] : []),
+        ],
+      },
     });
-    return project?.createdById === user.id;
+
+    return Boolean(hasTask);
   }
 
   return false;
@@ -156,8 +166,28 @@ export async function canSendMessage(
   const isParticipant = conversation.participants.some((p) => p.userId === user.id);
   const isAdmin = isOwner(user) || isSubAdmin(user);
 
-  if (!isParticipant && !isAdmin) {
-    return { allowed: false, error: "You are not a participant in this conversation." };
+  if (!isParticipant) {
+    if (isAdmin) {
+      // Auto-join admin as participant so receipts and notifications work
+      await prisma.conversationParticipant.upsert({
+        where: { conversationId_userId: { conversationId, userId: user.id } },
+        create: { conversationId, userId: user.id },
+        update: {},
+      });
+    } else if (conversation.type === "PROJECT" && conversation.projectId) {
+      const canAccess = await canAccessProjectChat(user, conversation.projectId);
+      if (canAccess) {
+        await prisma.conversationParticipant.upsert({
+          where: { conversationId_userId: { conversationId, userId: user.id } },
+          create: { conversationId, userId: user.id },
+          update: {},
+        });
+      } else {
+        return { allowed: false, error: "You are not a participant in this conversation." };
+      }
+    } else {
+      return { allowed: false, error: "You are not a participant in this conversation." };
+    }
   }
 
   // Announcement channels can only be posted in by Admins/Owners
@@ -278,10 +308,40 @@ export async function findOrCreateDirectConversation(userId1: string, userId2: s
  * Finds or creates a Project conversation.
  */
 export async function findOrCreateProjectConversation(projectId: string, currentUserId: string) {
-  const existing = await prisma.conversation.findFirst({
+  // Resolve actual project by either ID or projectNumber
+  const project = await prisma.project.findFirst({
+    where: {
+      OR: [
+        { id: projectId },
+        { projectNumber: projectId },
+      ],
+    },
+    include: {
+      memberships: {
+        where: { isActive: true },
+        include: {
+          employee: {
+            select: { userId: true },
+          },
+        },
+      },
+      tasks: {
+        where: { status: { not: "ARCHIVED" } },
+        select: { assignedToId: true },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  const actualProjectId = project.id;
+
+  let existing = await prisma.conversation.findFirst({
     where: {
       type: "PROJECT",
-      projectId,
+      projectId: actualProjectId,
     },
     include: {
       participants: {
@@ -306,32 +366,43 @@ export async function findOrCreateProjectConversation(projectId: string, current
     // Ensure current user is in participants if not already
     const isMember = existing.participants.some((p) => p.userId === currentUserId);
     if (!isMember) {
-      await prisma.conversationParticipant.create({
-        data: {
+      await prisma.conversationParticipant.upsert({
+        where: {
+          conversationId_userId: {
+            conversationId: existing.id,
+            userId: currentUserId,
+          },
+        },
+        create: {
           conversationId: existing.id,
           userId: currentUserId,
         },
+        update: {},
       });
-    }
-    return existing;
-  }
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: {
-      memberships: {
-        where: { isActive: true },
+      const updated = await prisma.conversation.findUnique({
+        where: { id: existing.id },
         include: {
-          employee: {
-            select: { userId: true },
+          participants: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  avatarUrl: true,
+                  designation: true,
+                  department: true,
+                  activeRole: true,
+                },
+              },
+            },
           },
         },
-      },
-    },
-  });
-
-  if (!project) {
-    throw new Error("Project not found");
+      });
+      return updated || existing;
+    }
+    return existing;
   }
 
   const participantUserIds = new Set<string>();
@@ -344,10 +415,16 @@ export async function findOrCreateProjectConversation(projectId: string, current
     }
   });
 
+  project.tasks.forEach((t) => {
+    if (t.assignedToId) {
+      participantUserIds.add(t.assignedToId);
+    }
+  });
+
   return await prisma.conversation.create({
     data: {
       type: "PROJECT",
-      projectId,
+      projectId: actualProjectId,
       name: `${project.name} Chat`,
       participants: {
         create: Array.from(participantUserIds).map((uid) => ({

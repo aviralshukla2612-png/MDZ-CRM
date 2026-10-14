@@ -22,6 +22,11 @@ export async function GET(req: NextRequest) {
           { id: employeeIdCode },
           { employeeIdCode: employeeIdCode }
         ]
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, designation: true, department: true, activeRole: true }
+        }
       }
     });
 
@@ -112,13 +117,35 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    const finalStatus = attendance.punchOut ? "DAY_COMPLETE" : (events.find(e => !e.endedAt)?.statusType === "WORKING" ? "WORKING" : "ON_BREAK");
+    // Check the latest open event (if any)
+    const openEvent = [...events].reverse().find((e) => !e.endedAt);
+    let finalStatus: string;
+    if (attendance.punchOut) {
+      finalStatus = "DAY_COMPLETE";
+    } else if (openEvent) {
+      finalStatus = openEvent.statusType === "WORKING" ? "WORKING" : "ON_BREAK";
+    } else {
+      // Punched in and no active break event => employee is working
+      finalStatus = "WORKING";
+    }
     console.log("Returning status to client:", finalStatus);
+
+    const designationLower = (employee.user?.designation || "").toLowerCase();
+    const departmentLower = (employee.user?.department || "").toLowerCase();
+    const isVideographer =
+      designationLower.includes("videograph") ||
+      designationLower.includes("video graph") ||
+      designationLower.includes("cameraman") ||
+      designationLower.includes("camera") ||
+      designationLower.includes("shooter") ||
+      departmentLower.includes("videograph");
 
     return NextResponse.json({ 
       success: true, 
       data: {
         status: finalStatus,
+        isVideographer,
+        designation: employee.user?.designation || "Employee",
         punchOutRequestStatus: attendance.punchOutRequestStatus, // PENDING, APPROVED, REJECTED, or null
         punchOut: attendance.punchOut,
         punchIn: attendance.punchIn,

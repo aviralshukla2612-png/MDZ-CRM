@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, requireRole } from "@/lib/auth";
+import { calculateProgressFromProjectData, isTaskCompleted, isTaskActive } from "@/lib/progressEngine";
 
 export async function GET() {
   const authRes = await requireAuth();
@@ -61,20 +62,13 @@ export async function GET() {
     const isAdminOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole);
 
     const formatted = projects.map((p) => {
-      const activeTasks = p.tasks ? p.tasks.filter((t) => t.status !== "ARCHIVED") : [];
-      const totalTasks = activeTasks.length;
-      const completedTasks = activeTasks.filter(
-        (t) => t.status === "COMPLETED" || t.status === "DONE"
-      ).length;
-
-      let calculatedProgress = 0;
-      if (totalTasks > 0) {
-        calculatedProgress = Math.round((completedTasks / totalTasks) * 100);
-      } else if (p.status === "COMPLETED") {
-        calculatedProgress = 100;
-      } else if (p.clientUpdates && p.clientUpdates.length > 0) {
-        calculatedProgress = Math.min(100, p.clientUpdates.length * 25);
-      }
+      const activeTasks = p.tasks ? p.tasks.filter((t) => isTaskActive(t.status)) : [];
+      const calculatedProgress = calculateProgressFromProjectData({
+        status: p.status,
+        progressPercentage: p.progressPercentage,
+        tasks: activeTasks,
+        clientUpdatesCount: p.clientUpdates?.length,
+      });
 
       const activeMembers = p.memberships.filter((m) => m.isActive);
       const tmMembership = activeMembers.find((m) => m.roleInProject === "TM") || activeMembers[0];
@@ -260,15 +254,18 @@ export async function POST(req: Request) {
       );
     }
 
+    const targetDeadline = body.deadline ? new Date(body.deadline) : (body.targetDeadline ? new Date(body.targetDeadline) : null);
+    const isPastDeadline = targetDeadline && targetDeadline.getTime() < Date.now();
+
     const data: any = {
       projectNumber: uniqueCode,
       name: body.name || "New Digital Solution",
       clientId: client.id,
       contractValue: Number(body.contractValue) || 0,
       status: body.status || "PLANNING",
-      priority: body.priority || "HIGH",
+      priority: isPastDeadline ? "URGENT" : (body.priority || "HIGH"),
       progressPercentage: typeof body.progressPercentage === "number" ? body.progressPercentage : (Number(body.progressPercentage) || 0),
-      targetDeadline: body.deadline ? new Date(body.deadline) : (body.targetDeadline ? new Date(body.targetDeadline) : null),
+      targetDeadline,
       createdById: authRes.id,
     };
 

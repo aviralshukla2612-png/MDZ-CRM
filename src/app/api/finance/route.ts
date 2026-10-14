@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
+import { runOverdueEscalation } from "@/lib/escalationEngine";
 
 export async function GET() {
   const authRes = await requireRole(["OWNER"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
+    // Automatically evaluate overdue invoice & payment milestone escalations
+    await runOverdueEscalation({ sendNotifications: false });
+
     const invoices = await prisma.invoice.findMany({
       include: {
         client: true,

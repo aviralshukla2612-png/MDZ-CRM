@@ -25,6 +25,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             },
           },
         },
+        dailyWorkLogs: { orderBy: { date: "desc" }, take: 60 },
       },
     });
 
@@ -88,6 +89,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       employeeUpdateData.phone = cleanMobile;
     }
 
+    // Relative 1 & Relative 2 Emergency Contacts (Compulsory 2 relative phone numbers)
+    if (body.relative1Name !== undefined) employeeUpdateData.relative1Name = String(body.relative1Name || "").trim();
+    if (body.relative1Relation !== undefined) employeeUpdateData.relative1Relation = String(body.relative1Relation || "").trim();
+    if (body.relative1Phone !== undefined) employeeUpdateData.relative1Phone = String(body.relative1Phone || "").trim();
+
+    if (body.relative2Name !== undefined) employeeUpdateData.relative2Name = String(body.relative2Name || "").trim();
+    if (body.relative2Relation !== undefined) employeeUpdateData.relative2Relation = String(body.relative2Relation || "").trim();
+    if (body.relative2Phone !== undefined) employeeUpdateData.relative2Phone = String(body.relative2Phone || "").trim();
+
+
     // Admin & Sub-Admin controls (Email, Name, Designation, Department, Salary, Status, etc.)
     if (isAdmin) {
       if (body.email !== undefined) {
@@ -106,6 +117,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       if (body.isActive !== undefined) userUpdateData.isActive = body.isActive;
       if (body.salaryMonthly !== undefined) employeeUpdateData.salaryMonthly = Number(body.salaryMonthly);
       if (body.status) employeeUpdateData.status = body.status;
+
+      // Daily Target Quota controls (Managed by Admin, Sub-Admin, and Owner)
+      if (body.dailyTargetTitle !== undefined) employeeUpdateData.dailyTargetTitle = String(body.dailyTargetTitle || "Tasks").trim();
+      if (body.dailyTargetCount !== undefined) employeeUpdateData.dailyTargetCount = Math.max(0, Number(body.dailyTargetCount) || 0);
+      if (body.dailyTargetUnit !== undefined) employeeUpdateData.dailyTargetUnit = String(body.dailyTargetUnit || "units").trim();
+      if (body.dailyTargetNotes !== undefined) employeeUpdateData.dailyTargetNotes = String(body.dailyTargetNotes || "").trim();
     }
 
     const updatedEmployee = await prisma.$transaction(async (tx) => {

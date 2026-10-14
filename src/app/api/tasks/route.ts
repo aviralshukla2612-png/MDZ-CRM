@@ -115,11 +115,27 @@ export async function POST(req: Request) {
       );
     }
 
+    const project = await prisma.project.findFirst({
+      where: {
+        OR: [{ id: projectId }, { projectNumber: projectId }],
+      },
+      select: { id: true },
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        { success: false, error: "Project not found" },
+        { status: 404 }
+      );
+    }
+
+    const actualProjectId = project.id;
+
     // Role check: Only OWNER, ADMIN, SALES, or team members of this project can add tasks
     if (authRes.activeRole === "EMPLOYEE") {
       const membership = await prisma.projectMembership.findFirst({
         where: {
-          projectId,
+          projectId: actualProjectId,
           employeeId: authRes.employeeId,
           isActive: true,
         },
@@ -133,14 +149,14 @@ export async function POST(req: Request) {
       }
     }
 
-    const taskCount = await prisma.task.count({ where: { projectId } });
+    const taskCount = await prisma.task.count({ where: { projectId: actualProjectId } });
 
     const newTask = await prisma.task.create({
       data: {
-        projectId,
+        projectId: actualProjectId,
         title: title.trim(),
         description: body.description ? String(body.description).trim() : null,
-        priority: body.priority || "MEDIUM",
+        priority: (body.deadline && new Date(body.deadline).getTime() < Date.now()) ? "URGENT" : (body.priority || "MEDIUM"),
         status: body.status || "TODO",
         assignedToId: body.assignedToId || (authRes.activeRole === "EMPLOYEE" ? authRes.employeeId : null),
         createdById: authRes.id,
@@ -169,7 +185,7 @@ export async function POST(req: Request) {
       },
     });
 
-    await recalculateProjectProgress(projectId);
+    await recalculateProjectProgress(actualProjectId);
 
     return NextResponse.json({
       success: true,

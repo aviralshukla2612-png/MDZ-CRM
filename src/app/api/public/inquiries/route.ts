@@ -9,6 +9,8 @@ import {
 } from "@/lib/googleDrive";
 import { syncInquiryToGoogleSheets } from "@/lib/googleSheets";
 import { Readable } from "stream";
+import fs from "fs";
+import path from "path";
 
 // In-memory rate limiting map: ip -> timestamps[]
 const rateLimitMap = new Map<string, number[]>();
@@ -154,59 +156,70 @@ export async function POST(req: NextRequest) {
 
     const actorId = ownerUser?.id;
 
-    // 6. Handle Google Drive Uploads for Files
+    // 6. Handle Storage for Uploaded Files (Google Drive with Graceful Local Fallback)
     const uploadedDriveFiles: {
       driveFileId: string;
+      storageProvider: "GOOGLE_DRIVE" | "LOCAL";
       fileName: string;
       originalName: string;
       mimeType: string;
       fileSize: number;
     }[] = [];
 
-    if (uploadedFiles.length > 0 && isGoogleDriveConfigured()) {
-      try {
-        const folderId = await resolveEntityFolder("LEAD", leadNumber, "Inquiry-Attachments");
-
-        for (const file of uploadedFiles) {
-          const buffer = Buffer.from(await file.arrayBuffer());
-          const stream = Readable.from(buffer);
-          const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-
-          const driveRes = await uploadStreamToDrive({
-            stream,
-            fileName: safeName,
-            mimeType: file.type || "application/octet-stream",
-            folderId,
-          });
-
-          uploadedDriveFiles.push({
-            driveFileId: driveRes.driveFileId,
-            fileName: driveRes.fileName,
-            originalName: file.name,
-            mimeType: file.type || "application/octet-stream",
-            fileSize: file.size,
-          });
+    if (uploadedFiles.length > 0) {
+      let folderId: string | undefined;
+      if (isGoogleDriveConfigured()) {
+        try {
+          folderId = await resolveEntityFolder("LEAD", leadNumber, "Inquiry-Attachments");
+        } catch (folderErr) {
+          console.warn("[Inquiry API] Google Drive folder resolution warning. Will fallback to local storage:", folderErr);
         }
-      } catch (driveErr: any) {
-        console.error("[Inquiry API] Google Drive upload error:", driveErr);
-        // Rollback any drive files uploaded during this batch
-        for (const f of uploadedDriveFiles) {
-          await deleteDriveFile(f.driveFileId).catch(() => {});
-        }
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Failed to securely store uploaded attachments. Please try again without files or contact support.",
-          },
-          { status: 500 }
-        );
       }
-    } else if (uploadedFiles.length > 0) {
-      // Local fallback metadata if Google Drive not configured
+
       for (const file of uploadedFiles) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        let driveFileId = `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        let storageProvider: "GOOGLE_DRIVE" | "LOCAL" = "LOCAL";
+        let driveUploaded = false;
+
+        // Attempt Google Drive upload if configured and folder is available
+        if (isGoogleDriveConfigured() && folderId) {
+          try {
+            const stream = Readable.from(buffer);
+            const driveRes = await uploadStreamToDrive({
+              stream,
+              fileName: safeName,
+              mimeType: file.type || "application/octet-stream",
+              folderId,
+            });
+
+            if (driveRes?.driveFileId) {
+              driveFileId = driveRes.driveFileId;
+              storageProvider = "GOOGLE_DRIVE";
+              driveUploaded = true;
+            }
+          } catch (driveErr) {
+            console.warn(`[Inquiry API] Google Drive upload failed for ${file.name}. Gracefully falling back to secure local storage:`, driveErr);
+          }
+        }
+
+        // Graceful Local Fallback: Always ensure file is securely saved on disk if Drive didn't succeed
+        if (!driveUploaded) {
+          try {
+            const uploadDir = path.join(process.cwd(), "uploads");
+            await fs.promises.mkdir(uploadDir, { recursive: true });
+            await fs.promises.writeFile(path.join(uploadDir, safeName), buffer);
+            storageProvider = "LOCAL";
+          } catch (fsErr) {
+            console.error(`[Inquiry API] Failed to write local fallback file for ${file.name}:`, fsErr);
+          }
+        }
+
         uploadedDriveFiles.push({
-          driveFileId: `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-          fileName: file.name,
+          driveFileId,
+          storageProvider,
+          fileName: safeName,
           originalName: file.name,
           mimeType: file.type || "application/octet-stream",
           fileSize: file.size,
@@ -251,7 +264,7 @@ export async function POST(req: NextRequest) {
           await tx.mediaFile.create({
             data: {
               driveFileId: f.driveFileId,
-              storageProvider: isGoogleDriveConfigured() ? "GOOGLE_DRIVE" : "LOCAL",
+              storageProvider: f.storageProvider,
               fileName: f.fileName,
               originalName: f.originalName,
               mimeType: f.mimeType,
@@ -294,7 +307,7 @@ export async function POST(req: NextRequest) {
       console.error("[Inquiry API] Database transaction error:", dbErr);
       // Compensating Drive cleanup
       for (const f of uploadedDriveFiles) {
-        if (isGoogleDriveConfigured()) {
+        if (f.storageProvider === "GOOGLE_DRIVE") {
           await deleteDriveFile(f.driveFileId).catch(() => {});
         }
       }

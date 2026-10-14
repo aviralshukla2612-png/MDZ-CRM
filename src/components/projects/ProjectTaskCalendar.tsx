@@ -20,10 +20,13 @@ import {
   Star,
   Layers,
   X,
+  ChevronDown,
+  Edit3,
 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { EditTaskModal } from "./EditTaskModal";
 
 export interface TaskCalendarItem {
   id: string;
@@ -65,6 +68,7 @@ interface ProjectTaskCalendarProps {
   onRefresh?: () => void;
   selectedEmployeeId?: string;
   onSelectEmployee?: (empId: string) => void;
+  onSwitchToKanban?: () => void;
   isCompact?: boolean;
 }
 
@@ -92,6 +96,7 @@ export function ProjectTaskCalendar({
   onRefresh,
   selectedEmployeeId = "ALL",
   onSelectEmployee,
+  onSwitchToKanban,
   isCompact = false,
 }: ProjectTaskCalendarProps) {
   const { showToast } = useToast();
@@ -121,6 +126,7 @@ export function ProjectTaskCalendar({
     selectedDate.toISOString().split("T")[0]
   );
   const [isSubmittingTask, setIsSubmittingTask] = useState(false);
+  const [editingTask, setEditingTask] = useState<any | null>(null);
 
   // Sync selectedEmployeeId if changed from props
   React.useEffect(() => {
@@ -332,15 +338,15 @@ export function ProjectTaskCalendar({
   };
 
   // Map tasks by date string (YYYY-MM-DD)
-  // Priority order for task date: for completed tasks, completedAt -> deadline -> startDate -> createdAt; for active tasks, deadline -> startDate -> createdAt
+  // Priority order for task date: for completed tasks, completedAt -> deadline -> startDate -> createdAt -> today; for active tasks, deadline -> startDate -> createdAt -> today
   const tasksByDateMap = useMemo(() => {
     const map = new Map<string, TaskCalendarItem[]>();
 
     filteredTasks.forEach((task) => {
       const isCompleted = task.status === "COMPLETED" || task.status === "DONE";
       const dateKey = isCompleted
-        ? (getDateKey(task.completedAt) || getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt))
-        : (getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt));
+        ? (getDateKey(task.completedAt) || getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt) || getDateKey(new Date()))
+        : (getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt) || getDateKey(new Date()));
 
       if (dateKey) {
         const list = map.get(dateKey) || [];
@@ -645,7 +651,7 @@ export function ProjectTaskCalendar({
                   setFilterDeveloper(e.target.value);
                   if (onSelectEmployee) onSelectEmployee(e.target.value);
                 }}
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 cursor-pointer appearance-none shadow-2xs"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 cursor-pointer appearance-none shadow-2xs transition-colors"
               >
                 <option value="ALL">👥 All Team Members ({employees.length})</option>
                 {employees.map((emp) => (
@@ -654,9 +660,7 @@ export function ProjectTaskCalendar({
                   </option>
                 ))}
               </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
-                ▼
-              </div>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
             </div>
 
             {/* Project Dropdown */}
@@ -664,7 +668,7 @@ export function ProjectTaskCalendar({
               <select
                 value={filterProject}
                 onChange={(e) => setFilterProject(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 cursor-pointer appearance-none shadow-2xs"
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-3 pr-8 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 outline-none focus:border-indigo-500 cursor-pointer appearance-none shadow-2xs transition-colors"
               >
                 <option value="ALL">📁 All Projects ({allProjects.length})</option>
                 {allProjects.map((p) => (
@@ -673,10 +677,21 @@ export function ProjectTaskCalendar({
                   </option>
                 ))}
               </select>
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs">
-                ▼
-              </div>
+              <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400" />
             </div>
+
+            {/* Switch to Kanban Button if handler provided */}
+            {onSwitchToKanban && (
+              <button
+                type="button"
+                onClick={onSwitchToKanban}
+                className="px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+                title="Switch back to Kanban Board"
+              >
+                <FolderKanban className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                <span>Kanban View</span>
+              </button>
+            )}
 
             {/* Schedule Task Button */}
             <button
@@ -700,24 +715,30 @@ export function ProjectTaskCalendar({
             <span className="text-[10px] uppercase font-mono text-slate-400 font-bold mr-1">
               Status:
             </span>
-            {[
-              { id: "ALL", label: "All Tasks" },
-              { id: "PENDING", label: "To Do / In Progress" },
-              { id: "COMPLETED", label: "Completed" },
-            ].map((st) => (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() => setFilterStatus(st.id)}
-                className={`px-3 py-1 rounded-xl font-bold transition-all text-xs whitespace-nowrap cursor-pointer ${
-                  filterStatus === st.id
-                    ? "bg-indigo-600 text-white shadow-xs"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                }`}
-              >
-                {st.label}
-              </button>
-            ))}
+            {(() => {
+              const completedCountTotal = allTasks.filter(
+                (t) => t.status === "COMPLETED" || t.status === "DONE" || t.status === "DELIVERED" || t.status === "WON"
+              ).length;
+
+              return [
+                { id: "ALL", label: `All Items (${filteredTasks.length})` },
+                { id: "PENDING", label: "To Do / Active" },
+                { id: "COMPLETED", label: `✓ Completed (${completedCountTotal})` },
+              ].map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setFilterStatus(st.id)}
+                  className={`px-3 py-1 rounded-xl font-bold transition-all text-xs whitespace-nowrap cursor-pointer ${
+                    filterStatus === st.id
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ));
+            })()}
           </div>
 
           {/* Search box */}
@@ -778,13 +799,13 @@ export function ProjectTaskCalendar({
                 <div
                   key={cell.id}
                   onClick={() => setSelectedDate(cell.date)}
-                  className={`min-h-[105px] sm:min-h-[120px] p-1.5 sm:p-2 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group relative select-none ${
+                  className={`min-h-[105px] sm:min-h-[120px] p-2 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group relative select-none ${
                     cell.isSelected
-                      ? "bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500 ring-2 ring-indigo-500/40 shadow-md shadow-indigo-600/10 z-10"
+                      ? "bg-indigo-50/90 dark:bg-indigo-950/60 border-indigo-500 ring-2 ring-indigo-500/30 shadow-sm z-10"
                       : cell.isToday
-                      ? "bg-blue-50/50 dark:bg-blue-950/30 border-blue-400 dark:border-blue-600 ring-1 ring-blue-400/40"
+                      ? "bg-slate-50 dark:bg-slate-800/80 border-indigo-400 dark:border-indigo-600 ring-1 ring-indigo-400/30"
                       : cell.isCurrentMonth
-                      ? "bg-white dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      ? "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-slate-50/80 dark:hover:bg-slate-800/60"
                       : "bg-slate-50/40 dark:bg-slate-900/30 border-slate-100 dark:border-slate-800/40 opacity-40 hover:opacity-80"
                   }`}
                 >
@@ -795,7 +816,7 @@ export function ProjectTaskCalendar({
                         cell.isSelected
                           ? "bg-indigo-600 text-white shadow-xs"
                           : cell.isToday
-                          ? "bg-blue-500 text-white font-black"
+                          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/80 dark:text-indigo-200 font-black ring-1 ring-indigo-500/40"
                           : cell.isCurrentMonth
                           ? "text-slate-800 dark:text-slate-200"
                           : "text-slate-400 dark:text-slate-600"
@@ -835,26 +856,28 @@ export function ProjectTaskCalendar({
                           key={t.id}
                           className={`text-[10px] leading-tight px-1.5 py-1 rounded-md truncate font-medium flex items-center gap-1 border transition-all ${
                             isDone
-                              ? "bg-slate-100 dark:bg-slate-800/80 text-slate-400 line-through border-transparent"
+                              ? "bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700 font-bold"
                               : isUrgent
                               ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800"
                               : isHigh
                               ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800"
                               : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200/80 dark:border-indigo-800/60"
                           }`}
-                          title={`${t.title} (${t.projectName || "Project"})`}
+                          title={`${t.title} (${t.projectName || "Project"}) — ${isDone ? "Completed" : t.status}`}
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              isDone
-                                ? "bg-emerald-500"
-                                : isUrgent
-                                ? "bg-rose-500 animate-pulse"
-                                : isHigh
-                                ? "bg-amber-500"
-                                : "bg-indigo-500"
-                            }`}
-                          />
+                          {isDone ? (
+                            <Check className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0 stroke-[3]" />
+                          ) : (
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                isUrgent
+                                  ? "bg-rose-500 animate-pulse"
+                                  : isHigh
+                                  ? "bg-amber-500"
+                                  : "bg-indigo-500"
+                              }`}
+                            />
+                          )}
                           <span className="truncate">{t.title}</span>
                         </div>
                       );
@@ -981,8 +1004,8 @@ export function ProjectTaskCalendar({
                     key={task.id}
                     className={`p-3.5 rounded-2xl border transition-all space-y-2.5 ${
                       isDone
-                        ? "bg-slate-50/70 dark:bg-slate-800/40 border-slate-200/60 dark:border-slate-800 opacity-75"
-                        : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-600"
+                        ? "bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/50 shadow-2xs"
+                        : "bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-750 shadow-2xs hover:border-indigo-400 dark:hover:border-indigo-600"
                     }`}
                   >
                     {/* Top Row: Status Checkbox + Title + Priority Pill */}
@@ -1005,30 +1028,46 @@ export function ProjectTaskCalendar({
                           <h4
                             className={`font-bold text-xs leading-snug ${
                               isDone
-                                ? "text-slate-400 line-through"
+                                ? "text-emerald-900 dark:text-emerald-200 line-through opacity-80"
                                 : "text-slate-900 dark:text-slate-100"
                             }`}
                           >
                             {task.title}
                           </h4>
 
-                          <span
-                            className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
-                              isUrgent
-                                ? "bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
-                                : isHigh
-                                ? "bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
-                                : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
-                            }`}
-                          >
-                            {task.priority || "NORMAL"}
-                          </span>
+                          {isDone ? (
+                            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-md shrink-0 bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>COMPLETED</span>
+                            </span>
+                          ) : (
+                            <span
+                              className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-md shrink-0 ${
+                                isUrgent
+                                  ? "bg-rose-50 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800"
+                                  : isHigh
+                                  ? "bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
+                                  : "bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                              }`}
+                            >
+                              {task.priority || "NORMAL"}
+                            </span>
+                          )}
                         </div>
 
                         {task.description && (
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">
                             {task.description}
                           </p>
+                        )}
+
+                        {isDone && (
+                          <div className="mt-1 text-[10px] text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                            <span>
+                              Completed {task.completedAt ? `on ${new Date(task.completedAt).toLocaleDateString()}` : "successfully"}
+                            </span>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -1047,14 +1086,26 @@ export function ProjectTaskCalendar({
                         </span>
                       </Link>
 
-                      {/* Assignee Badge */}
-                      <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
-                        <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white text-[9px] font-bold flex items-center justify-center shrink-0">
-                          {task.assignee?.[0]?.toUpperCase() || "U"}
+                      {/* Assignee Badge & Reassign Action */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white text-[9px] font-bold flex items-center justify-center shrink-0">
+                            {task.assignee?.[0]?.toUpperCase() || "U"}
+                          </div>
+                          <span className="truncate max-w-[90px]">
+                            {task.assignee || "Unassigned"}
+                          </span>
                         </div>
-                        <span className="truncate max-w-[100px]">
-                          {task.assignee || "Unassigned"}
-                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => setEditingTask(task)}
+                          className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Edit details or reassign task to another team member"
+                        >
+                          <Edit3 className="w-2.5 h-2.5" />
+                          <span>Reassign</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1193,6 +1244,32 @@ export function ProjectTaskCalendar({
           </div>
         </form>
       </BottomSheet>
+
+      {/* Edit / Reassign Task Modal */}
+      {editingTask && (
+        <EditTaskModal
+          isOpen={!!editingTask}
+          onClose={() => setEditingTask(null)}
+          task={editingTask}
+          projectId={editingTask.projectId || editingTask.project?.id || ""}
+          employees={
+            employees && employees.length > 0
+              ? employees.map((emp) => ({
+                  id: emp.userId || emp.id,
+                  userId: emp.userId || emp.id,
+                  employeeId: emp.employeeId || emp.id,
+                  name: emp.name,
+                  designation: emp.designation || emp.role || "Developer",
+                  role: emp.role || emp.designation || "Developer",
+                  email: emp.email,
+                }))
+              : []
+          }
+          onSuccess={() => {
+            if (onRefresh) onRefresh();
+          }}
+        />
+      )}
     </div>
   );
 }

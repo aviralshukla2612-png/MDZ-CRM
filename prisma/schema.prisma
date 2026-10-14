@@ -183,6 +183,8 @@ model Client {
   portalTokens       ClientPortalToken[]
   invoices           Invoice[]
   projects           Project[]
+  personalBrandProfiles PersonalBrandProfile[]
+  eventProjects      EventProject[]
 
   @@index([createdById])
 }
@@ -451,6 +453,12 @@ model Employee {
   status             String                @default("ACTIVE")
   salaryMonthly      Float                 @default(0)
   phone              String?               @default("")
+  relative1Name      String?               @default("")
+  relative1Relation  String?               @default("")
+  relative1Phone     String?               @default("")
+  relative2Name      String?               @default("")
+  relative2Relation  String?               @default("")
+  relative2Phone     String?               @default("")
   customTermsTitle   String?
   customTermsContent String?
   termsVersion       String?               @default("v1.0")
@@ -465,6 +473,10 @@ model Employee {
   paidLeaveTotal     Int                   @default(15)
   paidLeaveUsed      Float                 @default(0)
   targetWorkingHours Float                 @default(8.0)
+  dailyTargetTitle   String?               @default("Tasks")
+  dailyTargetCount   Float                 @default(0)
+  dailyTargetUnit    String?               @default("units")
+  dailyTargetNotes   String?               @default("")
   createdAt          DateTime              @default(now())
   attendances        Attendance[]
   user               User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -473,6 +485,26 @@ model Employee {
   workSessions       WorkSession[]
   leaveRequests      LeaveRequest[]
   timeModificationRequests TimeModificationRequest[]
+  dailyWorkLogs      EmployeeDailyWorkLog[]
+}
+
+model EmployeeDailyWorkLog {
+  id            String    @id @default(uuid())
+  employeeId    String
+  date          DateTime  @default(now())
+  targetTitle   String    @default("Daily Output")
+  targetCount   Float     @default(0)
+  achievedCount Float     @default(0)
+  unit          String    @default("units")
+  notes         String?   @default("")
+  loggedById    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@index([employeeId, date])
 }
 
 model Attendance {
@@ -834,4 +866,403 @@ model SalesNote {
   @@index([category])
   @@index([isPinned])
 }
+
+model PersonalBrandProfile {
+  id                  String                   @id @default(uuid())
+  clientId            String?
+  clientName          String
+  handle              String?                  @default("")
+  avatarUrl           String?
+  niche               String                   @default("General")
+  professionalBio     String?                  @default("")
+  brandPositioning    String?                  @default("")
+  targetAudience      String?                  @default("")
+  targetGeography     String?                  @default("")
+  toneOfVoice         String?                  @default("")
+  brandGuidelines     String?                  @default("")
+  socialLinksJson     String?                  @default("{}")
+  monthlyPackage      String?                  @default("")
+  monthlyCommitments  String?                  @default("")
+  brandAuditSummary   String?                  @default("")
+  competitorTracking  String?                  @default("")
+  monthlyGoalsKpis    String?                  @default("")
+  status              String                   @default("ACTIVE") // ACTIVE, ONBOARDING, PAUSED, COMPLETED
+  createdById         String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+
+  client              Client?                  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  contentItems        PersonalBrandContent[]
+  brandMetrics        PersonalBrandMetric[]
+  meetingNotes        PersonalBrandMeeting[]
+  clientFeedbacks     PersonalBrandFeedback[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model PersonalBrandContent {
+  id                   String               @id @default(uuid())
+  profileId            String
+  title                String
+  hook                 String?              @default("")
+  topic                String?              @default("")
+  platform             String               @default("INSTAGRAM") // INSTAGRAM, LINKEDIN, YOUTUBE_SHORTS, TWITTER_X, YOUTUBE_LONG
+  contentType          String               @default("REEL") // REEL, CAROUSEL, TEXT_POST, LONG_VIDEO, NEWSLETTER
+  priority             String               @default("MEDIUM") // URGENT, HIGH, MEDIUM, LOW
+  scriptText           String?              @default("")
+  caption              String?              @default("")
+  hashtags             String?              @default("")
+  trendingReferenceUrl String?              @default("")
+  productionStage      String               @default("IDEA") // IDEA, SCRIPTING, SCRIPT_APPROVED, SHOOTING, EDITING, DRAFT_REVIEW, REVISION, CLIENT_APPROVED, SCHEDULED, PUBLISHED
+  scriptwriterId       String?
+  videoEditorId        String?
+  designerId           String?
+  scheduledDate        DateTime?
+  publishedUrl         String?
+  clientApproved       Boolean              @default(false)
+  clientFeedback       String?              @default("")
+  approvalDeadline     DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  profile              PersonalBrandProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([productionStage])
+  @@index([platform])
+}
+
+model PersonalBrandMetric {
+  id                   String               @id @default(uuid())
+  profileId            String
+  month                Int
+  year                 Int
+  platform             String               @default("TOTAL") // TOTAL, INSTAGRAM, LINKEDIN, YOUTUBE, X
+  totalFollowers       Int                  @default(0)
+  followerGrowth       Int                  @default(0)
+  totalReach           Int                  @default(0)
+  totalImpressions     Int                  @default(0)
+  engagementRate       Float                @default(0)
+  profileVisits        Int                  @default(0)
+  inquiriesGenerated   Int                  @default(0)
+  topPerformingContent String?              @default("")
+  monthlyReportNotes   String?              @default("")
+  goalsVersusResults   String?              @default("")
+  createdAt            DateTime             @default(now())
+
+  profile              PersonalBrandProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([year, month])
+}
+
+model PersonalBrandMeeting {
+  id              String               @id @default(uuid())
+  profileId       String
+  title           String
+  meetingDate     DateTime             @default(now())
+  agenda          String?              @default("")
+  discussionNotes String               @default("")
+  actionItems     String?              @default("")
+  nextMeetingDate DateTime?
+  createdAt       DateTime             @default(now())
+
+  profile         PersonalBrandProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+model PersonalBrandFeedback {
+  id              String               @id @default(uuid())
+  profileId       String
+  contentId       String?
+  requestedBy     String               @default("Client") // "Client", "Internal"
+  feedbackText    String               @default("")
+  changeRequested String?              @default("")
+  deadline        DateTime?
+  status          String               @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  profile         PersonalBrandProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([status])
+}
+
+// ==========================================
+// EVENT MANAGEMENT DEPARTMENT MODELS
+// ==========================================
+
+model EventProject {
+  id                 String               @id @default(uuid())
+  title              String
+  type               String               @default("CORPORATE") // CORPORATE, CONCERT, CONFERENCE, WEDDING, PRODUCT_LAUNCH, EXHIBITION, GALA, PRIVATE_PARTY, OTHER
+  status             String               @default("PLANNING") // PLANNING, PREPARATION, LIVE, CLOSURE, COMPLETED, CANCELLED
+  startDate          DateTime
+  endDate            DateTime?
+  venueName          String
+  venueAddress       String?              @default("")
+  clientId           String?
+  clientName         String
+  eventOwner         String               @default("Lead Producer")
+  productionManager  String?              @default("")
+  estimatedBudget    Float                @default(0)
+  approvedBudget     Float                @default(0)
+  quotationAmount    Float                @default(0)
+  actualCost         Float                @default(0)
+  priority           String               @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  riskLevel          String               @default("LOW") // LOW, MEDIUM, HIGH
+  riskOverview       String?              @default("")
+  blockersOverview   String?              @default("")
+  notes              String?              @default("")
+  closureSignOff     Boolean              @default(false)
+  createdById        String?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  client             Client?              @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  timelineItems      EventTimelineItem[]
+  runOfShows         EventRunOfShow[]
+  crewMembers        EventCrewMember[]
+  vendors            EventVendor[]
+  budgetItems        EventBudgetItem[]
+  marketingItems     EventMarketingItem[]
+  guests             EventGuest[]
+  incidents          EventIncident[]
+  mediaItems         EventMediaItem[]
+  closure            EventClosure?
+
+  @@index([clientId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model EventTimelineItem {
+  id                 String               @id @default(uuid())
+  eventId            String
+  title              String
+  type               String               @default("MILESTONE") // MILESTONE, PREPARATION_TASK, REHEARSAL, SETUP, DISMANTLE, CHECKLIST
+  startTime          DateTime?
+  endTime            DateTime?
+  status             String               @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, BLOCKED
+  dependencies       String?              @default("")
+  assignedTo         String?              @default("")
+  order              Int                  @default(0)
+  notes              String?              @default("")
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([type])
+}
+
+model EventRunOfShow {
+  id                 String               @id @default(uuid())
+  eventId            String
+  timeSlot           String               // e.g. "10:00 AM - 10:30 AM"
+  activity           String
+  responsiblePerson  String?              @default("")
+  department         String?              @default("Stage") // Stage, Audio/Visual, Lighting, Artists, F&B, Logistics
+  stageLocation      String?              @default("Main Stage")
+  status             String               @default("UPCOMING") // UPCOMING, LIVE_NOW, COMPLETED, DELAYED
+  cueNotes           String?              @default("")
+  order              Int                  @default(0)
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([status])
+}
+
+model EventCrewMember {
+  id                 String               @id @default(uuid())
+  eventId            String
+  name               String
+  role               String               // Floor Manager, Sound Engineer, Stage Crew, Hospitality, Security, Registration
+  department         String               @default("Production") // Production, Hospitality, Technical, Media, Security, Operations
+  shiftStartTime     String?              @default("")
+  shiftEndTime       String?              @default("")
+  isBackup           Boolean              @default(false)
+  isFreelancer       Boolean              @default(false)
+  status             String               @default("SCHEDULED") // SCHEDULED, CHECKED_IN, ON_DUTY, HANDED_OVER, CHECKED_OUT, ABSENT
+  checkInTime        DateTime?
+  checkOutTime       DateTime?
+  dutyHandoverNotes  String?              @default("")
+  phone              String?              @default("")
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([status])
+}
+
+model EventVendor {
+  id                 String               @id @default(uuid())
+  eventId            String
+  vendorName         String
+  category           String               @default("DECOR") // DECOR, PRODUCTION_SOUND_LIGHT, ARTIST_PERFORMER, PHOTOGRAPHY_CINEMA, CATERING_FB, VENUE, FABRICATION, SECURITY_TRANSPORT, OTHER
+  contactPerson      String?              @default("")
+  phone              String?              @default("")
+  email              String?              @default("")
+  quoteAmount        Float                @default(0)
+  approvedAmount     Float                @default(0)
+  advancePaid        Float                @default(0)
+  balanceDue         Float                @default(0)
+  paymentMilestones  String?              @default("") // e.g. "50% Advance, 50% Post-Event"
+  deliverablesTracked String?             @default("")
+  contractUrl        String?              @default("")
+  escalationContact  String?              @default("")
+  arrivalStatus      String               @default("EXPECTED") // EXPECTED, ARRIVED, DELAYED, NOT_REQUIRED
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([category])
+}
+
+model EventBudgetItem {
+  id                 String               @id @default(uuid())
+  eventId            String
+  category           String               @default("PRODUCTION") // VENUE, PRODUCTION, DECOR, ARTISTS, CATERING, MARKETING, LOGISTICS, PERMITS, MISC
+  description        String
+  estimatedCost      Float                @default(0)
+  actualCost         Float                @default(0)
+  advancePaid        Float                @default(0)
+  balancePaid        Float                @default(0)
+  status             String               @default("PENDING") // DRAFT, REQUESTED, APPROVED, REJECTED, PAID
+  vendorName         String?              @default("")
+  approvedBy         String?              @default("")
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([category])
+}
+
+model EventMarketingItem {
+  id                 String               @id @default(uuid())
+  eventId            String
+  title              String
+  type               String               @default("POSTER") // POSTER, REEL, STORY, SPONSOR_CREATIVE, AD_CAMPAIGN, INFLUENCER, PRESS_RELEASE
+  platform           String               @default("INSTAGRAM") // INSTAGRAM, LINKEDIN, YOUTUBE, FACEBOOK, PR_MEDIA, PRINT
+  scheduledDate      DateTime?
+  assignee           String?              @default("")
+  approvalStatus     String               @default("DRAFT") // DRAFT, IN_REVIEW, APPROVED, REVISION
+  publishingStatus   String               @default("PENDING") // PENDING, SCHEDULED, PUBLISHED
+  campaignPerformance String?             @default("")
+  creativeUrl        String?              @default("")
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([publishingStatus])
+}
+
+model EventGuest {
+  id                 String               @id @default(uuid())
+  eventId            String
+  name               String
+  email              String?              @default("")
+  phone              String?              @default("")
+  category           String               @default("GENERAL") // VIP, DELEGATE, MEDIA, SPEAKER, SPONSOR, GENERAL
+  accessRights       String?              @default("ALL_ACCESS") // ALL_ACCESS, BACKSTAGE, VIP_LOUNGE, GENERAL_ENTRY
+  rsvpStatus         String               @default("PENDING") // PENDING, ATTENDING, DECLINED, TENTATIVE
+  ticketCode         String?              @default("")
+  passType           String               @default("REGULAR") // REGULAR, VIP, COMPLIMENTARY
+  complimentaryApproved Boolean           @default(false)
+  isCheckedIn        Boolean              @default(false)
+  checkInTime        DateTime?
+  notes              String?              @default("")
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([isCheckedIn])
+}
+
+model EventIncident {
+  id                 String               @id @default(uuid())
+  eventId            String
+  title              String
+  description        String
+  severity           String               @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  status             String               @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED
+  reportedBy         String?              @default("")
+  owner              String?              @default("")
+  escalationNotes    String?              @default("")
+  resolvedAt         DateTime?
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([status])
+}
+
+model EventMediaItem {
+  id                 String               @id @default(uuid())
+  eventId            String
+  shotTitle          String
+  coverageType       String               @default("PHOTO") // PHOTO, VIDEO, DRONE, LIVE_STREAM, INTERVIEW
+  photographer       String?              @default("")
+  videographer       String?              @default("")
+  prioritySameDay    Boolean              @default(false)
+  footageTransferred Boolean              @default(false)
+  status             String               @default("PLANNED") // PLANNED, CAPTURED, IN_EDITING, READY_FOR_REVIEW, DELIVERED
+  deliveryUrl        String?              @default("")
+  createdAt          DateTime             @default(now())
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([status])
+}
+
+model EventClosure {
+  id                 String               @id @default(uuid())
+  eventId            String               @unique
+  equipmentReconciled Boolean             @default(false)
+  vendorPaymentsClosed Boolean            @default(false)
+  budgetReconciled   Boolean              @default(false)
+  clientFeedback     String?              @default("")
+  clientRating       Int                  @default(5)
+  lessonsLearned     String?              @default("")
+  performanceReportSummary String?        @default("")
+  eventArchiveUrl    String?              @default("")
+  finalSignOffBy     String?              @default("")
+  finalSignOffDate   DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  event              EventProject         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model VideographerFootage {
+  id               String    @id @default(uuid())
+  videographerId   String
+  videographerName String
+  shootTitle       String
+  driveUrl         String
+  notes            String?   @default("")
+  videosCount      Int       @default(0)
+  photosCount      Int       @default(0)
+  editorId         String?
+  editorName       String?   @default("")
+  status           String    @default("UPLOADED") // UPLOADED, IN_EDITING, COMPLETED
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([videographerId])
+  @@index([status])
+}
+
 

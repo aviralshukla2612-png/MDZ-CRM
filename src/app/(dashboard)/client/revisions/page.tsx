@@ -14,6 +14,7 @@ import {
   X,
   ArrowRight,
   Edit3,
+  Check,
 } from "lucide-react";
 
 interface ChangeRequestItem {
@@ -181,7 +182,7 @@ export default function ClientRevisionsPage() {
         setSubmitSuccess(
           editingCr
             ? "Change request updated successfully!"
-            : "Change request successfully submitted! Both assigned developers and administrators have been notified."
+            : "Change request successfully submitted! Project administrators have been notified."
         );
         setCrTitle("");
         setCrDescription("");
@@ -195,6 +196,43 @@ export default function ClientRevisionsPage() {
       setSubmitError("Network error while submitting change request.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const handleClientApproval = async (
+    changeRequestId: string,
+    action: "APPROVE" | "REJECT"
+  ) => {
+    if (!selectedProjectId) return;
+    setActionLoading(changeRequestId);
+    try {
+      const res = await fetch(
+        `/mdz-crm/api/client/projects/${selectedProjectId}/change-requests`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ changeRequestId, action }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setSubmitError(data.error || "Failed to process revision approval.");
+      } else {
+        setSubmitSuccess(
+          action === "APPROVE"
+            ? "Change request and scope approved! Engineering authorized to proceed."
+            : "Change request declined."
+        );
+        await fetchProjects();
+        setTimeout(() => setSubmitSuccess(null), 5000);
+      }
+    } catch (err) {
+      console.error(err);
+      setSubmitError("Network error while submitting approval.");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -404,9 +442,9 @@ export default function ClientRevisionsPage() {
                         )}
                         <span
                           className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full ${
-                            cr.status === "APPROVED" || cr.status === "COMPLETED"
+                            cr.status === "CLIENT_APPROVED" || cr.status === "APPROVED" || cr.status === "COMPLETED"
                               ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
-                              : cr.status === "SUBMITTED"
+                              : cr.status === "SUBMITTED" || cr.status === "PENDING_BUDGET_APPROVAL"
                               ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800"
                               : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
                           }`}
@@ -446,6 +484,59 @@ export default function ClientRevisionsPage() {
                             </li>
                           ))}
                         </ul>
+                      </div>
+                    )}
+
+                    {/* Client Approval Callout */}
+                    {(!cr.isQuotaIncluded ||
+                      cr.status === "PENDING_BUDGET_APPROVAL" ||
+                      cr.status === "AWAITING_CLIENT_APPROVAL" ||
+                      (cr.costImpactAmount > 0 && cr.status === "SUBMITTED")) &&
+                      cr.status !== "CLIENT_APPROVED" &&
+                      cr.status !== "APPROVED" &&
+                      cr.status !== "REJECTED" && (
+                        <div className="mt-3 p-3.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-300/80 dark:border-amber-800/80 space-y-2.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-1.5 text-xs font-black text-amber-900 dark:text-amber-200">
+                                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                                <span>Extra Revision Budget Sign-Off Required</span>
+                              </div>
+                              <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                                This modification exceeds the 3 included revisions in your contract package. Estimated scope surcharge:{" "}
+                                <strong className="font-mono text-amber-950 dark:text-amber-100">
+                                  ₹{(cr.costImpactAmount || 5000).toLocaleString("en-IN")}
+                                </strong>. Your authorization is required before engineering begins.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              disabled={actionLoading === cr.id}
+                              onClick={() => handleClientApproval(cr.id, "APPROVE")}
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs flex items-center gap-1.5 shadow-sm shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{actionLoading === cr.id ? "Saving..." : "Approve & Proceed"}</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={actionLoading === cr.id}
+                              onClick={() => handleClientApproval(cr.id, "REJECT")}
+                              className="px-3.5 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                              <span>Decline</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                    {cr.status === "CLIENT_APPROVED" && (
+                      <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 text-xs font-semibold flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>You have approved this change request. It is now authorized for development.</span>
                       </div>
                     )}
                   </div>

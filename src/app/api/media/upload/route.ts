@@ -9,9 +9,11 @@ import {
   deleteDriveFile,
 } from "@/lib/googleDrive";
 import { Readable } from "stream";
+import fs from "fs";
+import path from "path";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5 minutes timeout for 500MB - 1GB uploads
+export const maxDuration = 300; // 5 minutes timeout for large uploads
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,21 +22,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!isGoogleDriveConfigured()) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            "Google Drive storage is not configured. Please ensure GOOGLE_DRIVE_CLIENT_EMAIL, GOOGLE_DRIVE_PRIVATE_KEY, and GOOGLE_DRIVE_ROOT_FOLDER_ID are set in .env.",
-        },
-        { status: 503 }
-      );
-    }
-
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const entityType = (formData.get("entityType") as string | null) || "GENERAL";
-    const entityId = (formData.get("entityId") as string | null) || "general";
+    const rawEntityId = (formData.get("entityId") as string | null) || "general";
     const category = (formData.get("category") as string | null) || "GENERAL";
 
     if (!file) {
@@ -42,6 +33,18 @@ export async function POST(req: NextRequest) {
         { success: false, error: "No file provided in form data." },
         { status: 400 }
       );
+    }
+
+    // Resolve canonical project ID if entity is PROJECT
+    let canonicalEntityId = rawEntityId;
+    if (entityType.toUpperCase() === "PROJECT") {
+      const proj = await prisma.project.findFirst({
+        where: { OR: [{ id: rawEntityId }, { projectNumber: rawEntityId }] },
+        select: { id: true },
+      });
+      if (proj) {
+        canonicalEntityId = proj.id;
+      }
     }
 
     // Enforce per-file upload limit (up to 10 GB per file)
@@ -59,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Authorize upload against existing RBAC & IDOR guards
-    const authorized = await canUploadMedia(user, entityType, entityId);
+    const authorized = await canUploadMedia(user, entityType, canonicalEntityId);
     if (!authorized) {
       return NextResponse.json(
         { success: false, error: "Forbidden: You do not have permission to upload files here." },
@@ -67,41 +70,65 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Resolve Google Drive target folder
-    const targetFolderId = await resolveEntityFolder(entityType, entityId, category);
-
-    // Convert Web File buffer to Node Readable stream
+    // Convert Web File buffer to Node Buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const stream = Readable.from(buffer);
 
     // Generate safe storage filename
     const sanitizedOriginalName = file.name.replace(/[^\w.-]/g, "_");
     const uniqueFileName = `${Date.now()}_${sanitizedOriginalName}`;
 
-    // Upload payload stream to Google Drive
-    const driveUpload = await uploadStreamToDrive({
-      stream,
-      fileName: uniqueFileName,
-      mimeType: file.type || "application/octet-stream",
-      folderId: targetFolderId,
-    });
+    let driveFileId = `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    let storageProvider = "LOCAL";
+    let driveUploadSuccessful = false;
+    let driveErrorNotice: string | null = null;
 
-    const driveFileId = driveUpload.driveFileId;
+    // 1. Attempt upload to Google Drive if configured
+    if (isGoogleDriveConfigured()) {
+      try {
+        const targetFolderId = await resolveEntityFolder(entityType, canonicalEntityId, category);
+        const driveUpload = await uploadStreamToDrive({
+          stream: Readable.from(buffer),
+          fileName: uniqueFileName,
+          mimeType: file.type || "application/octet-stream",
+          folderId: targetFolderId,
+        });
+        driveFileId = driveUpload.driveFileId;
+        storageProvider = "GOOGLE_DRIVE";
+        driveUploadSuccessful = true;
+      } catch (driveErr: any) {
+        const errMsg = driveErr?.message || String(driveErr);
+        console.warn("[MediaUpload] Google Drive upload failed. Gracefully falling back to local storage:", errMsg);
+        if (errMsg.includes("invalid_grant")) {
+          driveErrorNotice = "Google Drive authorization expired (invalid_grant). File saved securely to local storage.";
+        } else {
+          driveErrorNotice = "Google Drive unavailable. File saved securely to local storage.";
+        }
+      }
+    }
 
-    // Transactional DB Insert with Rollback on failure
+    // 2. Fallback to Local Storage if Drive wasn't configured or failed
+    if (!driveUploadSuccessful) {
+      const uploadDir = path.join(process.cwd(), "uploads");
+      await fs.promises.mkdir(uploadDir, { recursive: true });
+      const localFilePath = path.join(uploadDir, uniqueFileName);
+      await fs.promises.writeFile(localFilePath, buffer);
+      storageProvider = "LOCAL";
+    }
+
+    // 3. Transactional DB Insert with Rollback on failure
     try {
       const mediaRecord = await prisma.mediaFile.create({
         data: {
           driveFileId,
-          storageProvider: "GOOGLE_DRIVE",
+          storageProvider,
           fileName: uniqueFileName,
           originalName: file.name,
           mimeType: file.type || "application/octet-stream",
           fileSize: file.size,
           category,
           entityType: entityType.toUpperCase(),
-          entityId,
+          entityId: canonicalEntityId,
           uploadedById: user.id,
         },
         include: {
@@ -111,20 +138,21 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Optional ActivityEvent tracking
+      // ActivityEvent tracking
       try {
         await prisma.activityEvent.create({
           data: {
             eventType: "FILE_UPLOADED",
             actorId: user.id,
             entityType: entityType.toUpperCase(),
-            entityId,
-            projectId: entityType.toUpperCase() === "PROJECT" ? entityId : null,
+            entityId: canonicalEntityId,
+            projectId: entityType.toUpperCase() === "PROJECT" ? canonicalEntityId : null,
             metadataJson: JSON.stringify({
               mediaFileId: mediaRecord.id,
               fileName: file.name,
               fileSize: file.size,
               category,
+              storageProvider,
             }),
           },
         });
@@ -132,13 +160,22 @@ export async function POST(req: NextRequest) {
         console.warn("Non-critical activity log failure:", logErr);
       }
 
-      return NextResponse.json({ success: true, file: mediaRecord });
+      return NextResponse.json({
+        success: true,
+        file: mediaRecord,
+        storageProvider,
+        warning: driveErrorNotice || undefined,
+      });
     } catch (dbError: any) {
-      console.error("[MediaUpload] Prisma insertion failed. Triggering Drive file rollback:", dbError);
-      // Clean up orphaned file from Google Drive
-      await deleteDriveFile(driveFileId).catch((cleanupErr) =>
-        console.error("[MediaUpload] Rollback cleanup failed:", cleanupErr)
-      );
+      console.error("[MediaUpload] Prisma insertion failed. Triggering file rollback:", dbError);
+      if (driveUploadSuccessful) {
+        await deleteDriveFile(driveFileId).catch((cleanupErr) =>
+          console.error("[MediaUpload] Drive rollback cleanup failed:", cleanupErr)
+        );
+      } else {
+        const localFilePath = path.join(process.cwd(), "uploads", uniqueFileName);
+        await fs.promises.unlink(localFilePath).catch(() => {});
+      }
       return NextResponse.json(
         { success: false, error: "Failed to persist media record in database. Upload rolled back." },
         { status: 500 }
@@ -146,12 +183,8 @@ export async function POST(req: NextRequest) {
     }
   } catch (error: any) {
     console.error("[MediaUpload] Unhandled upload error:", error);
-    let errorMsg = error?.message || "Internal server error during upload.";
-    if (errorMsg === "invalid_grant" || errorMsg.includes("invalid_grant")) {
-      errorMsg = "Google Drive authorization expired (invalid_grant). Please refresh GOOGLE_DRIVE_REFRESH_TOKEN in your .env file or use a Google Service Account.";
-    }
     return NextResponse.json(
-      { success: false, error: errorMsg },
+      { success: false, error: error?.message || "Internal server error during upload." },
       { status: 500 }
     );
   }

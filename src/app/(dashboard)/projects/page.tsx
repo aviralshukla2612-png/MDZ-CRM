@@ -60,8 +60,8 @@ export default function ProjectsDirectoryPage() {
         setInitialEmployeeId(empParam);
         setActiveView("kanban");
       } else {
-        // By default in admin view, all company projects will come
-        setActiveView("directory");
+        // By default open Team Workload (All Company Projects is placed last)
+        setActiveView("kanban");
       }
     }
     fetchProjects();
@@ -303,19 +303,7 @@ export default function ProjectsDirectoryPage() {
 
       {/* View Switcher Tabs (Odoo Kanban vs Directory) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800 pb-3">
-        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl">
-          <button
-            onClick={() => setActiveView("directory")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeView === "directory"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-            }`}
-          >
-            <FolderKanban className="w-4 h-4" />
-            <span>All Company Projects ({projectsList.length})</span>
-          </button>
-
+        <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/80 p-1.5 rounded-2xl flex-wrap">
           <button
             onClick={() => setActiveView("kanban")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
@@ -342,8 +330,20 @@ export default function ProjectsDirectoryPage() {
             <Calendar className="w-4 h-4" />
             <span>Task Calendar</span>
             <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 font-mono font-extrabold">
-              PREMIUM
+              CALENDAR
             </span>
+          </button>
+
+          <button
+            onClick={() => setActiveView("directory")}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+              activeView === "directory"
+                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <FolderKanban className="w-4 h-4" />
+            <span>All Company Projects ({projectsList.length})</span>
           </button>
         </div>
 
@@ -351,7 +351,7 @@ export default function ProjectsDirectoryPage() {
           {activeView === "calendar" ? (
             <span>Interactive calendar grid showing dated tasks, execution deadlines, and daily agenda.</span>
           ) : activeView === "kanban" ? (
-            <span>Select any team member on the left sidebar to inspect and manage their assigned projects.</span>
+            <span>Team workload Kanban board with drag-and-drop project stages and assigned members.</span>
           ) : (
             <span>Showing all company project workspaces and live weighted execution progress.</span>
           )}
@@ -551,6 +551,7 @@ export default function ProjectsDirectoryPage() {
             fetchEmployees();
           }}
           selectedEmployeeId={initialEmployeeId}
+          onSwitchToKanban={() => setActiveView("kanban")}
         />
       ) : activeView === "kanban" ? (
         <EmployeeProjectKanban

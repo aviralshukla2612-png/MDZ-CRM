@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { verifyClientProjectAccess } from "@/lib/client-auth";
+import { sendNotificationToUser } from "@/lib/notifications";
 
 export async function GET(
   req: Request,
@@ -10,11 +11,22 @@ export async function GET(
   const authRes = await requireAuth();
   if (authRes instanceof NextResponse) return authRes;
 
-  const projectId = params.id;
+  const rawId = params.id;
+  const project = await prisma.project.findFirst({
+    where: { OR: [{ id: rawId }, { projectNumber: rawId }] },
+    select: { id: true, projectNumber: true, clientId: true },
+  });
+
+  if (!project) {
+    return NextResponse.json(
+      { success: false, error: "Project not found." },
+      { status: 404 }
+    );
+  }
 
   const internalRoles = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"];
   if (authRes.activeRole === "CLIENT") {
-    const isAuthorized = await verifyClientProjectAccess(authRes.email, projectId);
+    const isAuthorized = await verifyClientProjectAccess(authRes.email, project.id);
     if (!isAuthorized) {
       return NextResponse.json(
         { success: false, error: "Access denied or project not found." },
@@ -30,7 +42,7 @@ export async function GET(
 
   try {
     const changeRequests = await prisma.changeRequest.findMany({
-      where: { projectId },
+      where: { projectId: project.id },
       include: {
         items: true,
         approvedBy: { select: { name: true } },
@@ -69,11 +81,22 @@ export async function POST(
   const authRes = await requireAuth();
   if (authRes instanceof NextResponse) return authRes;
 
-  const projectId = params.id;
+  const rawId = params.id;
+  const project = await prisma.project.findFirst({
+    where: { OR: [{ id: rawId }, { projectNumber: rawId }] },
+    include: { client: true },
+  });
+
+  if (!project) {
+    return NextResponse.json(
+      { success: false, error: "Project not found." },
+      { status: 404 }
+    );
+  }
 
   const internalRoles = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"];
   if (authRes.activeRole === "CLIENT") {
-    const isAuthorized = await verifyClientProjectAccess(authRes.email, projectId);
+    const isAuthorized = await verifyClientProjectAccess(authRes.email, project.id);
     if (!isAuthorized) {
       return NextResponse.json(
         { success: false, error: "Access denied or project not found." },
@@ -105,18 +128,6 @@ export async function POST(
       );
     }
 
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      select: { id: true, projectNumber: true, name: true },
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        { success: false, error: "Project not found." },
-        { status: 404 }
-      );
-    }
-
     // Fetch fee setting
     const feeSetting = await prisma.systemSetting.findUnique({
       where: { key: "additionalChangeRequestFee" },
@@ -139,12 +150,15 @@ export async function POST(
       const initialStatus = isQuotaIncluded ? "SUBMITTED" : "PENDING_BUDGET_APPROVAL";
       const feeAmount = isQuotaIncluded ? 0 : configuredFee;
       const reqNum = `CR-${project.projectNumber}-${nextSeq}`;
+      const clientDisplayName = project.client?.companyName
+        ? `Client (${project.client.companyName})`
+        : "Client";
 
       const createdReq = await tx.changeRequest.create({
         data: {
           requestNumber: reqNum,
           projectId: project.id,
-          requestedBy: authRes.name || authRes.email,
+          requestedBy: clientDisplayName,
           source: "CLIENT",
           originalRequirement: title,
           requestedChange: description || title,
@@ -208,7 +222,10 @@ export async function POST(
       const seq = newChangeRequest.requestSeqInt || 1;
       const quotaLabel = seq <= 3 ? `Change ${seq}/3` : `Additional Change (#${seq})`;
       const notificationTitle = `Client Change Request: ${newChangeRequest.requestNumber}`;
-      const notificationMessage = `${authRes.name || "Client"} requested changes for ${project.name}: "${title}" (${quotaLabel}).`;
+      const clientDisplayName = project.client?.companyName
+        ? `Client (${project.client.companyName})`
+        : "Client";
+      const notificationMessage = `${clientDisplayName} requested changes for ${project.name}: "${title}" (${quotaLabel}).`;
 
       for (const recipientId of recipientIds) {
         await prisma.notification.create({
@@ -245,11 +262,22 @@ export async function PATCH(
   const authRes = await requireAuth();
   if (authRes instanceof NextResponse) return authRes;
 
-  const projectId = params.id;
-  const internalRoles = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"];
+  const rawId = params.id;
+  const project = await prisma.project.findFirst({
+    where: { OR: [{ id: rawId }, { projectNumber: rawId }] },
+    include: { client: true },
+  });
 
+  if (!project) {
+    return NextResponse.json(
+      { success: false, error: "Project not found." },
+      { status: 404 }
+    );
+  }
+
+  const internalRoles = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE"];
   if (authRes.activeRole === "CLIENT") {
-    const isAuthorized = await verifyClientProjectAccess(authRes.email, projectId);
+    const isAuthorized = await verifyClientProjectAccess(authRes.email, project.id);
     if (!isAuthorized) {
       return NextResponse.json(
         { success: false, error: "Access denied or project not found." },
@@ -265,7 +293,7 @@ export async function PATCH(
 
   try {
     const body = await req.json();
-    const { changeRequestId, title, description, reason, items } = body;
+    const { changeRequestId, action, notes, title, description, reason, items } = body;
 
     if (!changeRequestId) {
       return NextResponse.json(
@@ -274,25 +302,89 @@ export async function PATCH(
       );
     }
 
-    const existing = await prisma.changeRequest.findFirst({
-      where: { id: changeRequestId, projectId },
+    const cr = await prisma.changeRequest.findFirst({
+      where: { id: changeRequestId, projectId: project.id },
       include: { items: true },
     });
 
-    if (!existing) {
+    if (!cr) {
       return NextResponse.json(
         { success: false, error: "Change Request not found." },
         { status: 404 }
       );
     }
 
+    // Branch 1: Client Approval or Rejection
+    if (action) {
+      if (!["APPROVE", "REJECT"].includes(action)) {
+        return NextResponse.json(
+          { success: false, error: "Valid action ('APPROVE' or 'REJECT') is required." },
+          { status: 400 }
+        );
+      }
+
+      const now = new Date();
+      const isApproval = action === "APPROVE";
+      const nextStatus = isApproval ? "CLIENT_APPROVED" : "REJECTED";
+
+      const updatedCr = await prisma.changeRequest.update({
+        where: { id: changeRequestId },
+        data: {
+          status: nextStatus,
+          approvedAt: isApproval ? now : null,
+          approvedById: isApproval ? authRes.id : null,
+          reason: notes
+            ? (cr.reason ? `${cr.reason}\nClient Note: ${notes}` : `Client Note: ${notes}`)
+            : cr.reason,
+        },
+        include: { items: true },
+      });
+
+      // Notify Admins & Project Creator
+      try {
+        const admins = await prisma.user.findMany({
+          where: { isActive: true, activeRole: { in: ["OWNER", "ADMIN", "SUB_ADMIN"] } },
+          select: { id: true },
+        });
+
+        const clientName = project.client?.companyName || authRes.name || "Client";
+        const notifTitle = isApproval
+          ? `✓ Revision Approved by Client: ${cr.requestNumber}`
+          : `✕ Revision Declined by Client: ${cr.requestNumber}`;
+        const notifMsg = isApproval
+          ? `${clientName} has approved and signed off on Change Request ${cr.requestNumber} for ${project.name}.`
+          : `${clientName} has declined Change Request ${cr.requestNumber} for ${project.name}.`;
+
+        for (const admin of admins) {
+          await sendNotificationToUser({
+            recipientId: admin.id,
+            title: notifTitle,
+            message: notifMsg,
+            urgency: isApproval ? "HIGH" : "MEDIUM",
+            linkUrl: `/projects/${project.id}`,
+          });
+        }
+      } catch (notifErr) {
+        console.warn("[ChangeRequest] Notification error:", notifErr);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: isApproval
+          ? `Change Request ${cr.requestNumber} successfully approved.`
+          : `Change Request ${cr.requestNumber} declined.`,
+        changeRequest: updatedCr,
+      });
+    }
+
+    // Branch 2: Edit Change Request content
     const updated = await prisma.$transaction(async (tx) => {
       const updatedReq = await tx.changeRequest.update({
         where: { id: changeRequestId },
         data: {
-          originalRequirement: title ? title.trim() : existing.originalRequirement,
-          requestedChange: description ? description.trim() : existing.requestedChange,
-          reason: reason !== undefined ? (reason ? reason.trim() : null) : existing.reason,
+          originalRequirement: title ? title.trim() : cr.originalRequirement,
+          requestedChange: description ? description.trim() : cr.requestedChange,
+          reason: reason !== undefined ? (reason ? reason.trim() : null) : cr.reason,
         },
       });
 
@@ -321,10 +413,11 @@ export async function PATCH(
       changeRequest: updated,
     });
   } catch (error) {
-    console.error("Failed to update change request:", error);
+    console.error("Failed to process change request update:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error." },
       { status: 500 }
     );
   }
 }
+

@@ -157,3 +157,72 @@ export async function sendNotificationToAdmins({
     return [];
   }
 }
+
+export interface EditorNotificationParams {
+  title: string;
+  message: string;
+  urgency?: "LOW" | "MEDIUM" | "HIGH";
+  linkUrl?: string;
+  specificEditorId?: string;
+}
+
+/**
+ * Broadcasts notification to Video Editors (or a designated editor).
+ */
+export async function sendNotificationToEditors({
+  title,
+  message,
+  urgency = "HIGH",
+  linkUrl = "/personal-brands",
+  specificEditorId,
+}: EditorNotificationParams) {
+  try {
+    let editors: { id: string; name: string }[] = [];
+
+    if (specificEditorId) {
+      const u = await prisma.user.findUnique({
+        where: { id: specificEditorId },
+        select: { id: true, name: true },
+      });
+      if (u) editors.push(u);
+    } else {
+      const allUsers = await prisma.user.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, designation: true, department: true },
+      });
+      editors = allUsers.filter((u) => {
+        const d = (u.designation || "").toLowerCase();
+        const dep = (u.department || "").toLowerCase();
+        return (
+          d.includes("editor") ||
+          d.includes("editing") ||
+          d.includes("video edit") ||
+          dep.includes("editor") ||
+          dep.includes("editing")
+        );
+      });
+    }
+
+    if (!editors || editors.length === 0) {
+      return [];
+    }
+
+    const notifications = await Promise.allSettled(
+      editors.map((editor) =>
+        sendNotificationToUser({
+          recipientId: editor.id,
+          title,
+          message,
+          urgency,
+          linkUrl,
+        })
+      )
+    );
+
+    return notifications;
+  } catch (error) {
+    console.error("[Notifications] Failed to notify editors:", error);
+    return [];
+  }
+}
+

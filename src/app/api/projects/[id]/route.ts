@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth, requireRole } from "@/lib/auth";
+import { calculateProgressFromProjectData, isTaskCompleted, isTaskActive } from "@/lib/progressEngine";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const authRes = await requireAuth();
@@ -17,13 +18,48 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         client: true,
         tasks: true,
         documents: true,
-        changeRequests: true,
+        changeRequests: {
+          include: {
+            items: true,
+            approvedBy: { select: { name: true } },
+          },
+          orderBy: { requestSeqInt: "asc" },
+        },
         clientUpdates: {
           include: { author: true },
           orderBy: { createdAt: "desc" },
         },
         memberships: {
           include: { employee: { include: { user: true } } },
+        },
+        chatConversations: {
+          where: { type: "PROJECT" },
+          take: 1,
+          include: {
+            messages: {
+              take: 20,
+              orderBy: { createdAt: "desc" },
+              include: {
+                sender: {
+                  select: { id: true, name: true, avatarUrl: true, designation: true, activeRole: true },
+                },
+                attachments: {
+                  include: {
+                    media: {
+                      select: { id: true, fileName: true, originalName: true, mimeType: true, fileSize: true },
+                    },
+                  },
+                },
+              },
+            },
+            participants: {
+              include: {
+                user: {
+                  select: { id: true, name: true, avatarUrl: true, designation: true },
+                },
+              },
+            },
+          },
         },
       },
     });
@@ -44,20 +80,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       }
     }
 
-    const activeTasks = project.tasks ? project.tasks.filter((t) => t.status !== "ARCHIVED") : [];
-    const totalTasks = activeTasks.length;
-    const completedTasks = activeTasks.filter(
-      (t) => t.status === "COMPLETED" || t.status === "DONE"
-    ).length;
-
-    let calculatedProgress = 0;
-    if (totalTasks > 0) {
-      calculatedProgress = Math.round((completedTasks / totalTasks) * 100);
-    } else if (project.status === "COMPLETED") {
-      calculatedProgress = 100;
-    } else if (project.clientUpdates && project.clientUpdates.length > 0) {
-      calculatedProgress = Math.min(100, project.clientUpdates.length * 25);
-    }
+    const activeTasks = project.tasks ? project.tasks.filter((t) => isTaskActive(t.status)) : [];
+    const calculatedProgress = calculateProgressFromProjectData({
+      status: project.status,
+      progressPercentage: project.progressPercentage,
+      tasks: activeTasks,
+      clientUpdatesCount: project.clientUpdates?.length,
+    });
 
     const projectWithProgress: any = {
       ...project,
@@ -76,12 +105,25 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
     if (authRes.activeRole === "EMPLOYEE") {
       const targetEmpId = authRes.employeeId || project.memberships.find(m => m.employee?.userId === authRes.id)?.employeeId;
-      if (targetEmpId) {
-        projectWithProgress.tasks = (project.tasks || []).filter(
-          (t: any) => t.assignedToId === targetEmpId || t.assignedTo?.id === targetEmpId
-        );
-      }
+      projectWithProgress.tasks = (project.tasks || []).filter(
+        (t: any) =>
+          t.assignedToId === authRes.id ||
+          t.assignedTo?.id === authRes.id ||
+          (targetEmpId && (t.assignedToId === targetEmpId || t.assignedTo?.id === targetEmpId))
+      );
     }
+
+    const conversation = project.chatConversations?.[0] || null;
+    projectWithProgress.conversation = conversation
+      ? {
+          id: conversation.id,
+          name: conversation.name,
+          messageCount: conversation.messages?.length || 0,
+          recentMessages: [...(conversation.messages || [])].reverse(),
+          participants: conversation.participants?.map((p) => p.user) || [],
+        }
+      : null;
+    projectWithProgress.messageCount = conversation?.messages?.length || 0;
 
     return NextResponse.json({ success: true, data: projectWithProgress });
   } catch (error) {
@@ -143,6 +185,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body.deadline !== undefined || body.targetDeadline !== undefined) {
       const deadlineVal = body.deadline !== undefined ? body.deadline : body.targetDeadline;
       updateData.targetDeadline = deadlineVal ? new Date(deadlineVal) : null;
+      if (updateData.targetDeadline && updateData.targetDeadline.getTime() < Date.now()) {
+        const nextStatus = (body.status || "").toUpperCase();
+        if (!["COMPLETED", "DONE", "DELIVERED", "WON", "CANCELLED"].includes(nextStatus)) {
+          updateData.priority = "URGENT";
+        }
+      }
     }
 
     const project = await prisma.project.update({

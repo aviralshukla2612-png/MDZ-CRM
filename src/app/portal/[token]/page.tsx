@@ -1,9 +1,30 @@
 import React from "react";
-import { ShieldCheck, CheckCircle2, ExternalLink, Calendar, FolderKanban, Clock, Sparkles } from "lucide-react";
+import { ShieldCheck, CheckCircle2, ExternalLink, Calendar, FolderKanban, Clock, Sparkles, Users, Phone, Mail, FileText, Download } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 
 export default async function ClientPortalPage({ params }: { params: { token: string } }) {
   const { token } = params;
+
+  const membershipInclude = {
+    where: { isActive: true },
+    include: {
+      employee: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              designation: true,
+              department: true,
+              avatarUrl: true,
+            },
+          },
+        },
+      },
+    },
+  };
 
   // Verify the token exists in the ClientPortalToken model or demo/preview modes
   const portalToken = await prisma.clientPortalToken.findUnique({
@@ -15,6 +36,7 @@ export default async function ClientPortalPage({ params }: { params: { token: st
           clientUpdates: { orderBy: { createdAt: "desc" } },
           tasks: true,
           stages: { include: { tasks: true } },
+          memberships: membershipInclude,
         },
       },
     },
@@ -34,6 +56,7 @@ export default async function ClientPortalPage({ params }: { params: { token: st
               clientUpdates: { orderBy: { createdAt: "desc" } },
               tasks: true,
               stages: { include: { tasks: true } },
+              memberships: membershipInclude,
             },
           })
         : await prisma.project.findFirst({
@@ -42,6 +65,7 @@ export default async function ClientPortalPage({ params }: { params: { token: st
               clientUpdates: { orderBy: { createdAt: "desc" } },
               tasks: true,
               stages: { include: { tasks: true } },
+              memberships: membershipInclude,
             },
             orderBy: { createdAt: "desc" },
           });
@@ -90,12 +114,31 @@ export default async function ClientPortalPage({ params }: { params: { token: st
     );
   }
 
+  const isCompletedStatus = (status: string | null | undefined) => {
+    if (!status) return false;
+    return ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON"].includes(status.trim().toUpperCase());
+  };
+
   const activeTasks = (activeProject?.tasks || []).filter((t: any) => t.status !== "ARCHIVED");
-  const completedTasks = activeTasks.filter((t: any) => t.status === "COMPLETED" || t.status === "DONE").length;
-  const computedProgress =
-    activeTasks.length > 0
-      ? Math.round((completedTasks / activeTasks.length) * 100)
-      : activeProject?.progressPercentage || 0;
+  const completedTasks = activeTasks.filter((t: any) => isCompletedStatus(t.status)).length;
+
+  let computedProgress = 0;
+  if (activeProject?.status === "COMPLETED") {
+    computedProgress = 100;
+  } else if (activeTasks.length > 0) {
+    computedProgress = Math.min(100, Math.max(0, Math.round((completedTasks / activeTasks.length) * 100)));
+  } else if (activeProject?.stages && activeProject.stages.length > 0) {
+    const totalW = activeProject.stages.reduce((acc: number, s: any) => acc + (s.weight || 1), 0);
+    const weightedSum = activeProject.stages.reduce((acc: number, s: any) => {
+      const p = s.status === "COMPLETED" ? 100 : (Number(s.progressPercentage) || 0);
+      return acc + p * (s.weight || 1);
+    }, 0);
+    computedProgress = totalW > 0 ? Math.min(100, Math.max(0, Math.round(weightedSum / totalW))) : 0;
+  } else if (typeof activeProject?.progressPercentage === "number" && activeProject.progressPercentage > 0) {
+    computedProgress = Math.min(100, Math.max(0, Math.round(activeProject.progressPercentage)));
+  } else if (activeProject?.clientUpdates && activeProject.clientUpdates.length > 0) {
+    computedProgress = Math.min(100, activeProject.clientUpdates.length * 25);
+  }
 
   const rawPreviewUrl = activeProject?.stagingUrl || activeProject?.liveUrl || null;
   const formattedPreviewUrl = rawPreviewUrl
@@ -136,6 +179,19 @@ export default async function ClientPortalPage({ params }: { params: { token: st
           content: activeProject ? `Work is actively progressing for ${activeProject.name}. Check back regularly for verified milestone updates.` : "Your project workspace is being prepared by the engineering team.",
         },
   };
+
+
+  const sharedFiles = activeProject
+    ? await prisma.mediaFile.findMany({
+        where: {
+          entityType: "PROJECT",
+          entityId: { in: [activeProject.id, activeProject.projectNumber] },
+          category: { not: "INTERNAL" },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      })
+    : [];
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#090E18] text-slate-900 dark:text-slate-100 p-4 sm:p-8 space-y-6 max-w-6xl mx-auto font-sans transition-colors">
@@ -235,6 +291,51 @@ export default async function ClientPortalPage({ params }: { params: { token: st
           </div>
         </div>
       </div>
+
+
+      {/* Project Deliverables & Shared Drive Documents */}
+      {sharedFiles.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="flex items-center gap-2">
+              <FolderKanban className="w-5 h-5 text-indigo-500" />
+              <h3 className="font-extrabold text-base text-slate-900 dark:text-slate-100">
+                Shared Files & Project Deliverables
+              </h3>
+            </div>
+            <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+              {sharedFiles.length} Deliverable{sharedFiles.length === 1 ? "" : "s"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {sharedFiles.map((file) => (
+              <a
+                key={file.id}
+                href={`/mdz-crm/api/media/${file.id}/download?download=true`}
+                target="_blank"
+                rel="noreferrer"
+                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between gap-3 group transition-all"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      {file.originalName}
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      {(file.fileSize / 1024).toFixed(1)} KB
+                    </div>
+                  </div>
+                </div>
+                <Download className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-500 shrink-0 transition-colors" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

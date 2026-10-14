@@ -24,6 +24,7 @@ import {
   Film,
   Sparkles,
   Camera,
+  Target,
 } from "lucide-react";
 import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
 import { MediaUploader } from "@/components/ui/MediaUploader";
@@ -66,8 +67,51 @@ export default function EmployeeDeskPage() {
   const [driveCategory, setDriveCategory] = useState<string>("GENERAL");
   const [driveRefreshKey, setDriveRefreshKey] = useState(0);
 
+  // Daily Target Reminder State
+  const [myTarget, setMyTarget] = useState<any>(null);
+  const [loadingMyTarget, setLoadingMyTarget] = useState(true);
+
+  const fetchMyTarget = async () => {
+    try {
+      setLoadingMyTarget(true);
+      const res = await fetch("/mdz-crm/api/employees/targets");
+      const json = await res.json();
+      if (json.success && json.data?.employees?.length > 0) {
+        setMyTarget(json.data.employees[0]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingMyTarget(false);
+    }
+  };
+
+  const handleIncrementMyTarget = async (incrementBy: number) => {
+    if (!myTarget?.id) return;
+    try {
+      const res = await fetch("/mdz-crm/api/employees/targets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          employeeId: myTarget.id,
+          incrementBy,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || "Progress updated", "success");
+        fetchMyTarget();
+      } else {
+        showToast(json.error || "Failed to update", "error");
+      }
+    } catch (err) {
+      showToast("Network error", "error");
+    }
+  };
+
   useEffect(() => {
     fetchEmployeeProjects();
+    fetchMyTarget();
   }, []);
 
   const fetchEmployeeProjects = async () => {
@@ -326,6 +370,85 @@ export default function EmployeeDeskPage() {
           <span>{photoUrl ? "Change Photo" : "Add Profile Photo"}</span>
         </button>
       </div>
+
+      {/* Daily Work Target Reminder & Live Quota Progress */}
+      {myTarget && myTarget.dailyTargetCount > 0 && (
+        <div className="bg-gradient-to-r from-indigo-900/90 via-indigo-950/95 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border border-indigo-500/30 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-400 flex items-center justify-center shrink-0">
+                <Target className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-black tracking-wider uppercase px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                    DAILY TARGET REMINDER
+                  </span>
+                  <span className="text-xs text-indigo-200">
+                    Goal: {myTarget.dailyTargetCount} {myTarget.dailyTargetUnit || "units"} / day
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black tracking-tight text-white mt-0.5">
+                  {myTarget.today?.targetTitle || myTarget.dailyTargetTitle || "Daily Goal"}
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={() => handleIncrementMyTarget(1)}
+                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+1 {myTarget.today?.unit || "unit"}</span>
+              </button>
+              <button
+                onClick={() => handleIncrementMyTarget(-1)}
+                className="px-2.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs transition-all"
+                title="Decrement"
+              >
+                -1
+              </button>
+            </div>
+          </div>
+
+          {/* Progress Bar & Metric */}
+          <div className="space-y-2 bg-white/5 rounded-2xl p-4 border border-white/10">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-indigo-200 font-medium">
+                Today's Completed Output
+              </span>
+              <span className="font-mono font-black text-amber-300 text-sm">
+                {myTarget.today?.achievedCount || 0} / {myTarget.dailyTargetCount} {myTarget.today?.unit} ({myTarget.today?.progressPercentage || 0}%)
+              </span>
+            </div>
+
+            <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  (myTarget.today?.progressPercentage || 0) >= 100
+                    ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                    : (myTarget.today?.progressPercentage || 0) >= 50
+                    ? "bg-gradient-to-r from-amber-500 to-amber-300"
+                    : "bg-gradient-to-r from-indigo-500 to-sky-400"
+                }`}
+                style={{ width: `${Math.min(100, myTarget.today?.progressPercentage || 0)}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] pt-0.5">
+              <span className={`font-semibold ${(myTarget.today?.progressPercentage || 0) >= 100 ? "text-emerald-400" : "text-indigo-300"}`}>
+                {(myTarget.today?.progressPercentage || 0) >= 100
+                  ? "🎉 Amazing! You have completed your daily target quota."
+                  : `🎯 ${myTarget.today?.remaining || 0} ${myTarget.today?.unit} remaining to hit today's quota limit.`}
+              </span>
+              <span className="text-slate-400 font-mono text-[10px]">
+                Reset daily at midnight
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Summary Metrics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">

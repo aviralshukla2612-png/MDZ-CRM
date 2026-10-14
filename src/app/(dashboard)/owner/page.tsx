@@ -1,14 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { CommandMetrics } from "@/components/owner/CommandMetrics";
 import { NeedsAttentionQueue } from "@/components/owner/NeedsAttentionQueue";
 import { AIOwnerAssistant } from "@/components/owner/AIOwnerAssistant";
 import { RealtimeTeamView } from "@/components/owner/RealtimeTeamView";
 import { OwnerWorkloadSection } from "@/components/owner/OwnerWorkloadSection";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Plus, Download, Crown, Cloud } from "lucide-react";
+import { Plus, Download, Crown, Cloud, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { generateAndDownloadExecutiveBriefPDF } from "@/lib/pdfGenerator";
 
 import { useToast } from "@/components/ui/Toast";
 import { useSession } from "next-auth/react";
@@ -16,8 +17,29 @@ import { useSession } from "next-auth/react";
 export default function OwnerDashboardPage() {
   const { showToast } = useToast();
   const { data: session } = useSession();
+  const [isExporting, setIsExporting] = useState(false);
 
   const userName = session?.user?.name ? session.user.name.split(" ")[0] : "Vikram";
+
+  const handleExportExecutiveBrief = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    showToast("Compiling real-time data for Executive Brief PDF...", "info");
+    try {
+      const res = await fetch("/mdz-crm/api/owner/executive-brief");
+      const json = await res.json();
+      if (!res.ok || !json.success || !json.data) {
+        throw new Error(json.error || "Failed to load executive brief data.");
+      }
+      generateAndDownloadExecutiveBriefPDF(json.data);
+      showToast("Executive Brief PDF generated & downloaded successfully!", "success");
+    } catch (err: any) {
+      console.error("Export Executive Brief error:", err);
+      showToast(err.message || "Failed to export Executive Brief PDF.", "error");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-8 pb-12">
@@ -37,11 +59,16 @@ export default function OwnerDashboardPage() {
               <span>Upload to Drive</span>
             </Link>
             <button
-              onClick={() => showToast("Executive brief export initiated (PDF)", "info")}
-              className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs flex items-center gap-1.5"
+              onClick={handleExportExecutiveBrief}
+              disabled={isExporting}
+              className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
             >
-              <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-              <span>Export Executive Brief</span>
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+              )}
+              <span>{isExporting ? "Exporting PDF..." : "Export Executive Brief"}</span>
             </button>
             <Link
               href="/leads"

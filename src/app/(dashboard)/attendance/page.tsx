@@ -27,6 +27,7 @@ import {
   Users,
   Moon,
   Edit3,
+  Loader2,
 } from "lucide-react";
 import { TimeModificationModal } from "@/components/attendance/TimeModificationModal";
 import { UnclosedShiftModal } from "@/components/attendance/UnclosedShiftModal";
@@ -168,7 +169,10 @@ export default function AttendanceWorkClockPage() {
     toggleDeviceError,
     formatHMS,
     formatHM,
+    isBreakActionLoading,
   } = useWorkClock();
+
+  const [isPunchingIn, setIsPunchingIn] = useState(false);
 
   // Bottom sheets
   const [isBreakSheetOpen, setIsBreakSheetOpen] = useState(false);
@@ -321,6 +325,8 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 }
 
   const handlePunchInClick = async () => {
+    if (isPunchingIn) return;
+
     // If there is an unclosed shift from yesterday, force user to resolve it first
     if (unclosedShift) {
       setActiveUnclosedRecord(unclosedShift);
@@ -346,6 +352,38 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
       return;
     }
 
+    setIsPunchingIn(true);
+
+    const executePunchIn = async () => {
+      try {
+        const res = await fetch("/mdz-crm/api/attendance/punch-in", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ employeeId: session?.user?.employeeId }),
+        });
+        const data = await res.json();
+        
+        if (!res.ok || !data.success) {
+          if (data.requireUnclosedResolution) {
+            setActiveUnclosedRecord({ id: data.unclosedShiftId, date: data.dateStr });
+            setIsUnclosedModalOpen(true);
+            showToast(data.error || "Please complete yesterday's shift first.", "error");
+            return;
+          }
+          showToast(data.error || "Failed to punch in.", "error");
+          return;
+        }
+        
+        punchIn();
+        fetchAttendanceLogs();
+        showToast("✓ Punched In successfully at " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), "success");
+      } catch (e) {
+        showToast("Network error while punching in.", "error");
+      } finally {
+        setIsPunchingIn(false);
+      }
+    };
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         // IMPORTANT: Replace these with your actual office coordinates!
@@ -360,49 +398,25 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
         );
 
         if (distance > 50000) { // Increased to 50km to prevent blocking during testing
+          setIsPunchingIn(false);
           showToast(`Punch In unavailable: You are outside the allowed region.`, "error");
           return;
         }
 
-        try {
-          const res = await fetch("/mdz-crm/api/attendance/punch-in", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ employeeId: session?.user?.employeeId }),
-          });
-          const data = await res.json();
-          
-          if (!res.ok || !data.success) {
-            if (data.requireUnclosedResolution) {
-              setActiveUnclosedRecord({ id: data.unclosedShiftId, date: data.dateStr });
-              setIsUnclosedModalOpen(true);
-              showToast(data.error || "Please complete yesterday's shift first.", "error");
-              return;
-            }
-            showToast(data.error || "Failed to punch in.", "error");
-            return;
-          }
-          
-          punchIn();
-          await fetchAttendanceLogs();
-          await refreshStatus();
-          showToast("✓ Punched In successfully at " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), "success");
-        } catch (e) {
-          showToast("Network error while punching in.", "error");
-        }
+        await executePunchIn();
       },
       (error) => {
-        showToast("Location access denied. Please allow location access to punch in.", "error");
+        setIsPunchingIn(false);
+        showToast("Location access denied or timed out. Please allow location to punch in.", "error");
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
     );
   };
 
   const handleConfirmBreak = async () => {
-    startBreak(selectedBreakType, customBreakReason);
     setIsBreakSheetOpen(false);
-    showToast(`✓ Break started: ${selectedBreakType}`, "info");
-    await fetchAttendanceLogs();
+    await startBreak(selectedBreakType, customBreakReason);
+    fetchAttendanceLogs();
   };
 
   const handleChangeWorkSubmit = (e: React.FormEvent) => {
@@ -549,10 +563,22 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 
           <button
             onClick={handlePunchInClick}
-            className="w-full max-w-sm mx-auto py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-extrabold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+            disabled={isPunchingIn}
+            className={`w-full max-w-sm mx-auto py-4 rounded-xl text-white font-extrabold text-sm shadow-sm transition-all flex items-center justify-center gap-2 ${
+              isPunchingIn ? "bg-indigo-400 cursor-not-allowed opacity-80" : "bg-indigo-600 hover:bg-indigo-500 active:scale-95 cursor-pointer"
+            }`}
           >
-            <Play className="w-4 h-4 fill-white" />
-            <span>Punch In to Work Clock</span>
+            {isPunchingIn ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                <span>Punching In...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 fill-white" />
+                <span>Punch In to Work Clock</span>
+              </>
+            )}
           </button>
         </div>
       )}
@@ -678,10 +704,22 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
 
           <button
             onClick={resumeWork}
-            className="w-full max-w-sm mx-auto py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-extrabold text-sm shadow-sm transition-all flex items-center justify-center gap-2"
+            disabled={isBreakActionLoading}
+            className={`w-full max-w-sm mx-auto py-4 rounded-xl text-white font-extrabold text-sm shadow-sm transition-all flex items-center justify-center gap-2 ${
+              isBreakActionLoading ? "bg-indigo-400 cursor-not-allowed opacity-80" : "bg-indigo-600 hover:bg-indigo-500 active:scale-95 cursor-pointer"
+            }`}
           >
-            <Play className="w-4 h-4 fill-white" />
-            <span>Resume Work Session</span>
+            {isBreakActionLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                <span>Resuming Work...</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 fill-white" />
+                <span>Resume Work Session</span>
+              </>
+            )}
           </button>
         </div>
       )}
@@ -963,10 +1001,12 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
           </div>
 
           <button
+            disabled={isBreakActionLoading}
             onClick={handleConfirmBreak}
-            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs shadow-xs"
+            className="w-full py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs shadow-xs flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
           >
-            Start Break
+            {isBreakActionLoading && <Loader2 className="w-4 h-4 animate-spin shrink-0" />}
+            <span>{isBreakActionLoading ? "Starting Break..." : "Start Break"}</span>
           </button>
         </div>
       </BottomSheet>

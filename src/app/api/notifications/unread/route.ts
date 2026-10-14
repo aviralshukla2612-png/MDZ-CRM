@@ -14,7 +14,22 @@ export async function GET() {
       },
       orderBy: { createdAt: "desc" },
     });
-    return NextResponse.json({ success: true, data: unread });
+
+    // Sanitize any notifications that previously had individual staff name instead of "Client"
+    const sanitized = unread.map((n) => {
+      if (
+        n.title?.toLowerCase()?.includes("change request") ||
+        n.title?.toLowerCase()?.includes("revision")
+      ) {
+        return {
+          ...n,
+          message: n.message.replace(/^[A-Za-z\s]+ requested changes for/, "Client requested changes for"),
+        };
+      }
+      return n;
+    });
+
+    return NextResponse.json({ success: true, data: sanitized });
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to fetch notifications" }, { status: 500 });
   }

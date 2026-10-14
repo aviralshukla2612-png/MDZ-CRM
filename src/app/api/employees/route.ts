@@ -38,6 +38,7 @@ export async function GET() {
       include: {
         user: true,
         attendances: true,
+        dailyWorkLogs: { orderBy: { date: "desc" }, take: 10 },
         workSessions: {
           include: { project: true },
         },
@@ -127,6 +128,17 @@ export async function GET() {
         designation: e.user?.designation || "Developer",
         department: e.user?.department || "Engineering",
         phone: e.user?.phone || e.phone || "",
+        relative1Name: e.relative1Name || "",
+        relative1Relation: e.relative1Relation || "",
+        relative1Phone: e.relative1Phone || "",
+        relative2Name: e.relative2Name || "",
+        relative2Relation: e.relative2Relation || "",
+        relative2Phone: e.relative2Phone || "",
+        dailyTargetTitle: e.dailyTargetTitle || "Tasks",
+        dailyTargetCount: e.dailyTargetCount || 0,
+        dailyTargetUnit: e.dailyTargetUnit || "units",
+        dailyTargetNotes: e.dailyTargetNotes || "",
+        dailyWorkLogs: e.dailyWorkLogs || [],
         punchedIn: isPunchedIn,
         shiftCompleted: isShiftCompleted,
         punchInTime: todayAtt[0]?.punchIn ? new Date(todayAtt[0].punchIn).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "09:00 AM",
@@ -172,7 +184,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authRes = await requireRole(["OWNER", "SUB_ADMIN"]);
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN"]);
   if (authRes instanceof NextResponse) return authRes;
 
   try {
@@ -180,6 +192,19 @@ export async function POST(req: Request) {
     
     if (!body.name || !body.email || !body.password) {
       return NextResponse.json({ success: false, error: "Missing required fields: name, email, password" }, { status: 400 });
+    }
+
+    const rel1Phone = String(body.relative1Phone || "").trim();
+    const rel2Phone = String(body.relative2Phone || "").trim();
+
+    if (!rel1Phone || !rel2Phone) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Two relative contact phone numbers (Relative 1 & Relative 2) are compulsory.",
+        },
+        { status: 400 }
+      );
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email: body.email } });
@@ -197,6 +222,7 @@ export async function POST(req: Request) {
           email: body.email,
           passwordHash: hashedPassword,
           name: body.name,
+          phone: body.phone ? String(body.phone).trim() : "",
           designation: body.designation || "Team Member",
           department: body.department || "General",
           activeRole: body.role === "SALES" ? "SALES" : body.role === "SUB_ADMIN" ? "SUB_ADMIN" : "EMPLOYEE",
@@ -215,7 +241,18 @@ export async function POST(req: Request) {
           userId: newUser.id,
           employeeIdCode: code,
           salaryMonthly: body.salaryMonthly || 0,
+          phone: body.phone ? String(body.phone).trim() : "",
+          relative1Name: body.relative1Name ? String(body.relative1Name).trim() : "",
+          relative1Relation: body.relative1Relation ? String(body.relative1Relation).trim() : "Relative",
+          relative1Phone: rel1Phone,
+          relative2Name: body.relative2Name ? String(body.relative2Name).trim() : "",
+          relative2Relation: body.relative2Relation ? String(body.relative2Relation).trim() : "Relative",
+          relative2Phone: rel2Phone,
           skillsJson: JSON.stringify(body.skills || []),
+          dailyTargetTitle: body.dailyTargetTitle ? String(body.dailyTargetTitle).trim() : "Tasks",
+          dailyTargetCount: body.dailyTargetCount ? Number(body.dailyTargetCount) : 0,
+          dailyTargetUnit: body.dailyTargetUnit ? String(body.dailyTargetUnit).trim() : "units",
+          dailyTargetNotes: body.dailyTargetNotes ? String(body.dailyTargetNotes).trim() : "",
           sickLeaveTotal: referenceEmployee?.sickLeaveTotal ?? 10,
           casualLeaveTotal: referenceEmployee?.casualLeaveTotal ?? 15,
           paidLeaveTotal: referenceEmployee?.paidLeaveTotal ?? 15,
