@@ -40,12 +40,14 @@ interface WorkClockContextType {
   unclosedShift: { id: string; date: string | Date; punchIn: string | Date } | null;
   isBreakActionLoading: boolean;
   isVideographer: boolean;
+  targetWorkingHours: number;
+  REQUIRED_WORK_SECONDS: number;
   // Actions
   punchIn: () => void;
   startBreak: (type: string, reason?: string) => Promise<void>;
   resumeWork: () => Promise<void>;
   changeWork: (project: string, task: string) => void;
-  punchOut: () => { success: boolean; requiresConfirmation: boolean; remainingSeconds: number };
+  punchOut: (customRequiredSeconds?: number) => { success: boolean; requiresConfirmation: boolean; remainingSeconds: number };
   confirmPunchOutAnyway: (reason?: string) => Promise<boolean>;
   markPunchOutPending: () => void;
   refreshStatus: () => Promise<void>;
@@ -113,6 +115,29 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
   const { showToast } = useToast();
   const { data: session } = useSession();
   const currentEmployeeId = session?.user?.employeeId;
+
+  const [targetWorkingHours, setTargetWorkingHours] = useState<number>(7.0);
+
+  useEffect(() => {
+    fetch("/mdz-crm/api/attendance/working-hours")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success) {
+          const empId = session?.user?.employeeId;
+          if (empId && json.employees) {
+            const found = json.employees.find((e: any) => e.id === empId || e.userId === session?.user?.id);
+            if (found && found.targetWorkingHours) {
+              setTargetWorkingHours(found.targetWorkingHours);
+              return;
+            }
+          }
+          if (json.defaultWorkingHours) {
+            setTargetWorkingHours(json.defaultWorkingHours);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [session?.user?.employeeId, session?.user?.id]);
 
   useEffect(() => {
     statusRef.current = status;
@@ -334,7 +359,7 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
     const hrs = Math.floor(sec / 3600);
     const mins = Math.floor((sec % 3600) / 60);
     if (hrs === 0) return `${mins}m`;
-    return `${hrs}h ${mins}m`;
+    return `${hrs}h ${mins > 0 ? `${mins}m` : "00m"}`;
   };
 
   const punchIn = () => {
@@ -464,21 +489,22 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
     ]);
   };
 
-  const REQUIRED_WORK_SECONDS = parseInt(process.env.NEXT_PUBLIC_REQUIRED_WORK_HOURS || "9") * 3600;
+  const REQUIRED_WORK_SECONDS = (targetWorkingHours || 7.0) * 3600;
 
-  const punchOut = () => {
+  const punchOut = (customRequiredSeconds?: number) => {
     // Videographers can punch out anytime without shift restriction or admin approval requests
     if (isVideographer) {
       confirmPunchOutAnyway();
       return { success: true, requiresConfirmation: false, remainingSeconds: 0 };
     }
 
+    const reqSeconds = customRequiredSeconds ?? REQUIRED_WORK_SECONDS;
     const totalActiveSeconds = workSeconds + breakSeconds;
-    if (totalActiveSeconds >= REQUIRED_WORK_SECONDS) {
+    if (totalActiveSeconds >= reqSeconds) {
       confirmPunchOutAnyway();
       return { success: true, requiresConfirmation: false, remainingSeconds: 0 };
     } else {
-      const remainingSeconds = REQUIRED_WORK_SECONDS - totalActiveSeconds;
+      const remainingSeconds = reqSeconds - totalActiveSeconds;
       return { success: false, requiresConfirmation: true, remainingSeconds };
     }
   };
@@ -560,6 +586,8 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
         unclosedShift,
         isBreakActionLoading,
         isVideographer,
+        targetWorkingHours,
+        REQUIRED_WORK_SECONDS,
         punchIn,
         startBreak,
         resumeWork,

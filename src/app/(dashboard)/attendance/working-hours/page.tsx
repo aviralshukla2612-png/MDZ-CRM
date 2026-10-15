@@ -38,7 +38,7 @@ export default function WorkingHoursPage() {
   const [savingGlobal, setSavingGlobal] = useState(false);
   const [savingEmpId, setSavingEmpId] = useState<string | null>(null);
 
-  const [defaultHours, setDefaultHours] = useState<number>(8.0);
+  const [defaultHours, setDefaultHours] = useState<number>(7.0);
   const [employees, setEmployees] = useState<EmployeeWorkingHours[]>([]);
   const [hoursMap, setHoursMap] = useState<Record<string, number>>({});
 
@@ -337,6 +337,15 @@ export default function WorkingHoursPage() {
 
           <button
             type="button"
+            onClick={() => handleBulkPreset(7)}
+            className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            <Clock className="w-3.5 h-3.5" />
+            <span>Set All to 7 Hours</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => handleBulkPreset(8)}
             className="px-4 py-2 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
           >
@@ -479,7 +488,7 @@ export default function WorkingHoursPage() {
                       <td className="py-4 px-3 text-center">
                         <span
                           className={`inline-flex items-center gap-1 px-3 py-1 rounded-full font-mono font-bold text-xs border ${
-                            currentVal === 6
+                            currentVal === 6 || currentVal === 7
                               ? "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800"
                               : currentVal === 8
                               ? "bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800"
@@ -494,7 +503,7 @@ export default function WorkingHoursPage() {
                       {/* Quick Presets */}
                       <td className="py-4 px-3 text-center">
                         <div className="flex items-center justify-center gap-1.5">
-                          {[6, 8, 9].map((h) => (
+                          {[6, 7, 8, 9].map((h) => (
                             <button
                               key={h}
                               type="button"

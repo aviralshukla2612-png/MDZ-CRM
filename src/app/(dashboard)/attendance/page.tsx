@@ -281,7 +281,7 @@ export default function AttendanceWorkClockPage() {
     }
   }, [unclosedShift, status]);
 
-  const [targetWorkingHours, setTargetWorkingHours] = useState<number>(8.0);
+  const [targetWorkingHours, setTargetWorkingHours] = useState<number>(7.0);
 
   useEffect(() => {
     fetch("/mdz-crm/api/attendance/working-hours")
@@ -304,7 +304,7 @@ export default function AttendanceWorkClockPage() {
       .catch(() => {});
   }, [session?.user?.employeeId, session?.user?.id]);
 
-  const REQUIRED_WORK_SECONDS = (targetWorkingHours || 8.0) * 3600;
+  const REQUIRED_WORK_SECONDS = (targetWorkingHours || 7.0) * 3600;
   const totalActiveSeconds = workSeconds + breakSeconds;
   const progressPercent = Math.min(100, Math.round((totalActiveSeconds / REQUIRED_WORK_SECONDS) * 100));
   const remainingWorkSeconds = Math.max(0, REQUIRED_WORK_SECONDS - totalActiveSeconds);
@@ -427,7 +427,7 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
   };
 
   const handlePunchOutClick = async () => {
-    const res = punchOut();
+    const res = punchOut(REQUIRED_WORK_SECONDS);
     if (res.requiresConfirmation) {
       setIsPunchOutConfirmOpen(true);
     } else {
@@ -612,7 +612,7 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
             </div>
 
             <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-mono">
-              Punched In at {punchInTime || "09:00 AM"} • Required: {Math.floor(REQUIRED_WORK_SECONDS / 3600)}h {Math.floor((REQUIRED_WORK_SECONDS % 3600) / 60)}m
+              Punched In at {punchInTime || "09:00 AM"} • Required: {formatHM(REQUIRED_WORK_SECONDS)}
             </div>
           </div>
 
@@ -621,7 +621,11 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
             {/* Work Goal Bar */}
             <div className="space-y-2">
               <div className="flex justify-between font-bold">
-                <span className="text-slate-600 dark:text-slate-400">{Math.floor(REQUIRED_WORK_SECONDS / 3600)}-Hour Work Goal</span>
+                <span className="text-slate-600 dark:text-slate-400">
+                  {REQUIRED_WORK_SECONDS % 3600 === 0
+                    ? `${REQUIRED_WORK_SECONDS / 3600}-Hour Work Goal`
+                    : `${formatHM(REQUIRED_WORK_SECONDS)} Work Goal`}
+                </span>
                 <span className="font-mono text-indigo-600 dark:text-indigo-400">{formatHM(totalActiveSeconds)} / {formatHM(REQUIRED_WORK_SECONDS)} ({progressPercent}%)</span>
               </div>
               <div className="w-full h-3 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden border border-slate-200/80 dark:border-slate-800">
@@ -1016,7 +1020,7 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
         isOpen={isPunchOutConfirmOpen}
         onClose={() => setIsPunchOutConfirmOpen(false)}
         title="Early Punch Out Request"
-        subtitle={`You are leaving before completing ${Math.floor(REQUIRED_WORK_SECONDS / 3600)} hours. Please provide a reason for admin approval.`}
+        subtitle={`You are leaving before completing ${formatHM(REQUIRED_WORK_SECONDS)}. Please provide a reason for admin approval.`}
       >
         <form onSubmit={handleConfirmPunchOutAnyway} className="space-y-4">
           <div className="space-y-1.5">
