@@ -161,7 +161,7 @@ export function LeadPipelineBoard({
         })}
       </div>
 
-      <div className="flex gap-2 sm:gap-2.5 overflow-x-auto xl:overflow-x-visible pb-4 pt-1 w-full max-w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5 items-start pb-4 pt-1 w-full min-w-0">
         {STAGES.map((stage) => {
           const stageLeads = filteredLeads.filter((l) => l.stage === stage.id);
           const totalVal = stageLeads.reduce((acc, curr) => acc + (curr.leadValue || 0), 0);
@@ -169,7 +169,7 @@ export function LeadPipelineBoard({
           return (
             <div
               key={stage.id}
-              className="flex-1 min-w-[200px] xl:min-w-0 bg-slate-100/60 dark:bg-slate-950/40 rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800/60 space-y-3 flex flex-col shrink-0 xl:shrink flex-grow"
+              className="w-full min-w-0 bg-slate-100/60 dark:bg-slate-950/40 rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 dark:border-slate-800/60 space-y-3 flex flex-col"
               onDragOver={(e) => {
                 e.preventDefault();
                 e.currentTarget.classList.add("border-indigo-500/50", "bg-indigo-50/50", "dark:bg-indigo-950/20");

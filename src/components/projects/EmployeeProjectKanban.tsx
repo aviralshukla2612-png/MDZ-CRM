@@ -1239,7 +1239,7 @@ export function EmployeeProjectKanban({
                 </div>
               )}
 
-              <div className="flex gap-2 sm:gap-2.5 items-start pb-6 w-full max-w-full overflow-x-auto xl:overflow-x-visible">
+              <div className={`grid grid-cols-1 md:grid-cols-2 ${columnsToRender.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-5'} gap-2 sm:gap-2.5 items-start pb-6 w-full min-w-0`}>
                 {columnsToRender.map((col) => {
                   const colProjects = projectsToRender.filter((p) => {
                     const s = (p.status || "").toUpperCase();
@@ -1339,11 +1339,11 @@ export function EmployeeProjectKanban({
                     handleDropProject(pId, col.id);
                   }
                 }}
-                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-2 sm:p-2.5 flex flex-col min-h-[580px] max-h-[calc(100vh-210px)] transition-all flex-1 min-w-[200px] xl:min-w-0 shadow-xs"
+                className="bg-slate-100/70 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 p-2 sm:p-2 flex flex-col min-h-[580px] max-h-[calc(100vh-210px)] transition-all w-full min-w-0 shadow-xs overflow-hidden"
               >
                 {/* Sticky Column Header */}
-                <div className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md pb-2 pt-0.5 border-b border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
+                <div className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md pb-2 pt-0.5 border-b border-slate-200/70 dark:border-slate-800/80 flex items-center justify-between gap-1 w-full min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${
                       col.id === "IN_PROGRESS"
                         ? "bg-indigo-500 animate-pulse ring-4 ring-indigo-500/20"
@@ -1355,25 +1355,25 @@ export function EmployeeProjectKanban({
                         ? "bg-rose-500 ring-4 ring-rose-500/20"
                         : "bg-blue-500 ring-4 ring-blue-500/20"
                     }`} />
-                    <h3 className="font-bold text-[11px] sm:text-xs text-slate-800 dark:text-slate-200 truncate">
+                    <h3 className="font-bold text-[11px] text-slate-800 dark:text-slate-200 truncate">
                       {col.title}
                     </h3>
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
                     {isAdminOrSubAdmin && totalVal > 0 && (
-                      <span className="text-[9px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
+                      <span className="text-[8px] font-mono font-bold text-slate-500 dark:text-slate-400 bg-white/80 dark:bg-slate-800/80 px-1 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
                         ₹{totalVal >= 100000 ? `${(totalVal / 100000).toFixed(1)}L` : totalVal.toLocaleString("en-IN")}
                       </span>
                     )}
-                    <span className={`text-[9px] sm:text-[10px] font-mono font-extrabold px-1.5 py-0.5 rounded-full border ${col.badgeBg}`}>
+                    <span className={`text-[9px] font-mono font-extrabold px-1.5 py-0.5 rounded-full border ${col.badgeBg}`}>
                       {colProjects.length}
                     </span>
                   </div>
                 </div>
 
                 {/* Cards Container with smooth scrolling and top padding so cards never clip */}
-                <div className="space-y-2.5 flex-1 overflow-y-auto pt-2.5 pb-4 pr-1 scrollbar-thin scroll-smooth">
+                <div className="space-y-2 flex-1 overflow-y-auto pt-2 pb-4 pr-0.5 scrollbar-thin scroll-smooth min-w-0">
                   {colProjects.length === 0 ? (
                     <div className="h-40 rounded-xl border-2 border-dashed border-slate-300/70 dark:border-slate-700/70 flex flex-col items-center justify-center text-center p-4 text-slate-400 dark:text-slate-500 text-xs space-y-1">
                       <span className="font-medium">No projects in this stage</span>
@@ -1432,20 +1432,19 @@ export function EmployeeProjectKanban({
                           }}
                           onDragEnd={() => setDraggedProjectId(null)}
                           onClick={() => router.push(`/projects/${proj.id}`)}
-                          className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800/90 hover:border-indigo-400 dark:hover:border-indigo-500/80 p-2.5 sm:p-3 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 space-y-2 group cursor-pointer relative ${
+                          className={`bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-800/90 hover:border-indigo-400 dark:hover:border-indigo-500/80 p-2.5 shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 space-y-2 group cursor-pointer relative w-full min-w-0 ${
                             isBeingDragged ? "opacity-30 scale-95 border-dashed border-indigo-500" : ""
                           }`}
                         >
                           {/* Top Badges & Quick Stage Move */}
-                          <div className="flex items-center justify-between gap-1" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-1 shrink-0 min-w-0">
-                              <GripVertical className="w-3 h-3 text-slate-300 dark:text-slate-600 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors shrink-0 cursor-grab active:cursor-grabbing" />
+                          <div className="flex items-center justify-between gap-1 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1 min-w-0 flex-1">
                               <span
-                                className={`text-[8px] sm:text-[9px] font-bold font-mono px-1 py-0.5 rounded border whitespace-nowrap shrink-0 ${priorityColor}`}
+                                className={`text-[8px] font-bold font-mono px-1 py-0.5 rounded border whitespace-nowrap shrink-0 ${priorityColor}`}
                               >
                                 {proj.priority}
                               </span>
-                              <span className="text-[9px] font-mono font-semibold text-slate-400 dark:text-slate-500 truncate max-w-[60px] sm:max-w-[75px]">
+                              <span className="text-[9px] font-mono font-semibold text-slate-400 dark:text-slate-500 truncate min-w-0 flex-1" title={proj.projectNumber || proj.id}>
                                 {proj.projectNumber || proj.id.slice(0, 8)}
                               </span>
                             </div>
@@ -1465,7 +1464,7 @@ export function EmployeeProjectKanban({
                                     : "PLANNING"
                                 }
                                 onChange={(e) => handleDropProject(proj.id, e.target.value)}
-                                className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 rounded-md px-1 py-0.5 text-[9px] font-semibold text-slate-700 dark:text-slate-300 outline-none cursor-pointer transition-colors shadow-2xs max-w-[72px] truncate"
+                                className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 rounded-md px-1 py-0.5 text-[9px] font-semibold text-slate-700 dark:text-slate-300 outline-none cursor-pointer transition-colors shadow-2xs max-w-[65px] truncate"
                                 title="Move Stage"
                               >
                                 <option value="PLANNING">Planning</option>
@@ -1484,27 +1483,27 @@ export function EmployeeProjectKanban({
                                     const rawProj = allProjects.find((p) => p.id === proj.id) || proj;
                                     setEditingProject(rawProj);
                                   }}
-                                  className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shrink-0 cursor-pointer"
+                                  className="p-0.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors shrink-0 cursor-pointer"
                                   title="Edit Project"
                                 >
-                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <Edit3 className="w-3 h-3" />
                                 </button>
                               )}
                             </div>
                           </div>
 
                           {/* Project Name & Client */}
-                          <div className="space-y-1">
-                            <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 leading-snug">
+                          <div className="space-y-0.5 min-w-0">
+                            <h4 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2 leading-snug">
                               {proj.name}
                             </h4>
-                            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium">
-                              <div className="flex items-center gap-1.5 truncate">
-                                <Building className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-medium gap-1 min-w-0">
+                              <div className="flex items-center gap-1 min-w-0 flex-1 truncate">
+                                <Building className="w-3 h-3 text-slate-400 shrink-0" />
                                 <span className="truncate">{proj.clientName}</span>
                               </div>
                               {isAdminOrSubAdmin && proj.contractValue > 0 && (
-                                <span className="font-mono text-[10px] font-bold text-slate-600 dark:text-slate-300 shrink-0 ml-1">
+                                <span className="font-mono text-[9px] font-bold text-slate-600 dark:text-slate-300 shrink-0 ml-1">
                                   ₹{proj.contractValue >= 100000 ? `${(proj.contractValue / 100000).toFixed(1)}L` : proj.contractValue.toLocaleString("en-IN")}
                                 </span>
                               )}
@@ -1634,98 +1633,105 @@ export function EmployeeProjectKanban({
                             );
                           })()}
 
-                          {/* Card Footer: Metadata (Tasks, Overdue/Deadline, Team Avatars, Subtle Arrow) */}
-                          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-1 text-xs" onClick={(e) => e.stopPropagation()}>
-                            {/* Left: Tasks count & Target Deadline */}
-                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                              <span
-                                className="inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 shrink-0"
-                                title={`${proj.completedTasks} of ${proj.totalTasks} tasks completed`}
-                              >
-                                <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
-                                <span>{proj.completedTasks}/{proj.totalTasks}</span>
-                              </span>
+                          {/* Card Footer: Metadata (Tasks, Chat, Team Avatars, Dedicated Deadline Row) */}
+                          <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800/80 space-y-1 w-full min-w-0" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between gap-1 text-xs">
+                              {/* Left: Tasks count & Chat */}
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span
+                                  className="inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 shrink-0"
+                                  title={`${proj.completedTasks} of ${proj.totalTasks} tasks completed`}
+                                >
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <span>{proj.completedTasks}/{proj.totalTasks}</span>
+                                </span>
 
-                              <Link
-                                href={`/projects/${proj.id}?tab=chat`}
-                                className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors shrink-0"
-                                title="Project Team Chat & Discussion"
-                              >
-                                <MessageSquare className="w-3 h-3 text-indigo-500 shrink-0" />
-                                <span>Chat</span>
-                              </Link>
+                                <Link
+                                  href={`/projects/${proj.id}?tab=chat`}
+                                  className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors shrink-0"
+                                  title="Project Team Chat & Discussion"
+                                >
+                                  <MessageSquare className="w-3 h-3 text-indigo-500 shrink-0" />
+                                  <span>Chat</span>
+                                </Link>
+                              </div>
 
-                              {(() => {
-                                const s = (proj.status || "").toUpperCase();
-                                const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
-                                const isOverdue = !isCompleted && proj.targetDeadline && proj.targetDeadline !== "No Deadline" && !isNaN(new Date(proj.targetDeadline).getTime()) && new Date(proj.targetDeadline).setHours(23, 59, 59, 999) < Date.now();
-
-                                if (isOverdue) {
-                                  return (
-                                    <span
-                                      className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 shrink-0"
-                                      title="Deadline Overdue"
+                              {/* Right: Assigned Team Avatars Stack & Sleek Arrow */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center -space-x-1 shrink-0" title={teamTooltip}>
+                                  {activeTeamMembers.slice(0, 2).map((m: any, idx: number) => (
+                                    <div
+                                      key={m.id || idx}
+                                      className="w-4.5 h-4.5 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white text-[8px] font-bold flex items-center justify-center ring-1 ring-white dark:ring-slate-900 shadow-2xs shrink-0"
+                                      title={`${m.name} (${m.role || "Developer"})`}
                                     >
-                                      <AlertTriangle className="w-3 h-3 text-rose-500" />
-                                      <span>{proj.targetDeadline}</span>
-                                    </span>
-                                  );
-                                }
-                                if (proj.targetDeadline && proj.targetDeadline !== "No Deadline") {
-                                  return (
-                                    <span
-                                      className="inline-flex items-center gap-1 text-[10px] font-mono text-slate-500 dark:text-slate-400 shrink-0"
-                                      title="Target Deadline"
+                                      {m.avatarUrl ? (
+                                        <img src={m.avatarUrl} alt={m.name} className="w-full h-full rounded-full object-cover" />
+                                      ) : (
+                                        m.name.charAt(0).toUpperCase()
+                                      )}
+                                    </div>
+                                  ))}
+                                  {activeTeamMembers.length > 2 && (
+                                    <div className="w-4.5 h-4.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[8px] font-bold flex items-center justify-center ring-1 ring-white dark:ring-slate-900 shadow-2xs shrink-0">
+                                      +{activeTeamMembers.length - 2}
+                                    </div>
+                                  )}
+                                  {activeTeamMembers.length === 0 && (
+                                    <span className="text-[9px] text-slate-400 italic">No team</span>
+                                  )}
+                                  {!isEmployee && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setAssignProjectId(proj.id);
+                                        setIsAssignModalOpen(true);
+                                      }}
+                                      className="w-4.5 h-4.5 rounded-full border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center text-[9px] font-bold transition-colors shrink-0 ml-0.5 cursor-pointer bg-white dark:bg-slate-800"
+                                      title="Assign Team Member"
                                     >
-                                      <Calendar className="w-3 h-3 text-slate-400" />
-                                      <span>{proj.targetDeadline}</span>
-                                    </span>
-                                  );
-                                }
-                                return null;
-                              })()}
+                                      +
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all">
+                                  <ArrowRight className="w-3 h-3" />
+                                </div>
+                              </div>
                             </div>
 
-                            {/* Right: Assigned Team Avatars Stack & Sleek Arrow */}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <div className="flex items-center -space-x-1.5 shrink-0" title={teamTooltip}>
-                                {activeTeamMembers.slice(0, 3).map((m: any, idx: number) => (
+                            {/* Dedicated Target Deadline Pill: Never collides with avatars or wraps awkwardly */}
+                            {(() => {
+                              const s = (proj.status || "").toUpperCase();
+                              const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+                              const isOverdue = !isCompleted && proj.targetDeadline && proj.targetDeadline !== "No Deadline" && !isNaN(new Date(proj.targetDeadline).getTime()) && new Date(proj.targetDeadline).setHours(23, 59, 59, 999) < Date.now();
+
+                              if (isOverdue) {
+                                return (
                                   <div
-                                    key={m.id || idx}
-                                    className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-2xs shrink-0"
-                                    title={`${m.name} (${m.role || "Developer"})`}
+                                    className="inline-flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/80 w-full truncate"
+                                    title="Deadline Overdue"
                                   >
-                                    {m.name.charAt(0).toUpperCase()}
+                                    <AlertTriangle className="w-2.5 h-2.5 text-rose-500 shrink-0" />
+                                    <span className="truncate">Overdue: {proj.targetDeadline}</span>
                                   </div>
-                                ))}
-                                {activeTeamMembers.length > 3 && (
-                                  <div className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-slate-900 shadow-2xs shrink-0">
-                                    +{activeTeamMembers.length - 3}
-                                  </div>
-                                )}
-                                {activeTeamMembers.length === 0 && (
-                                  <span className="text-[10px] text-slate-400 italic">No team</span>
-                                )}
-                                {!isEmployee && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setAssignProjectId(proj.id);
-                                      setIsAssignModalOpen(true);
-                                    }}
-                                    className="w-5 h-5 rounded-full border border-dashed border-slate-300 dark:border-slate-600 hover:border-indigo-500 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center justify-center text-[10px] font-bold transition-colors shrink-0 ml-0.5 cursor-pointer bg-white dark:bg-slate-800"
-                                    title="Assign Team Member"
+                                );
+                              }
+                              if (proj.targetDeadline && proj.targetDeadline !== "No Deadline") {
+                                return (
+                                  <div
+                                    className="inline-flex items-center gap-1 text-[9px] font-mono text-slate-500 dark:text-slate-400 px-1 py-0.5 rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-800/50 w-full truncate"
+                                    title="Target Deadline"
                                   >
-                                    +
-                                  </button>
-                                )}
-                              </div>
-
-                              <div className="text-slate-300 dark:text-slate-600 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 group-hover:translate-x-0.5 transition-all">
-                                <ArrowRight className="w-3.5 h-3.5" />
-                              </div>
-                            </div>
+                                    <Calendar className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                                    <span className="truncate">Due: {proj.targetDeadline}</span>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                         </div>
                       );
