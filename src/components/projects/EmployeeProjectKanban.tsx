@@ -68,15 +68,34 @@ export interface ProjectCardItem {
   tasks?: Array<{ id: string; title: string; status: string; priority: string }>;
 }
 
+export function isProjectCompletedStage(p: { status?: string | null; progress?: number; progressPercentage?: number }): boolean {
+  const s = String(p.status || "").trim().toUpperCase();
+  return (
+    s === "COMPLETED" ||
+    s === "DONE" ||
+    s === "COMPLETE" ||
+    s === "DELIVERED" ||
+    s === "RESOLVED" ||
+    s === "WON" ||
+    s === "FINISHED" ||
+    s.includes("DELIVER") ||
+    s.includes("COMPLETE") ||
+    Number(p.progress) >= 100 ||
+    Number(p.progressPercentage) >= 100
+  );
+}
+
 function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardItem {
   const isCompleted = (s: string) =>
-    ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON"].includes(String(s || "").trim().toUpperCase());
+    ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON", "FINISHED"].includes(String(s || "").trim().toUpperCase()) ||
+    String(s || "").trim().toUpperCase().includes("DELIVER") ||
+    String(s || "").trim().toUpperCase().includes("COMPLETE");
   const totalTasks = p.tasks ? p.tasks.length : (p.totalTasks || 0);
   const completedTasks = p.tasks
     ? p.tasks.filter((t: any) => isCompleted(t.status)).length
     : (p.completedTasks || 0);
   const calcProgress =
-    p.status === "COMPLETED"
+    isProjectCompletedStage(p)
       ? 100
       : totalTasks > 0
       ? Math.round((completedTasks / totalTasks) * 100)
@@ -1203,10 +1222,7 @@ export function EmployeeProjectKanban({
 
         {/* KANBAN BOARD (Columns by Status with Drop Zones) */}
         {(() => {
-          const completedProjectsCount = projectsToRender.filter((p) => {
-            const s = (p.status || "").toUpperCase();
-            return s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
-          }).length;
+          const completedProjectsCount = projectsToRender.filter((p) => isProjectCompletedStage(p)).length;
 
           const columnsToRender = hideCompletedProjects
             ? KANBAN_COLUMNS.filter((col) => col.id !== "COMPLETED")
@@ -1246,7 +1262,7 @@ export function EmployeeProjectKanban({
                 {columnsToRender.map((col) => {
                   const colProjects = projectsToRender.filter((p) => {
                     const s = (p.status || "").toUpperCase();
-                    const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+                    const isCompleted = isProjectCompletedStage(p);
 
                     // 1. Completed column always displays completed projects
                     if (col.id === "COMPLETED") {
@@ -1393,11 +1409,7 @@ export function EmployeeProjectKanban({
 
                       const isLeadRole = proj.roleInProject === "TM";
                       const isBeingDragged = draggedProjectId === proj.id;
-                      const isProjComplete =
-                        proj.status === "COMPLETED" ||
-                        proj.status === "DONE" ||
-                        proj.status === "DELIVERED" ||
-                        proj.status === "WON";
+                      const isProjComplete = isProjectCompletedStage(proj);
 
                       const rawMembers = Array.isArray(proj.teamMembers) ? proj.teamMembers : [];
                       const activeTeamMembers = rawMembers.filter((m: any) => m.active !== false);
@@ -1456,14 +1468,14 @@ export function EmployeeProjectKanban({
                               {/* Quick Stage Dropdown */}
                               <select
                                 value={
-                                  proj.status === "IN_PROGRESS" || proj.status === "ACTIVE" || proj.status === "CURRENT"
+                                  isProjComplete
+                                    ? "COMPLETED"
+                                    : proj.status === "IN_PROGRESS" || proj.status === "ACTIVE" || proj.status === "CURRENT"
                                     ? "IN_PROGRESS"
                                     : proj.status === "ON_HOLD" || proj.status === "PAUSED" || proj.status === "BLOCKED" || proj.status === "REVISION"
                                     ? "ON_HOLD"
                                     : proj.status === "INCOMPLETE" || proj.status === "DROPPED" || proj.status === "CANCELLED"
                                     ? "INCOMPLETE"
-                                    : proj.status === "COMPLETED" || proj.status === "DONE" || proj.status === "WON" || proj.status === "DELIVERED"
-                                    ? "COMPLETED"
                                     : "PLANNING"
                                 }
                                 onChange={(e) => handleDropProject(proj.id, e.target.value)}
@@ -1757,8 +1769,7 @@ export function EmployeeProjectKanban({
 
                             {/* Dedicated Target Deadline Pill: Never collides with avatars or wraps awkwardly */}
                             {(() => {
-                              const s = (proj.status || "").toUpperCase();
-                              const isCompleted = s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON";
+                              const isCompleted = isProjectCompletedStage(proj);
                               const isOverdue = !isCompleted && proj.targetDeadline && proj.targetDeadline !== "No Deadline" && !isNaN(new Date(proj.targetDeadline).getTime()) && new Date(proj.targetDeadline).setHours(23, 59, 59, 999) < Date.now();
 
                               if (isOverdue) {

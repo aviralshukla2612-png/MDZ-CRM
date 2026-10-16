@@ -176,8 +176,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (body.contractValue !== undefined) {
       updateData.contractValue = body.contractValue !== null && body.contractValue !== "" ? parseFloat(body.contractValue) : 0;
     }
-    if (body.progressPercentage !== undefined) updateData.progressPercentage = body.progressPercentage;
-    if (body.status !== undefined) updateData.status = body.status;
+    if (body.progressPercentage !== undefined) {
+      updateData.progressPercentage = body.progressPercentage;
+      if (Number(body.progressPercentage) >= 100 && !body.status) {
+        updateData.status = "COMPLETED";
+      }
+    }
+    if (body.status !== undefined) {
+      updateData.status = body.status;
+      const s = String(body.status).trim().toUpperCase();
+      if (s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "WON" || s === "COMPLETE" || s === "RESOLVED" || s === "FINISHED") {
+        updateData.progressPercentage = 100;
+      }
+    }
     if (body.priority !== undefined) updateData.priority = body.priority;
     if (body.stagingUrl !== undefined) updateData.stagingUrl = body.stagingUrl;
     if (body.liveUrl !== undefined) updateData.liveUrl = body.liveUrl;
