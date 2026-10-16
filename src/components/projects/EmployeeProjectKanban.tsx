@@ -68,9 +68,23 @@ export interface ProjectCardItem {
   tasks?: Array<{ id: string; title: string; status: string; priority: string }>;
 }
 
-export function isProjectCompletedStage(p: { status?: string | null; progress?: number; progressPercentage?: number }): boolean {
+export function getProjectStage(p: { status?: string | null; progress?: number; progressPercentage?: number }): "PLANNING" | "IN_PROGRESS" | "ON_HOLD" | "INCOMPLETE" | "COMPLETED" {
   const s = String(p.status || "").trim().toUpperCase();
-  return (
+
+  // 1. Incomplete / Dropped / Cancelled MUST be checked FIRST to avoid false positive with "COMPLETE"
+  if (
+    s === "INCOMPLETE" ||
+    s.startsWith("INCOMPLETE") ||
+    s.includes("INCOMPLETE") ||
+    s === "DROPPED" ||
+    s === "CANCELLED" ||
+    s === "CANCELED"
+  ) {
+    return "INCOMPLETE";
+  }
+
+  // 2. Completed / Delivered / Won
+  if (
     s === "COMPLETED" ||
     s === "DONE" ||
     s === "COMPLETE" ||
@@ -79,33 +93,70 @@ export function isProjectCompletedStage(p: { status?: string | null; progress?: 
     s === "WON" ||
     s === "FINISHED" ||
     s.includes("DELIVER") ||
-    s.includes("COMPLETE") ||
+    (s.includes("COMPLETE") && !s.includes("INCOMPLETE")) ||
     Number(p.progress) >= 100 ||
     Number(p.progressPercentage) >= 100
-  );
+  ) {
+    return "COMPLETED";
+  }
+
+  // 3. In Progress / Active
+  if (
+    s === "IN_PROGRESS" ||
+    s === "ACTIVE" ||
+    s === "CURRENT" ||
+    s.includes("PROGRESS")
+  ) {
+    return "IN_PROGRESS";
+  }
+
+  // 4. On Hold / Revision / Paused
+  if (
+    s === "ON_HOLD" ||
+    s === "PAUSED" ||
+    s === "BLOCKED" ||
+    s === "REVISION"
+  ) {
+    return "ON_HOLD";
+  }
+
+  // 5. Default is Planning / Pending / Queue
+  return "PLANNING";
+}
+
+export function isProjectCompletedStage(p: { status?: string | null; progress?: number; progressPercentage?: number }): boolean {
+  return getProjectStage(p) === "COMPLETED";
 }
 
 function normalizeProjectCard(p: any, fallbackEmployeeId?: string): ProjectCardItem {
-  const isCompleted = (s: string) =>
-    ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON", "FINISHED"].includes(String(s || "").trim().toUpperCase()) ||
-    String(s || "").trim().toUpperCase().includes("DELIVER") ||
-    String(s || "").trim().toUpperCase().includes("COMPLETE");
+  const isCompletedTask = (s: string) => {
+    const norm = String(s || "").trim().toUpperCase();
+    if (norm.includes("INCOMPLETE")) return false;
+    return (
+      ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON", "FINISHED"].includes(norm) ||
+      norm.includes("DELIVER")
+    );
+  };
   const totalTasks = p.tasks ? p.tasks.length : (p.totalTasks || 0);
   const completedTasks = p.tasks
-    ? p.tasks.filter((t: any) => isCompleted(t.status)).length
+    ? p.tasks.filter((t: any) => isCompletedTask(t.status)).length
     : (p.completedTasks || 0);
+
+  const stage = getProjectStage(p);
+  const rawProgress = typeof p.progress === "number" ? p.progress : Number(p.progressPercentage) || 0;
+
   const calcProgress =
-    isProjectCompletedStage(p)
+    stage === "COMPLETED"
       ? 100
+      : stage === "INCOMPLETE"
+      ? Math.min(rawProgress < 100 ? rawProgress : 0, 99)
       : totalTasks > 0
       ? Math.round((completedTasks / totalTasks) * 100)
-      : typeof p.progress === "number" && p.progress > 0
-      ? p.progress
-      : Number(p.progressPercentage) || 0;
+      : rawProgress;
 
   const rawMembers: any[] = Array.isArray(p.teamMembers) ? p.teamMembers : [];
   const activeMembers = rawMembers.filter((m: any) => m.active !== false);
-  const primaryMember = activeMembers[0];
+  const primaryMember = activeMembers[0] || rawMembers[0];
 
   const assignedEmpName =
     primaryMember?.name ||
@@ -332,6 +383,7 @@ export function EmployeeProjectKanban({
   const [editingTaskProjectId, setEditingTaskProjectId] = useState<string>("");
   const [editingTaskTeamMembers, setEditingTaskTeamMembers] = useState<any[]>([]);
   const [expandedTasksProjects, setExpandedTasksProjects] = useState<Record<string, boolean>>({});
+  const [hideCompletedTasksPerProject, setHideCompletedTasksPerProject] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch("/mdz-crm/api/project-roles")
@@ -416,7 +468,6 @@ export function EmployeeProjectKanban({
           (selectedEmployee.employeeId && p.tmId === selectedEmployee.employeeId);
 
         const isMember = (p.teamMembers || []).some((m: any) => {
-          if (m.active === false) return false;
           const matchId = m.id === selectedEmployee.id || m.employeeId === selectedEmployee.id;
           const matchUser = selectedEmployee.userId && (m.userId === selectedEmployee.userId || m.id === selectedEmployee.userId);
           const matchCode = selectedEmployee.employeeId && (m.employeeIdCode === selectedEmployee.employeeId || m.employeeId === selectedEmployee.employeeId);
@@ -493,6 +544,37 @@ export function EmployeeProjectKanban({
         (p.clientName && p.clientName.toLowerCase().includes(term))
     );
   }, [rawProjects, searchTerm]);
+
+  // Stage counts dynamically unified with getProjectStage helper
+  const stageCounts = useMemo(() => {
+    const counts = {
+      TOTAL: projectsToRender.length,
+      PLANNING: 0,
+      IN_PROGRESS: 0,
+      ON_HOLD: 0,
+      INCOMPLETE: 0,
+      COMPLETED: 0,
+    };
+    projectsToRender.forEach((p) => {
+      const stage = getProjectStage(p);
+      counts[stage] = (counts[stage] || 0) + 1;
+    });
+    return counts;
+  }, [projectsToRender]);
+
+  const scrollToColumn = (colId: string) => {
+    if (colId === "COMPLETED" && hideCompletedProjects) {
+      setHideCompletedProjects(false);
+    }
+    setTimeout(() => {
+      const el = document.getElementById(`kanban-col-${colId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        el.classList.add("ring-2", "ring-indigo-500");
+        setTimeout(() => el.classList.remove("ring-2", "ring-indigo-500"), 1200);
+      }
+    }, 60);
+  };
 
   // Handle Drag & Drop status change
   const handleDropProject = async (projectId: string, targetStage: string) => {
@@ -1100,6 +1182,21 @@ export function EmployeeProjectKanban({
                   ))}
                 </select>
 
+                {/* Toggle Hide/Show Completed Projects from Kanban */}
+                <button
+                  type="button"
+                  onClick={() => setHideCompletedProjects(!hideCompletedProjects)}
+                  className={`px-3.5 py-2.5 rounded-xl border font-bold text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+                    hideCompletedProjects
+                      ? "bg-emerald-50 dark:bg-emerald-950/70 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 shadow-xs"
+                      : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                  }`}
+                  title={hideCompletedProjects ? "Completed projects are hidden. Click to show on Kanban." : "Hide completed projects to focus on active workload"}
+                >
+                  <CheckCircle2 className={`w-3.5 h-3.5 ${hideCompletedProjects ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400"}`} />
+                  <span>{hideCompletedProjects ? `Show Completed (${stageCounts.COMPLETED})` : `Hide Completed (${stageCounts.COMPLETED})`}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -1130,39 +1227,85 @@ export function EmployeeProjectKanban({
               </div>
             </div>
 
-            {/* Quick Metrics Bar */}
+            {/* Quick Metrics Bar (Accurately unified with Kanban columns) */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
-                <div className="text-slate-500 text-[11px]">Total Projects</div>
+              <div
+                onClick={() => setHideCompletedProjects(false)}
+                className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 cursor-pointer hover:border-slate-400 dark:hover:border-slate-600 transition-all"
+                title="Total assigned projects"
+              >
+                <div className="text-slate-500 text-[11px] font-semibold">Total Projects</div>
                 <div className="text-lg font-extrabold text-slate-900 dark:text-slate-100 font-mono mt-0.5">
-                  {selectedEmployee.totalProjects}
+                  {stageCounts.TOTAL}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60">
-                <div className="text-indigo-600 dark:text-indigo-400 text-[11px] font-semibold">In Progress</div>
+
+              <div
+                onClick={() => scrollToColumn("IN_PROGRESS")}
+                className="p-3 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-800/60 cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-600 transition-all"
+                title="Click to view Active projects in Kanban"
+              >
+                <div className="text-indigo-600 dark:text-indigo-400 text-[11px] font-semibold flex items-center justify-between">
+                  <span>In Progress</span>
+                  <span className="text-[10px] opacity-70">👉</span>
+                </div>
                 <div className="text-lg font-extrabold text-indigo-700 dark:text-indigo-300 font-mono mt-0.5">
-                  {selectedEmployee.activeProjectsCount}
+                  {stageCounts.IN_PROGRESS}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60">
-                <div className="text-blue-600 dark:text-blue-400 text-[11px] font-semibold">In Planning</div>
+
+              <div
+                onClick={() => scrollToColumn("PLANNING")}
+                className="p-3 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-800/60 cursor-pointer hover:border-blue-400 dark:hover:border-blue-600 transition-all"
+                title="Click to view Planning / Queue projects in Kanban"
+              >
+                <div className="text-blue-600 dark:text-blue-400 text-[11px] font-semibold flex items-center justify-between">
+                  <span>In Planning</span>
+                  <span className="text-[10px] opacity-70">👉</span>
+                </div>
                 <div className="text-lg font-extrabold text-blue-700 dark:text-blue-300 font-mono mt-0.5">
-                  {selectedEmployee.planningProjectsCount || selectedEmployee.assignedProjects?.filter(p => (p.status || '').toUpperCase() === 'PLANNING' || (p.status || '').toUpperCase() === 'DRAFT').length || 0}
+                  {stageCounts.PLANNING}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-800/60">
-                <div className="text-rose-600 dark:text-rose-400 text-[11px] font-semibold">Incomplete</div>
+
+              <div
+                onClick={() => scrollToColumn("INCOMPLETE")}
+                className="p-3 rounded-2xl bg-rose-50/60 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-800/60 cursor-pointer hover:border-rose-400 dark:hover:border-rose-600 transition-all"
+                title="Click to view Incomplete / Dropped projects in Kanban"
+              >
+                <div className="text-rose-600 dark:text-rose-400 text-[11px] font-semibold flex items-center justify-between">
+                  <span>Incomplete</span>
+                  <span className="text-[10px] opacity-70">👉</span>
+                </div>
                 <div className="text-lg font-extrabold text-rose-700 dark:text-rose-300 font-mono mt-0.5">
-                  {selectedEmployee.assignedProjects?.filter(p => {
-                    const s = (p.status || '').toUpperCase();
-                    return s === 'INCOMPLETE' || s === 'DROPPED' || s === 'CANCELLED' || s.includes('INCOMPLETE');
-                  }).length || 0}
+                  {stageCounts.INCOMPLETE}
                 </div>
               </div>
-              <div className="p-3 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60">
-                <div className="text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold">Completed</div>
+
+              <div
+                onClick={() => setHideCompletedProjects(!hideCompletedProjects)}
+                className={`p-3 rounded-2xl border cursor-pointer transition-all hover:scale-[1.01] active:scale-95 ${
+                  hideCompletedProjects
+                    ? "bg-slate-100/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 opacity-70"
+                    : "bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-200/80 dark:border-emerald-800/60"
+                }`}
+                title={hideCompletedProjects ? "Completed projects are hidden. Click to show on Kanban." : "Click to hide completed projects from Kanban."}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold">Completed</div>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
+                    hideCompletedProjects
+                      ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                      : "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200"
+                  }`}>
+                    {hideCompletedProjects ? "Hidden" : "Visible"}
+                  </span>
+                </div>
                 <div className="text-lg font-extrabold text-emerald-700 dark:text-emerald-300 font-mono mt-0.5">
-                  {selectedEmployee.completedProjectsCount}
+                  {stageCounts.COMPLETED}
+                </div>
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold underline mt-0.5">
+                  {hideCompletedProjects ? "Click to Show" : "Click to Hide"}
                 </div>
               </div>
             </div>
@@ -1207,22 +1350,31 @@ export function EmployeeProjectKanban({
           />
         ) : (
           <>
-            {/* DRAG AND DROP INSTRUCTION BANNER */}
-            <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-700 dark:text-indigo-300 font-medium">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-            <span>
-              <strong>Drag & Drop Enabled:</strong> Drag any project card between stages (Planning, In Progress, On Hold, Incomplete, Won) to instantly update its status.
-            </span>
-          </div>
-          <span className="text-[10px] font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shrink-0 hidden sm:inline">
-            Drag card to column
-          </span>
-        </div>
+            {/* DRAG AND DROP INSTRUCTION BANNER + TOGGLE COMPLETED */}
+            <div className="flex flex-wrap items-center justify-between px-4 py-2 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/40 text-xs text-indigo-700 dark:text-indigo-300 font-medium gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                <span>
+                  <strong>Drag & Drop Enabled:</strong> Drag project cards between stages (Planning/Queue, In Progress, On Hold, Incomplete, Delivered) to instantly update status.
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setHideCompletedProjects(!hideCompletedProjects)}
+                  className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-950 cursor-pointer transition-colors shadow-2xs"
+                >
+                  {hideCompletedProjects ? `✓ Show Completed (${stageCounts.COMPLETED})` : `Hide Completed (${stageCounts.COMPLETED})`}
+                </button>
+                <span className="text-[10px] font-mono bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-800 shrink-0 hidden sm:inline">
+                  Drag card to column
+                </span>
+              </div>
+            </div>
 
         {/* KANBAN BOARD (Columns by Status with Drop Zones) */}
         {(() => {
-          const completedProjectsCount = projectsToRender.filter((p) => isProjectCompletedStage(p)).length;
+          const completedProjectsCount = stageCounts.COMPLETED;
 
           const columnsToRender = hideCompletedProjects
             ? KANBAN_COLUMNS.filter((col) => col.id !== "COMPLETED")
@@ -1235,7 +1387,7 @@ export function EmployeeProjectKanban({
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                     <span>
-                      <strong>Completed items hidden from Kanban:</strong> {completedProjectsCount} completed project{completedProjectsCount === 1 ? "" : "s"} & tasks are tracked in the Calendar view.
+                      <strong>Completed projects hidden:</strong> {completedProjectsCount} completed project{completedProjectsCount === 1 ? "" : "s"} hidden from board. Focus on active workloads below.
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -1250,7 +1402,7 @@ export function EmployeeProjectKanban({
                     <button
                       type="button"
                       onClick={() => setHideCompletedProjects(false)}
-                      className="text-[11px] underline text-emerald-700 dark:text-emerald-400 font-bold hover:text-emerald-900 cursor-pointer"
+                      className="px-3 py-1 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 font-bold text-xs hover:bg-emerald-50 cursor-pointer shadow-2xs"
                     >
                       Show on Kanban
                     </button>
@@ -1260,72 +1412,13 @@ export function EmployeeProjectKanban({
 
               <div className={`grid grid-cols-1 md:grid-cols-2 ${columnsToRender.length === 4 ? 'lg:grid-cols-4' : 'lg:grid-cols-5'} gap-2 sm:gap-2.5 items-start pb-6 w-full min-w-0`}>
                 {columnsToRender.map((col) => {
-                  const colProjects = projectsToRender.filter((p) => {
-                    const s = (p.status || "").toUpperCase();
-                    const isCompleted = isProjectCompletedStage(p);
+                  const colProjects = projectsToRender.filter((p) => getProjectStage(p) === col.id);
+                  const totalVal = colProjects.reduce((acc, curr) => acc + (curr.contractValue || 0), 0);
 
-                    // 1. Completed column always displays completed projects
-                    if (col.id === "COMPLETED") {
-                      return isCompleted;
-                    }
-
-                    // Completed projects do not show in other stages
-                    if (isCompleted) return false;
-
-              // 2. Incomplete column displays explicitly incomplete / dropped / cancelled projects
-              if (col.id === "INCOMPLETE") {
-                return (
-                  s === "INCOMPLETE" ||
-                  s === "DROPPED" ||
-                  s === "CANCELLED" ||
-                  s.includes("INCOMPLETE")
-                );
-              }
-
-              // 3. In Progress column
-              if (col.id === "IN_PROGRESS") {
-                return s === "IN_PROGRESS" || s === "ACTIVE" || s === "CURRENT" || s.includes("PROGRESS");
-              }
-
-              // 4. On Hold / Revision column
-              if (col.id === "ON_HOLD") {
-                return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED" || s === "REVISION";
-              }
-
-              // 5. Planning column
-              if (col.id === "PLANNING") {
-                const isOther =
-                  s === "IN_PROGRESS" ||
-                  s === "ACTIVE" ||
-                  s === "CURRENT" ||
-                  s.includes("PROGRESS") ||
-                  s === "ON_HOLD" ||
-                  s === "PAUSED" ||
-                  s === "BLOCKED" ||
-                  s === "REVISION" ||
-                  s === "INCOMPLETE" ||
-                  s === "DROPPED" ||
-                  s === "CANCELLED" ||
-                  s.includes("INCOMPLETE");
-                return (
-                  s === "PLANNING" ||
-                  s === "DRAFT" ||
-                  s === "" ||
-                  s === "PENDING_SUB_ADMIN_ALLOCATION" ||
-                  s === "PENDING_ALLOCATION" ||
-                  s.includes("PENDING") ||
-                  s.includes("ALLOCATION") ||
-                  !isOther
-                );
-              }
-
-              return s === col.id;
-            });
-            const totalVal = colProjects.reduce((acc, curr) => acc + (curr.contractValue || 0), 0);
-
-            return (
-              <div
-                key={col.id}
+                  return (
+                    <div
+                      key={col.id}
+                      id={`kanban-col-${col.id}`}
                 onDragOver={(e) => {
                   e.preventDefault();
                   e.dataTransfer.dropEffect = "move";
@@ -1467,17 +1560,7 @@ export function EmployeeProjectKanban({
                             <div className="flex items-center gap-0.5 shrink-0">
                               {/* Quick Stage Dropdown */}
                               <select
-                                value={
-                                  isProjComplete
-                                    ? "COMPLETED"
-                                    : proj.status === "IN_PROGRESS" || proj.status === "ACTIVE" || proj.status === "CURRENT"
-                                    ? "IN_PROGRESS"
-                                    : proj.status === "ON_HOLD" || proj.status === "PAUSED" || proj.status === "BLOCKED" || proj.status === "REVISION"
-                                    ? "ON_HOLD"
-                                    : proj.status === "INCOMPLETE" || proj.status === "DROPPED" || proj.status === "CANCELLED"
-                                    ? "INCOMPLETE"
-                                    : "PLANNING"
-                                }
+                                value={getProjectStage(proj)}
                                 onChange={(e) => handleDropProject(proj.id, e.target.value)}
                                 className="bg-slate-50 hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 rounded-md px-1 py-0.5 text-[9px] font-semibold text-slate-700 dark:text-slate-300 outline-none cursor-pointer transition-colors shadow-2xs max-w-[65px] truncate"
                                 title="Move Stage"
@@ -1588,11 +1671,31 @@ export function EmployeeProjectKanban({
                             });
 
                             const isExpanded = !!expandedTasksProjects[proj.id];
-                            const visibleTasksSlice = isExpanded ? sortedTasks : sortedTasks.slice(0, 3);
+                            const hideDone = !!hideCompletedTasksPerProject[proj.id];
                             const completedCount = cardTasks.filter((t: any) => isTaskDone(t.status)).length;
+                            const filteredByDone = hideDone ? sortedTasks.filter((t: any) => !isTaskDone(t.status)) : sortedTasks;
+                            const visibleTasksSlice = isExpanded ? filteredByDone : filteredByDone.slice(0, 3);
 
                             return (
                               <div className="space-y-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                                {completedCount > 0 && (
+                                  <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium px-0.5">
+                                    <span className="font-semibold">Tasks ({cardTasks.length})</span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setHideCompletedTasksPerProject((prev) => ({
+                                          ...prev,
+                                          [proj.id]: !prev[proj.id],
+                                        }));
+                                      }}
+                                      className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer text-[10px] font-bold"
+                                    >
+                                      {hideDone ? `Show completed (${completedCount})` : `Hide completed (${completedCount})`}
+                                    </button>
+                                  </div>
+                                )}
                                 <div className="space-y-1">
                                   {visibleTasksSlice.map((tsk: any) => {
                                     const done = isTaskDone(tsk.status);

@@ -21,15 +21,30 @@ export async function GET() {
       empId = emp?.id;
     }
     whereClause = {
-      memberships: {
-        some: {
-          OR: [
-            ...(empId ? [{ employeeId: empId }] : []),
-            { employee: { userId: authRes.id } },
-          ],
-          isActive: true,
+      OR: [
+        {
+          memberships: {
+            some: {
+              OR: [
+                ...(empId ? [{ employeeId: empId }] : []),
+                { employee: { userId: authRes.id } },
+              ],
+            },
+          },
         },
-      },
+        ...(empId ? [{ assignedEmployeeId: empId }] : []),
+        {
+          tasks: {
+            some: {
+              OR: [
+                ...(empId ? [{ assignedToId: empId }] : []),
+                { assignedToId: authRes.id },
+                { assignedTo: { userId: authRes.id } },
+              ],
+            },
+          },
+        },
+      ],
     };
   }
 
@@ -71,8 +86,8 @@ export async function GET() {
       });
 
       const activeMembers = p.memberships.filter((m) => m.isActive);
-      const tmMembership = activeMembers.find((m) => m.roleInProject === "TM") || activeMembers[0];
-      const primaryMember = activeMembers[0];
+      const tmMembership = activeMembers.find((m) => m.roleInProject === "TM") || activeMembers[0] || p.memberships[0];
+      const primaryMember = activeMembers[0] || p.memberships[0];
 
       return {
         id: p.id,

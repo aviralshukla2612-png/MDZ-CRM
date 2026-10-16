@@ -146,18 +146,27 @@ export async function GET() {
         currentProject: assignedProjects[0]?.name || e.workSessions[0]?.project?.name || "General Workspace",
         currentTask: e.workSessions[0]?.notes || "Focusing on active tasks",
         totalProjects: assignedProjects.length,
-        activeProjectsCount: assignedProjects.filter((p) => (p.status || "").toUpperCase() === "IN_PROGRESS").length,
+        activeProjectsCount: assignedProjects.filter((p) => {
+          const s = (p.status || "").toUpperCase();
+          return s === "IN_PROGRESS" || s === "ACTIVE" || s === "CURRENT" || s.includes("PROGRESS");
+        }).length,
         planningProjectsCount: assignedProjects.filter((p) => {
           const s = (p.status || "").toUpperCase();
-          return s === "PLANNING" || s === "DRAFT" || s.includes("PENDING") || s.includes("ALLOCATION");
+          if (s === "IN_PROGRESS" || s === "ACTIVE" || s.includes("PROGRESS") || s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED" || s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "INCOMPLETE" || s === "DROPPED" || s === "CANCELLED" || s.includes("INCOMPLETE")) return false;
+          return s === "PLANNING" || s === "DRAFT" || s.includes("PENDING") || s.includes("ALLOCATION") || s === "";
+        }).length,
+        incompleteProjectsCount: assignedProjects.filter((p) => {
+          const s = (p.status || "").toUpperCase();
+          return s === "INCOMPLETE" || s === "DROPPED" || s === "CANCELLED" || s.includes("INCOMPLETE");
         }).length,
         completedProjectsCount: assignedProjects.filter((p) => {
           const s = (p.status || "").toUpperCase();
-          return s === "COMPLETED" || s === "DONE" || s === "DELIVERED";
+          if (s === "INCOMPLETE" || s === "DROPPED" || s === "CANCELLED" || s.includes("INCOMPLETE")) return false;
+          return s === "COMPLETED" || s === "DONE" || s === "DELIVERED" || s === "RESOLVED" || s === "WON" || (p.progressPercentage || 0) >= 100;
         }).length,
         onHoldProjectsCount: assignedProjects.filter((p) => {
           const s = (p.status || "").toUpperCase();
-          return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED";
+          return s === "ON_HOLD" || s === "PAUSED" || s === "BLOCKED" || s === "REVISION";
         }).length,
         assignedProjects: assignedProjects,
         todayTimeline: e.workSessions.map((w) => ({
