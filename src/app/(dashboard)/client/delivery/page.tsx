@@ -1,0 +1,72 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { ClientPortalNav } from "@/components/client/ClientPortalNav";
+import { MillionaireDeliverySpreadsheet } from "@/components/client/MillionaireDeliverySpreadsheet";
+import { useToast } from "@/components/ui/Toast";
+
+export default function DeliveryControlPage() {
+  const { showToast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+  const [clientInfo, setClientInfo] = useState<any>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/mdz-crm/api/client/portal-data");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setData(json.data.delivery);
+        setClientInfo(json.data.client || null);
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Failed to load delivery control data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleSave = async (updatedDelivery: any) => {
+    try {
+      const res = await fetch("/mdz-crm/api/client/portal-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          section: "delivery",
+          sectionData: updatedDelivery,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Delivery spreadsheet updated and synced live", "success");
+        if (json.data && json.data.delivery) {
+          setData(json.data.delivery);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error saving delivery log", "error");
+    }
+  };
+
+  return (
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 font-sans pb-16">
+      {/* Client Portal Navigation Tabs */}
+      <ClientPortalNav currentTab="/client/delivery" />
+
+      {/* Main Google Sheets Style Monthly Delivery Control */}
+      <MillionaireDeliverySpreadsheet
+        initialData={data}
+        clientName={clientInfo?.companyName || "My Brand Account"}
+        isAdmin={false}
+        onSave={handleSave}
+      />
+    </div>
+  );
+}

@@ -7,17 +7,21 @@ import { AIOwnerAssistant } from "@/components/owner/AIOwnerAssistant";
 import { RealtimeTeamView } from "@/components/owner/RealtimeTeamView";
 import { OwnerWorkloadSection } from "@/components/owner/OwnerWorkloadSection";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Plus, Download, Crown, Cloud, Loader2 } from "lucide-react";
+import { Plus, Download, Crown, Cloud, Loader2, TableProperties, Target, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { generateAndDownloadExecutiveBriefPDF } from "@/lib/pdfGenerator";
 
 import { useToast } from "@/components/ui/Toast";
 import { useSession } from "next-auth/react";
+import { MillionaireDeliverySpreadsheet } from "@/components/client/MillionaireDeliverySpreadsheet";
+import { MillionaireKpiTracker } from "@/components/client/MillionaireKpiTracker";
+import { SubAdminPermissionsManager } from "@/components/admin/SubAdminPermissionsManager";
 
 export default function OwnerDashboardPage() {
   const { showToast } = useToast();
   const { data: session } = useSession();
   const [isExporting, setIsExporting] = useState(false);
+  const [activeControlTab, setActiveControlTab] = useState<"delivery" | "kpi" | "subadmin">("delivery");
 
   const userName = session?.user?.name ? session.user.name.split(" ")[0] : "Vikram";
 
@@ -86,7 +90,75 @@ export default function OwnerDashboardPage() {
         <CommandMetrics />
       </section>
 
-      {/* Section 2: Developer Project Allocation & Workload (Live Overview) */}
+      {/* Open Section 2: Millionaire Dizital Operating System (Delivery Sheet & KPI Tracker) */}
+      <section className="pt-2 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
+          <div>
+            <h2 className="text-base font-extrabold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <span>Agency Operating System & Client Deliverables Matrix</span>
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Master control hub across all 10 active client accounts, planned deliverables, and live growth KPIs.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
+            <button
+              onClick={() => setActiveControlTab("delivery")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeControlTab === "delivery"
+                  ? "bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs border border-slate-200 dark:border-slate-700"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              <TableProperties className="w-4 h-4 text-emerald-600" />
+              <span>Monthly Delivery Sheet</span>
+            </button>
+            <button
+              onClick={() => setActiveControlTab("kpi")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeControlTab === "kpi"
+                  ? "bg-white dark:bg-slate-900 text-purple-700 dark:text-purple-400 shadow-xs border border-slate-200 dark:border-slate-700"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              <Target className="w-4 h-4 text-purple-600" />
+              <span>KPI Growth Tracker</span>
+            </button>
+            <button
+              onClick={() => setActiveControlTab("subadmin")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeControlTab === "subadmin"
+                  ? "bg-white dark:bg-slate-900 text-indigo-700 dark:text-indigo-400 shadow-xs border border-slate-200 dark:border-slate-700"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900"
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4 text-indigo-600" />
+              <span>Sub-Admin Access Control</span>
+            </button>
+          </div>
+        </div>
+
+        {activeControlTab === "delivery" && (
+          <MillionaireDeliverySpreadsheet
+            clientName="Agency Master Sheet"
+            isAdmin={true}
+          />
+        )}
+
+        {activeControlTab === "kpi" && (
+          <MillionaireKpiTracker
+            clientName="Agency Master KPIs"
+            isAdmin={true}
+          />
+        )}
+
+        {activeControlTab === "subadmin" && (
+          <SubAdminPermissionsManager />
+        )}
+      </section>
+
+      {/* Section 3: Developer Project Allocation & Workload (Live Overview) */}
       <section className="pt-4 border-t border-slate-200 dark:border-slate-800">
         <OwnerWorkloadSection />
       </section>

@@ -1,0 +1,1328 @@
+{
+  "delivery": {
+    "monthYear": "October 2026",
+    "subtitle": "counts update live from Production Log • all task completion times and Google Drive links are synced",
+    "kpis": {
+      "planned": 60,
+      "completed": 42,
+      "remaining": 18,
+      "onHold": 2,
+      "overdue": 1,
+      "inProgress": 15,
+      "published": 38,
+      "completionPct": 70,
+      "missingLinks": 3,
+      "unassigned": 0
+    },
+    "clientStatusList": [
+      {
+        "id": "cs-1",
+        "clientName": "aaaaa",
+        "target": 60,
+        "done": 42,
+        "pending": 18,
+        "inProgress": 15,
+        "onHold": 2,
+        "overdue": 1,
+        "completionPct": 70,
+        "missingLinks": 3,
+        "unassigned": 0
+      }
+    ],
+    "productionLog": [
+      {
+        "id": "pl-1",
+        "date": "2026-10-14",
+        "deliverableTitle": "Brand Story Reel #01",
+        "format": "Reel / Short Video",
+        "assignee": "Sumit Rathod",
+        "driveLink": "https://drive.google.com/drive/folders/mdz-sample",
+        "status": "READY",
+        "reviewStatus": "Approved by Client",
+        "publishedDate": "2026-10-15"
+      },
+      {
+        "id": "pl-2",
+        "date": "2026-10-15",
+        "deliverableTitle": "Festival Offer Carousel #03",
+        "format": "Carousel",
+        "assignee": "Aryan Visuals",
+        "driveLink": "https://drive.google.com/drive/folders/mdz-sample",
+        "status": "IN_PROGRESS",
+        "reviewStatus": "In Client Review",
+        "publishedDate": "2026-10-18"
+      },
+      {
+        "id": "pl-3",
+        "date": "2026-10-16",
+        "deliverableTitle": "Founder Thought Leadership Post",
+        "format": "Static Post",
+        "assignee": "SMM Team",
+        "driveLink": "",
+        "status": "PLANNED",
+        "reviewStatus": "Drafting",
+        "publishedDate": "2026-10-20"
+      }
+    ],
+    "clientTargets": {
+      "reels": {
+        "target": 30,
+        "completed": 22,
+        "remaining": 8
+      },
+      "statics": {
+        "target": 15,
+        "completed": 11,
+        "remaining": 4
+      },
+      "carousels": {
+        "target": 10,
+        "completed": 7,
+        "remaining": 3
+      },
+      "stories": {
+        "target": 60,
+        "completed": 45,
+        "remaining": 15
+      }
+    },
+    "extraWork": [
+      {
+        "id": "ew-1",
+        "description": "Extra Ad Creative Set for Diwali Campaign",
+        "requestedDate": "2026-10-10",
+        "approvalStatus": "Approved",
+        "billingAmount": 5000
+      }
+    ],
+    "howToUse": "1. All deliverables scheduled for the month are tracked here.\n2. Review drafts directly via the provided Google Drive links.\n3. Turnaround SLA for reviews is 24-48 hours.\n4. Published URLs are verified by our operations team."
+  },
+  "kpiTracker": {
+    "reportingPeriod": "October 2026",
+    "overallGoal": "Increase brand awareness and generate qualified inbound inquiries",
+    "selectedPlatforms": [
+      "Instagram",
+      "Facebook",
+      "LinkedIn",
+      "YouTube"
+    ],
+    "goalAchievementPct": 78,
+    "kpisOverview": [
+      {
+        "id": 1,
+        "kpi": "Followers",
+        "current": "18,450",
+        "previous": "16,200",
+        "target": "20,000",
+        "growth": "+13.8%",
+        "status": "ON_TRACK",
+        "observations": "Strong organic growth from Reels"
+      },
+      {
+        "id": 2,
+        "kpi": "Follower Growth",
+        "current": "+2,250",
+        "previous": "+1,400",
+        "target": "+2,000",
+        "growth": "+60.7%",
+        "status": "ABOVE_TARGET",
+        "observations": "Viral reel triggered spike"
+      },
+      {
+        "id": 3,
+        "kpi": "Reach",
+        "current": "340,000",
+        "previous": "280,000",
+        "target": "400,000",
+        "growth": "+21.4%",
+        "status": "ON_TRACK",
+        "observations": "Instagram Explore reach strong"
+      },
+      {
+        "id": 4,
+        "kpi": "Impressions",
+        "current": "520,000",
+        "previous": "410,000",
+        "target": "500,000",
+        "growth": "+26.8%",
+        "status": "ABOVE_TARGET",
+        "observations": "High repeat viewership"
+      },
+      {
+        "id": 5,
+        "kpi": "Total Engagement",
+        "current": "24,800",
+        "previous": "19,200",
+        "target": "25,000",
+        "growth": "+29.1%",
+        "status": "ON_TRACK",
+        "observations": "Comment discussions up"
+      },
+      {
+        "id": 6,
+        "kpi": "Engagement Rate (%)",
+        "current": "4.8%",
+        "previous": "4.2%",
+        "target": "4.5%",
+        "growth": "+0.6%",
+        "status": "ABOVE_TARGET",
+        "observations": "Above industry benchmark of 3.2%"
+      },
+      {
+        "id": 7,
+        "kpi": "Website Clicks",
+        "current": "1,420",
+        "previous": "980",
+        "target": "1,500",
+        "growth": "+44.8%",
+        "status": "ON_TRACK",
+        "observations": "Bio link optimization working"
+      },
+      {
+        "id": 8,
+        "kpi": "DMs / Inquiries",
+        "current": "185",
+        "previous": "112",
+        "target": "150",
+        "growth": "+65.1%",
+        "status": "ABOVE_TARGET",
+        "observations": "Direct lead inquiries increased"
+      },
+      {
+        "id": 9,
+        "kpi": "Leads Qualified",
+        "current": "48",
+        "previous": "28",
+        "target": "50",
+        "growth": "+71.4%",
+        "status": "ON_TRACK",
+        "observations": "High-ticket business inquiries"
+      },
+      {
+        "id": 10,
+        "kpi": "Conversions / Clients",
+        "current": "12",
+        "previous": "7",
+        "target": "10",
+        "growth": "+71.4%",
+        "status": "ABOVE_TARGET",
+        "observations": "Closed deals from social pipeline"
+      }
+    ],
+    "contentPerformance": [
+      {
+        "id": 1,
+        "url": "Reel: 3 Mistakes Killing Your Brand Growth",
+        "format": "Reel",
+        "reach": 85000,
+        "views": 98000,
+        "likes": 3200,
+        "comments": 240,
+        "saves": 1100,
+        "shares": 890,
+        "engRate": "6.3%",
+        "follows": 480,
+        "ctaClicks": 95
+      },
+      {
+        "id": 2,
+        "url": "Carousel: Full Agency Playbook 2026",
+        "format": "Carousel",
+        "reach": 42000,
+        "views": 42000,
+        "likes": 1800,
+        "comments": 180,
+        "saves": 1450,
+        "shares": 620,
+        "engRate": "9.6%",
+        "follows": 280,
+        "ctaClicks": 140
+      },
+      {
+        "id": 3,
+        "url": "Static: Client Case Study - 10x ROI",
+        "format": "Static Post",
+        "reach": 28000,
+        "views": 28000,
+        "likes": 920,
+        "comments": 85,
+        "saves": 340,
+        "shares": 190,
+        "engRate": "5.4%",
+        "follows": 110,
+        "ctaClicks": 65
+      }
+    ],
+    "businessKpis": [
+      {
+        "id": 1,
+        "kpi": "Leads Generated",
+        "current": "48",
+        "previous": "28",
+        "target": "50",
+        "growth": "+71.4%",
+        "status": "ON_TRACK",
+        "observations": "Form fills & WhatsApp chats"
+      },
+      {
+        "id": 2,
+        "kpi": "Sales / Conversions",
+        "current": "12",
+        "previous": "7",
+        "target": "10",
+        "growth": "+71.4%",
+        "status": "ABOVE_TARGET",
+        "observations": "Closed projects"
+      },
+      {
+        "id": 3,
+        "kpi": "Website Traffic",
+        "current": "8,500",
+        "previous": "5,800",
+        "target": "8,000",
+        "growth": "+46.5%",
+        "status": "ABOVE_TARGET",
+        "observations": "Direct from social bios"
+      },
+      {
+        "id": 4,
+        "kpi": "Revenue Impact (₹)",
+        "current": "₹4,80,000",
+        "previous": "₹2,80,000",
+        "target": "₹4,00,000",
+        "growth": "+71.4%",
+        "status": "ABOVE_TARGET",
+        "observations": "Attributed to social leads"
+      },
+      {
+        "id": 5,
+        "kpi": "Cost Per Lead (CPL ₹)",
+        "current": "₹312",
+        "previous": "₹440",
+        "target": "₹350",
+        "growth": "-29.0%",
+        "status": "ABOVE_TARGET",
+        "observations": "Decreasing acquisition cost"
+      }
+    ],
+    "monthlyComparison": [
+      {
+        "id": 1,
+        "kpi": "Followers",
+        "current": "18,450",
+        "previous": "16,200",
+        "change": "+2,250",
+        "pctChange": "+13.8%",
+        "reason": "Reels virality",
+        "action": "Double down on hook-first reels"
+      },
+      {
+        "id": 2,
+        "kpi": "Reach",
+        "current": "340,000",
+        "previous": "280,000",
+        "change": "+60,000",
+        "pctChange": "+21.4%",
+        "reason": "Explore placement",
+        "action": "Optimize audio selection"
+      },
+      {
+        "id": 3,
+        "kpi": "Engagement Rate",
+        "current": "4.8%",
+        "previous": "4.2%",
+        "change": "+0.6%",
+        "pctChange": "+14.2%",
+        "reason": "More comments in carousel",
+        "action": "Add open-ended questions"
+      },
+      {
+        "id": 4,
+        "kpi": "Website Clicks",
+        "current": "1,420",
+        "previous": "980",
+        "change": "+440",
+        "pctChange": "+44.8%",
+        "reason": "Specific CTA in captions",
+        "action": "Test Linktree vs direct landing page"
+      },
+      {
+        "id": 5,
+        "kpi": "Leads",
+        "current": "48",
+        "previous": "28",
+        "change": "+20",
+        "pctChange": "+71.4%",
+        "reason": "Lead magnet promo",
+        "action": "Launch seasonal offer campaign"
+      }
+    ],
+    "insights": "Visual hook within the first 1.5 seconds increased 3-second retention from 35% to 62%. Carousels continue to generate the highest save rates.",
+    "actionItems": [
+      {
+        "id": 1,
+        "item": "Scale daily posting of high-retention reels to 5x weekly",
+        "owner": "MDZ Creative Team",
+        "deadline": "2026-10-25",
+        "status": "IN_PROGRESS"
+      },
+      {
+        "id": 2,
+        "item": "Launch Meta lead ads retargeting website visitors",
+        "owner": "Paid Ads Team",
+        "deadline": "2026-10-22",
+        "status": "NOT_STARTED"
+      },
+      {
+        "id": 3,
+        "item": "Update Instagram highlights with client video testimonials",
+        "owner": "SMM Lead",
+        "deadline": "2026-10-20",
+        "status": "COMPLETED"
+      }
+    ]
+  },
+  "campaigns": [
+    {
+      "id": "camp-1",
+      "name": "Diwali Festive Mega Launch 2026",
+      "type": "Product Launch / Festive Promotion",
+      "theme": "Festive Glamour & Modern Elegance",
+      "duration": "30 Days (Oct 1 - Oct 31, 2026)",
+      "startDate": "2026-10-01",
+      "endDate": "2026-10-31",
+      "objectives": [
+        "Brand Awareness",
+        "Lead Generation",
+        "Sales / Conversions",
+        "Product Launch"
+      ],
+      "targetAudience": {
+        "ageGroup": "24 - 45 years",
+        "gender": "All (60% Female, 40% Male)",
+        "location": "Metro Cities (Delhi NCR, Mumbai, Bangalore, Ahmedabad)",
+        "interests": "Luxury Lifestyle, Festive Shopping, Premium Fashion, Jewellery",
+        "painPoints": "Finding authentic premium festive collections with timely delivery",
+        "goals": "Elevate festive gifting and personal celebration styles"
+      },
+      "offerAndMessage": {
+        "offer": "Flat 25% Off Festive Pre-Booking + Free Luxury Gift Box",
+        "keyMessage": "Celebrate Diwali with Unrivaled Elegance and Crafted Mastery",
+        "usp": "Handcrafted Luxury, 48-Hour Express Dispatch, Lifetime Quality Warranty",
+        "cta": "Shop The Festive Edit Now"
+      },
+      "platforms": [
+        "Instagram",
+        "Facebook",
+        "YouTube",
+        "Meta Ads"
+      ],
+      "contentRequired": {
+        "reelsQty": 16,
+        "staticQty": 8,
+        "carouselsQty": 6,
+        "storiesQty": 45,
+        "bannersQty": 4,
+        "adCreativesQty": 8,
+        "otherQty": 2
+      },
+      "creativeCopy": {
+        "visualRequirements": "Warm golden lighting, deep royal emerald & festive gold palettes, cinematic 4K closeups",
+        "copyRequirements": "Inspiring, luxurious tone in Hinglish and English. Punchy 3-line hooks."
+      },
+      "hashtagsAndInfluencers": {
+        "campaignHashtag": "#CelebrateWithMDZ",
+        "additionalHashtags": "#FestiveLuxury2026 #DiwaliStyle #HandcraftedElegance",
+        "influencerReqs": "5 Tier-2 Lifestyle & Fashion Creators (100k-300k followers) for unboxing and styling reels"
+      },
+      "paidAds": {
+        "runAds": true,
+        "platforms": [
+          "Meta Ads (Instagram & Facebook)",
+          "Google Search Ads"
+        ],
+        "objectives": "Conversions & Catalog Sales",
+        "creativeSpecs": "9:16 Video Ads & 1:1 Carousel Ads with dynamic price overlays",
+        "budget": 50000
+      },
+      "launchPlan": {
+        "preLaunch": [
+          "Teaser video drop 7 days prior",
+          "VIP Early Access Email & WhatsApp invite list",
+          "Influencer seed packages dispatched"
+        ],
+        "launch": [
+          "Hero brand video broadcast across all handles",
+          "Meta conversion campaign activated at 08:00 AM",
+          "Interactive Instagram story polls & countdown sticker"
+        ]
+      },
+      "contentSchedule": [
+        {
+          "id": 1,
+          "date": "2026-10-05",
+          "contentType": "Reel",
+          "platform": "Instagram",
+          "topicCaption": "Teaser: Behind The Festive Curtain",
+          "status": "Published"
+        },
+        {
+          "id": 2,
+          "date": "2026-10-08",
+          "contentType": "Carousel",
+          "platform": "Instagram / FB",
+          "topicCaption": "Top 5 Festive Looks of 2026",
+          "status": "Published"
+        },
+        {
+          "id": 3,
+          "date": "2026-10-12",
+          "contentType": "Reel",
+          "platform": "Instagram",
+          "topicCaption": "Customer Unboxing Experience & Craftsmanship",
+          "status": "Published"
+        },
+        {
+          "id": 4,
+          "date": "2026-10-18",
+          "contentType": "Reel",
+          "platform": "Instagram / Meta Ads",
+          "topicCaption": "Festive Offer Announcement - 25% Off",
+          "status": "Ready"
+        },
+        {
+          "id": 5,
+          "date": "2026-10-24",
+          "contentType": "Static Post",
+          "platform": "All Platforms",
+          "topicCaption": "Diwali Countdown: Last 48 Hours for Express Shipping",
+          "status": "In Progress"
+        }
+      ],
+      "teamResponsibilities": [
+        {
+          "id": 1,
+          "name": "Sumit Rathod",
+          "role": "Video Editor",
+          "responsibilities": "Reel cuts, color grade, audio sync",
+          "deadline": "2026-10-18"
+        },
+        {
+          "id": 2,
+          "name": "Aryan Visuals",
+          "role": "Graphic Designer",
+          "responsibilities": "Carousel designs & ad creative banners",
+          "deadline": "2026-10-19"
+        },
+        {
+          "id": 3,
+          "name": "MDZ SMM Lead",
+          "role": "Copywriter & SMM",
+          "responsibilities": "Captions, scheduling, community replies",
+          "deadline": "2026-10-25"
+        }
+      ],
+      "approvalDeadlines": [
+        {
+          "id": 1,
+          "contentType": "All Video Reels",
+          "approvalDate": "2026-10-17"
+        },
+        {
+          "id": 2,
+          "contentType": "Ad Creative Sets",
+          "approvalDate": "2026-10-19"
+        },
+        {
+          "id": 3,
+          "contentType": "Story Schedules",
+          "approvalDate": "2026-10-20"
+        }
+      ],
+      "campaignStatus": "Live",
+      "stage": "Live",
+      "metrics": [
+        {
+          "metric": "Reach / Impressions",
+          "target": "500,000",
+          "actual": "480,000"
+        },
+        {
+          "metric": "Engagement Rate",
+          "target": "5.0%",
+          "actual": "5.4%"
+        },
+        {
+          "metric": "Website Traffic",
+          "target": "12,000",
+          "actual": "10,800"
+        },
+        {
+          "metric": "Leads Generated",
+          "target": "150",
+          "actual": "164"
+        },
+        {
+          "metric": "Sales / Conversions",
+          "target": "40",
+          "actual": "42"
+        },
+        {
+          "metric": "Follower Growth",
+          "target": "3,000",
+          "actual": "3,250"
+        }
+      ],
+      "learnings": {
+        "workedWell": "Behind-the-scenes craft reels had 2.8x higher share rate than purely promotional posts.",
+        "didntWork": "Static graphics received lower organic reach than motion carousels.",
+        "keyLearnings": "Short 7-second looping reels with aesthetic text overlays drove the highest ad click-through rate."
+      },
+      "nextSteps": {
+        "actions": "Implement retargeting campaign for shopping cart abandoners.",
+        "recommendations": "Begin Christmas & New Year concept planning 4 weeks in advance.",
+        "ideas": "Introduce customer video testimonials in Instagram highlights."
+      }
+    }
+  ],
+  "contentPillars": {
+    "educational": {
+      "name": "Educational & Value Content",
+      "description": "Teach, inform, and solve customer problems with actionable insights.",
+      "purpose": "Establish subject-matter authority and build long-term trust.",
+      "targetAudience": "Decision makers, aspirational buyers, and industry seekers.",
+      "topics": [
+        "Industry Tips & How-to Guides",
+        "Common Mistakes to Avoid",
+        "Process Breakdowns"
+      ],
+      "subtopics": [
+        "Step-by-step tutorials",
+        "Myth busters",
+        "Tool recommendations"
+      ],
+      "formats": [
+        "Reels / Short Videos",
+        "Carousels",
+        "Single Posts"
+      ],
+      "examples": [
+        "3 Costly Mistakes in Scaling Your Brand",
+        "How We Achieved 10x ROI"
+      ],
+      "ctaIdeas": [
+        "Save this for later",
+        "Follow for more daily tips",
+        "Comment your biggest challenge"
+      ],
+      "priority": "High",
+      "keywords": "Strategy, Tutorials, Expert Tips, Growth Hacks"
+    },
+    "promotional": {
+      "name": "Promotional & Conversion Content",
+      "description": "Highlight offerings, limited-time deals, and direct booking opportunities.",
+      "purpose": "Drive direct inbound inquiries, form fills, and revenue.",
+      "targetAudience": "Warm prospects ready to buy or partner.",
+      "topics": [
+        "Product / Service Spotlights",
+        "Special Offers & Limited Packages",
+        "Feature Breakdowns"
+      ],
+      "subtopics": [
+        "Pricing tiers",
+        "Before/After deliverables",
+        "Offer deadlines"
+      ],
+      "formats": [
+        "Reels",
+        "Stories",
+        "Ad Creatives",
+        "Carousels"
+      ],
+      "examples": [
+        "New Service Launch Walkthrough",
+        "Festive Package Booking Now Open"
+      ],
+      "ctaIdeas": [
+        "Shop now via link in bio",
+        "DM us 'GROWTH' to book",
+        "Limited slots available"
+      ],
+      "priority": "Medium",
+      "keywords": "Offer, Discount, Limited Seats, Book Now, Premium Service"
+    },
+    "engagement": {
+      "name": "Engagement & Community Content",
+      "description": "Start conversations, spark debates, and turn followers into active fans.",
+      "purpose": "Boost algorithm engagement signals and build community belonging.",
+      "targetAudience": "Broader social audience and active community members.",
+      "topics": [
+        "Relatable Questions & Polls",
+        "Trend Jacks & Hot Takes",
+        "This or That Showdowns"
+      ],
+      "subtopics": [
+        "Industry controversies",
+        "Weekend polls",
+        "Share your thoughts prompts"
+      ],
+      "formats": [
+        "Stories",
+        "Carousels",
+        "Reels"
+      ],
+      "examples": [
+        "Which design style would you pick? A or B?",
+        "Drop a 🔥 if you agree"
+      ],
+      "ctaIdeas": [
+        "Comment below with your vote",
+        "Tag a friend who needs to see this",
+        "Share your opinion"
+      ],
+      "priority": "High",
+      "keywords": "Discussion, Poll, Community, Share, Debate"
+    },
+    "trustAuthority": {
+      "name": "Trust & Authority Content",
+      "description": "Showcase proof of excellence, client victories, and behind-the-scenes rigor.",
+      "purpose": "Eliminate buyer skepticism and demonstrate proven track record.",
+      "targetAudience": "High-intent evaluators comparing agency options.",
+      "topics": [
+        "Client Case Studies & Testimonials",
+        "Behind The Scenes Workflow",
+        "Agency Awards & Milestones"
+      ],
+      "subtopics": [
+        "Client interview clips",
+        "Data dashboards showing results",
+        "Day-in-the-studio"
+      ],
+      "formats": [
+        "Reels",
+        "Carousels",
+        "Client Interviews"
+      ],
+      "examples": [
+        "How We Scaled Client Revenue from Zero to ₹10L",
+        "Real Client Reaction Video"
+      ],
+      "ctaIdeas": [
+        "Read the full case study",
+        "Book a discovery call today",
+        "Visit our website"
+      ],
+      "priority": "High",
+      "keywords": "Case Study, Testimonial, Proven Results, Client Win, Behind The Scenes"
+    },
+    "entertainment": {
+      "name": "Entertainment & Relatable Content",
+      "description": "Lighthearted memes, viral trends, and humorous industry observations.",
+      "purpose": "Humanize the brand and increase viral top-of-funnel reach.",
+      "targetAudience": "General audience and casual scrollers.",
+      "topics": [
+        "Relatable Industry Memes",
+        "Expectation vs Reality",
+        "Work Culture Humor"
+      ],
+      "subtopics": [
+        "Trending audio spins",
+        "Client-agency humor",
+        "Monday motivation with a twist"
+      ],
+      "formats": [
+        "Reels / Short Videos",
+        "Single Image Memes"
+      ],
+      "examples": [
+        "When the client approves in one round 😂",
+        "Working on festive campaigns at 2 AM"
+      ],
+      "ctaIdeas": [
+        "Tag someone who relates",
+        "Share to your story if this is you",
+        "Follow for your daily laugh"
+      ],
+      "priority": "Medium",
+      "keywords": "Humor, Relatable, Meme, Viral Trend, Fun"
+    },
+    "overallStrategy": "Maintain a 40% Value/Educational, 25% Engagement, 20% Trust/Authority, and 15% Promotional balance across weekly output.",
+    "frequencySummary": [
+      {
+        "pillar": "Educational & Value",
+        "plannedPerWeek": 3,
+        "priority": "High"
+      },
+      {
+        "pillar": "Promotional & Offers",
+        "plannedPerWeek": 2,
+        "priority": "Medium"
+      },
+      {
+        "pillar": "Engagement & Community",
+        "plannedPerWeek": 3,
+        "priority": "High"
+      },
+      {
+        "pillar": "Trust & Authority",
+        "plannedPerWeek": 2,
+        "priority": "High"
+      },
+      {
+        "pillar": "Entertainment & Relatable",
+        "plannedPerWeek": 2,
+        "priority": "Medium"
+      }
+    ]
+  },
+  "competitors": {
+    "competitor1": {
+      "name": "Aura Creative Studio",
+      "website": "https://auracreative.example.com",
+      "handles": "@auracreativestudio",
+      "followers": {
+        "instagram": "45K",
+        "facebook": "12K",
+        "youtube": "8K",
+        "linkedin": "15K",
+        "tiktok": "0",
+        "x": "2K"
+      },
+      "postingFrequency": "4 posts / week",
+      "contentPillars": "Design Tutorials, Aesthetic Showcases, Quotes",
+      "formats": [
+        "Reels",
+        "Carousels"
+      ],
+      "bestPerforming": "3D Motion Graphics Breakdowns",
+      "averageEngagement": "1,200 likes, 85 comments",
+      "engagementRate": "2.8%",
+      "reelsStrategy": "Fast-paced aesthetic motion with electronic background beats",
+      "carouselStrategy": "Minimalist black and white educational slides",
+      "captionStyle": "Short & crisp, 1-2 sentences maximum",
+      "hookStyle": "Bold visual graphic transition without voiceover",
+      "ctaStrategy": "Subtle 'Link in bio'",
+      "hashtagStrategy": "#DesignInspiration #VisualIdentity #MotionGraphics",
+      "visualStyle": "Ultra-minimalist, monochrome with neon highlights",
+      "brandVoice": "Sophisticated, artistic, slightly distant",
+      "offers": "Free portfolio audit for brands",
+      "audienceResponse": "Appreciated by designers, fewer direct business leads",
+      "strengths": "Elite visual quality and motion fidelity",
+      "weaknesses": "Lacks conversational human connection and client proof",
+      "doingWell": "High visual polish and save-worthy graphic guides",
+      "missing": "No face-to-camera founder videos or client case studies",
+      "contentGaps": "No practical ROI discussions or behind-the-scenes business reality",
+      "opportunities": "Outperform them with relatable storytelling, founder branding, and client case studies",
+      "ideasToLearn": "Clean kinetic typography templates",
+      "thingsToAvoid": "Overly technical jargon that alienates non-designer clients"
+    },
+    "competitor2": {
+      "name": "Pulse Media Growth",
+      "website": "https://pulsemediagrowth.example.com",
+      "handles": "@pulsemediagrowth",
+      "followers": {
+        "instagram": "72K",
+        "facebook": "25K",
+        "youtube": "30K",
+        "linkedin": "22K",
+        "tiktok": "15K",
+        "x": "5K"
+      },
+      "postingFrequency": "7 posts / week (Daily)",
+      "contentPillars": "Lead Gen Hacks, Performance Marketing, Viral Memes",
+      "formats": [
+        "Reels",
+        "Single Posts",
+        "Stories"
+      ],
+      "bestPerforming": "Founder talking-head videos with bold animated captions",
+      "averageEngagement": "2,400 likes, 190 comments",
+      "engagementRate": "3.4%",
+      "reelsStrategy": "Punchy verbal hook in first 2 seconds, green-screen breakdowns",
+      "carouselStrategy": "Heavy text lists with screenshot proof",
+      "captionStyle": "Detailed long-form story with step-by-step breakdown",
+      "hookStyle": "Shock factor: 'Stop doing this in your ads right now'",
+      "ctaStrategy": "Aggressive 'Comment GUIDE to get our secret blueprint'",
+      "hashtagStrategy": "#MarketingHacks #LeadGen #MetaAds #GrowthHacking",
+      "visualStyle": "High-contrast bold yellow & black text, high energy",
+      "brandVoice": "Direct, high-energy, authoritative",
+      "offers": "Free 15-minute growth discovery audit",
+      "audienceResponse": "High comment volume, occasional skepticism about claims",
+      "strengths": "Strong lead capture automation and high frequency",
+      "weaknesses": "Can feel repetitive and pushy over time",
+      "doingWell": "DM automation using keywords in comments",
+      "missing": "High-end aesthetic craft and artistic brand storytelling",
+      "contentGaps": "Doesn't appeal to luxury or premium design-focused brands",
+      "opportunities": "Combine their high-converting CTAs with our superior visual aesthetic",
+      "ideasToLearn": "Automated DM lead magnets",
+      "thingsToAvoid": "Over-promising unrealistic 24-hour revenue guarantees"
+    },
+    "competitor3": {
+      "name": "Luxe Brand Co",
+      "website": "https://luxebrandco.example.com",
+      "handles": "@luxebrandco",
+      "followers": {
+        "instagram": "28K",
+        "facebook": "6K",
+        "youtube": "2K",
+        "linkedin": "8K",
+        "tiktok": "0",
+        "x": "1K"
+      },
+      "postingFrequency": "2 posts / week",
+      "contentPillars": "Client Spotlights, Heritage Stories, Product Shoots",
+      "formats": [
+        "Reels",
+        "Single Posts"
+      ],
+      "bestPerforming": "Cinematic commercial product videos",
+      "averageEngagement": "600 likes, 30 comments",
+      "engagementRate": "2.1%",
+      "reelsStrategy": "Slow-motion cinematic b-roll with classical or lo-fi music",
+      "carouselStrategy": "Magazine editorial style lookbooks",
+      "captionStyle": "Poetic, narrative-driven",
+      "hookStyle": "Stunning cinematic opening frame",
+      "ctaStrategy": "Explore the collection at our flagship website",
+      "hashtagStrategy": "#LuxuryLifestyle #Craftsmanship #ArtisanMade",
+      "visualStyle": "Warm earthy tones, film grain, luxury editorial layout",
+      "brandVoice": "Refined, calm, exclusive, premium",
+      "offers": "Bespoke consultation by appointment only",
+      "audienceResponse": "Loyal high-net-worth appreciation",
+      "strengths": "Flawless luxury aesthetic and positioning",
+      "weaknesses": "Infrequent posting hurts algorithm momentum",
+      "doingWell": "Very clear elite target audience alignment",
+      "missing": "No interactive community engagement or educational value",
+      "contentGaps": "Zero engagement hooks or participatory questions",
+      "opportunities": "Bring high-frequency consistency to the luxury aesthetic space",
+      "ideasToLearn": "Color grading palettes and editorial typography",
+      "thingsToAvoid": "Posting so infrequently that audience forgets between posts"
+    },
+    "overallInsights": {
+      "keyTakeaways": "The market is divided between high-energy aggressive marketers and low-frequency aesthetic agencies. There is a massive blue ocean for an agency that delivers high aesthetic excellence AND performance-driven conversions.",
+      "opportunities": "1. Position as the bridge between High Luxury Craft and Data-Driven Growth.\n2. Leverage automated DM keyword responses on aesthetically stunning carousels.\n3. Publish transparent, verifiable case studies that neither competitor can match.",
+      "strategyIdeas": "Implement weekly signature breakdowns that teach high-level strategy with cinematic visual polish."
+    }
+  },
+  "brandVoice": {
+    "overview": {
+      "brandName": "aaaaa",
+      "industry": "Luxury Lifestyle & Premium Digital Commerce",
+      "tagline": "Unrivaled Craftsmanship for Modern Visionaries",
+      "mission": "To empower discerning clients with digital excellence and timeless aesthetic quality.",
+      "vision": "To become the benchmark of modern creative execution across global markets.",
+      "targetAudience": "Ambitious entrepreneurs, high-net-worth individuals, and creative pioneers aged 24-45."
+    },
+    "personality": [
+      "Professional",
+      "Trustworthy",
+      "Creative",
+      "Premium",
+      "Empathetic",
+      "Bold",
+      "Modern"
+    ],
+    "voice": [
+      "Inspirational",
+      "Authoritative",
+      "Conversational",
+      "Educational"
+    ],
+    "tone": [
+      "Direct",
+      "Empathetic",
+      "Motivational",
+      "Persuasive",
+      "Refined"
+    ],
+    "communicationStyle": [
+      "Simple & Easy to Understand",
+      "Story-driven",
+      "Visual-first",
+      "Short & Crisp"
+    ],
+    "brandCharacter": {
+      "ageRange": "28 - 40 years",
+      "profession": "Visionary Creative Director & Business Strategist",
+      "personality": "Confident, empathetic, sharp, culturally attuned, discerning",
+      "interests": "Art, High Architecture, Technology, Luxury Travel, Innovation",
+      "values": "Precision, Transparency, Innovation, Uncompromising Quality"
+    },
+    "shouldSound": "Confident without being arrogant. Solution-focused, empowering, authentic, and inspiring. Speak directly to the listener as an ambitious peer.",
+    "shouldNotSound": "Overly salesy, desperate, pushy, generic, robotic, or filled with hollow buzzwords.",
+    "wordsToUse": "Mastery, Craftsmanship, Elevate, Exponential, Unrivaled, Precision, Proven, Transformative, Scalable",
+    "wordsToAvoid": "Cheap, Quick fix, Guaranteed overnight, Secret hack, Cheap trick, Spammy offers",
+    "preferredLanguage": "Hinglish (English + Hindi) & Global English",
+    "languageGuidelines": "For high-reach Instagram reels, conversational Hinglish with natural phonetic English spelling connects best. For LinkedIn and formal reports, polished global English is required.",
+    "formalityLevel": "Balanced (Mix of both: Approachable yet distinctly professional)",
+    "sentenceStyle": [
+      "Short & Crisp",
+      "Conversational",
+      "Hook-driven"
+    ],
+    "captionStyle": [
+      "Hook + Value + CTA",
+      "Storytelling",
+      "Bullet breakdown"
+    ],
+    "ctaStyle": [
+      "Engagement (Comment / Share)",
+      "Lead Generation (DM / Link)",
+      "Community Building"
+    ],
+    "emojiUsage": {
+      "frequency": "Use Occasionally (1-3 per post maximum)",
+      "preferredEmojis": "🔥 ✨ 🚀 💡 📈 🤝"
+    },
+    "punctuationStyle": [
+      "Use full stops",
+      "Use question marks to spark reflection",
+      "Keep it minimal"
+    ],
+    "correctExamples": "“True growth isn’t about chasing every trend—it’s about building a brand so compelling people can’t ignore you. Here’s how we did it in 90 days. 👇”",
+    "incorrectExamples": "“CLICK HERE TO GET RICH QUICK! Guaranteed 500% sales in 24 hours or money back! Don’t wait! BUY NOW!!”",
+    "platformTone": {
+      "instagram": "Visual, aesthetic, hook-driven, relatable, culturally trendy",
+      "facebook": "Community-focused, informative, warm, discussion-friendly",
+      "youtube": "In-depth, educational, structured, cinematic quality",
+      "linkedin": "Thought-leadership, data-backed insights, professional lessons, case studies",
+      "tiktok": "Fast-paced, authentic, trend-native, energetic",
+      "pinterest": "Inspirational, visual, aesthetic cataloging"
+    }
+  },
+  "onboarding": {
+    "clientDetails": {
+      "clientName": "aaaaa",
+      "brandName": "aaaaa",
+      "contactNumber": "+91 98765 43210",
+      "email": "contact@example.com",
+      "website": "https://www.example.com",
+      "businessLocation": "Mumbai & Global"
+    },
+    "socialHandles": {
+      "instagram": "@brand.official",
+      "facebook": "/brand.official",
+      "youtube": "@brandchannel",
+      "linkedin": "/company/brand-official",
+      "tiktok": "",
+      "pinterest": "",
+      "other": ""
+    },
+    "servicesRequired": [
+      "Social Media Management",
+      "Content Creation",
+      "Strategy & Planning",
+      "Reels / Video Editing",
+      "Graphic Design",
+      "Paid Ads (Meta / Google)",
+      "Profile Optimization"
+    ],
+    "packageSelected": {
+      "name": "Enterprise Digital Growth Retainer",
+      "startDate": "2026-10-01",
+      "endDate": "2027-09-30",
+      "duration": "12 Months (Annual Growth Agreement)"
+    },
+    "deliverables": {
+      "postsPerWeek": "5 Posts per Week",
+      "reelsPerWeek": "4 Reels per Week",
+      "storiesPerWeek": "10-15 Stories per Week",
+      "contentCalendar": "Provided on 1st of every month",
+      "hashtagResearch": "Included & refreshed bi-weekly",
+      "captionWriting": "Included with Hook-Value-CTA structure",
+      "graphicDesign": "Full brand visual identity & carousels",
+      "videoEditing": "4K cinematic color-graded reels",
+      "monthlyReport": "Executive delivery and KPI growth report",
+      "other": "Monthly strategy sync call"
+    },
+    "contentRequirements": {
+      "styleTone": "Luxury, aesthetic, high-authority, polished",
+      "language": "Hinglish (Reels) and English (Feed & Invoices)",
+      "references": "Apple, Nike, Architectural Digest, aesthetic luxury creator channels",
+      "specialRequirements": "Festive launches, seasonal sale campaigns, founder speaking clips"
+    },
+    "brandAssets": {
+      "logo": "Uploaded to central Google Drive root",
+      "brandGuidelines": "Included in Drive /brand-kit",
+      "photos": "High-resolution RAW product shoot folder",
+      "videos": "Uncut b-roll & founder podcast recordings",
+      "productImages": "Catalog PNGs with transparent backgrounds",
+      "other": "Custom brand fonts & color hex palette codes"
+    },
+    "productInfo": "Full service offering catalog including commercial consulting, custom luxury goods, and digital memberships with average order values ranging from ₹5,000 to ₹1,50,000.",
+    "googleDriveLink": "https://drive.google.com/drive/folders/mdz-client-assets-master",
+    "accessPermissions": [
+      "Instagram (Professional Invite / Manager)",
+      "Facebook Page (Admin / Editor)",
+      "Meta Business Suite (Business Portfolio)",
+      "Meta Ads Manager (Partner Access)",
+      "Google Drive (Editor Folder Access)",
+      "Google Business Profile (Manager)"
+    ],
+    "pointOfContact": {
+      "name": "Director / Primary Stakeholder",
+      "designation": "Managing Director",
+      "phone": "+91 98765 43210",
+      "email": "director@example.com"
+    },
+    "preferredCommunication": [
+      "WhatsApp Business Group",
+      "Google Meet",
+      "Email"
+    ],
+    "importantNotes": "Weekly content approvals to be reviewed every Friday by 5 PM for seamless publishing starting Monday."
+  },
+  "brief": {
+    "businessInfo": {
+      "name": "aaaaa",
+      "industry": "Premium Lifestyle & Direct-to-Consumer Commerce",
+      "description": "Innovative lifestyle brand offering premium handcrafted products with a focus on sustainable luxury and digital community."
+    },
+    "productsServices": {
+      "mainOfferings": "Custom festive collections, tailored luxury goods, and bespoke consulting services.",
+      "heroProducts": "Signature Autumn Collection & Festive Gifting Hamper Series"
+    },
+    "businessGoals": "Scale from ₹20L monthly revenue to ₹50L within 6 months while expanding brand recall in tier-1 metro cities.",
+    "socialMediaGoals": [
+      "Increase Brand Awareness",
+      "Generate Leads / Direct Inquiries",
+      "Increase Website Traffic",
+      "Build an Active Engaged Community",
+      "Position Founders as Industry Thought Leaders"
+    ],
+    "targetAudience": {
+      "ageGroup": "24 - 42",
+      "gender": "Balanced (55% Female, 45% Male)",
+      "interests": "Luxury design, entrepreneurship, lifestyle, aesthetics",
+      "profession": "Entrepreneurs, senior executives, high-income professionals",
+      "details": "Value time, appreciate refined aesthetics, willing to pay for quality"
+    },
+    "usp": "Exceptional handcrafted quality, 48-hour dispatch, custom personalization options, and white-glove customer support.",
+    "currentPlatforms": [
+      "Instagram",
+      "Facebook",
+      "LinkedIn",
+      "YouTube"
+    ],
+    "currentPerformance": [
+      {
+        "platform": "Instagram",
+        "followers": "16,200",
+        "reach": "280,000",
+        "engagement": "4.2%",
+        "notes": "Reels driving growth"
+      },
+      {
+        "platform": "Facebook",
+        "followers": "8,500",
+        "reach": "45,000",
+        "engagement": "2.1%",
+        "notes": "Older demographic"
+      },
+      {
+        "platform": "LinkedIn",
+        "followers": "4,200",
+        "reach": "25,000",
+        "engagement": "5.8%",
+        "notes": "B2B partnership leads"
+      }
+    ],
+    "competitors": "Aura Studio, Pulse Media, Luxe Brand Co.",
+    "currentChallenges": "Creative fatigue, lack of consistent daily output, and difficulty scaling beyond organic explore traffic without targeted paid ad funnels.",
+    "pastMarketingAudit": "Ran generic boost post ads that generated likes but zero qualified sales. Static image ads had declining click-through rates.",
+    "importantLinks": {
+      "website": "https://www.example.com",
+      "instagram": "https://instagram.com/brand.official",
+      "drive": "https://drive.google.com/drive/folders/mdz-master"
+    },
+    "contactDetails": {
+      "primaryName": "Brand Representative",
+      "designation": "Marketing Head",
+      "phone": "+91 98765 43210",
+      "email": "marketing@example.com",
+      "address": "HQ Suite, Level 5, Creative District, Mumbai"
+    }
+  },
+  "scope": {
+    "clientInfo": {
+      "clientName": "aaaaa",
+      "brandName": "aaaaa",
+      "startDate": "2026-10-01",
+      "duration": "12 Months",
+      "primaryContact": "Primary Stakeholder",
+      "email": "contact@example.com",
+      "phone": "+91 98765 43210"
+    },
+    "scopeOfWork": "End-to-end strategic creative production, social media management, daily reels editing, visual design, and performance analytics.",
+    "servicesIncluded": [
+      "Social media strategy and monthly content calendar formulation",
+      "Scriptwriting, ideation, and visual hook engineering",
+      "Video editing for short-form reels (4K color grade, motion text, audio sync)",
+      "High-converting carousel and static graphic design",
+      "Caption copywriting with SEO keywords and relevant hashtags",
+      "Community engagement and daily story management",
+      "Monthly performance analytics and delivery review sync"
+    ],
+    "servicesNotIncluded": [
+      "In-person physical video shoots (unless separately contracted)",
+      "Direct advertising budget spend (client pays ad platforms directly)",
+      "Website coding / frontend software engineering (unless scoped as project)",
+      "3D character animation requiring specialized VFX pipeline"
+    ],
+    "monthlyDeliverables": [
+      {
+        "type": "Reels / Short Videos",
+        "quantity": 30
+      },
+      {
+        "type": "Static Graphics & Banners",
+        "quantity": 15
+      },
+      {
+        "type": "Multi-slide Carousels",
+        "quantity": 10
+      },
+      {
+        "type": "Interactive Stories",
+        "quantity": 60
+      },
+      {
+        "type": "Monthly Performance Analytics Report",
+        "quantity": 1
+      }
+    ],
+    "postingAndScheduling": "Shared Responsibility: Agency schedules and automates feeds, Client posts spontaneous behind-the-scenes stories.",
+    "clientResponsibilities": [
+      "Provide raw footage, product samples, and media assets in a timely manner via Google Drive",
+      "Review and provide consolidated feedback within the agreed 24-48 hour review window",
+      "Maintain required platform permissions and partner tool connections"
+    ],
+    "assetSubmission": {
+      "format": "Google Drive structured folders (Raw Footage / Logos / High-res photos)",
+      "frequency": "Bi-weekly or on-demand",
+      "deadline": "Every Monday by 12:00 PM for upcoming calendar batch"
+    },
+    "approvalProcess": "1. Drafts shared via Client Portal & Drive -> 2. Client reviews & leaves specific comments -> 3. Revisions applied (if any) -> 4. Final approval marked.",
+    "approvalTimeline": {
+      "expectedWindow": "24 - 48 Hours from submission",
+      "noResponseClause": "If no feedback is received within 48 hours, drafts are deemed approved to maintain posting schedule."
+    },
+    "revisionPolicy": {
+      "roundsIncluded": "2 Rounds of revisions per content deliverable",
+      "coveredScope": "Pacing adjustments, music changes, caption revisions, text corrections, crop edits",
+      "additionalCharges": "Additional major re-edits outside original brief charged at ₹1,500 per deliverable"
+    },
+    "paymentTerms": {
+      "structure": "Monthly advance retainer invoice",
+      "dueDate": "Due on the 1st of every calendar month",
+      "terms": "Payment via NEFT / RTGS / UPI to agency corporate account"
+    },
+    "additionalWorkCharges": "Ad hoc extra reels: ₹3,500 each. Extra carousels: ₹2,000 each. Dedicated ad creatives: ₹2,500 each.",
+    "adSpendPolicy": "Client maintains their own Meta / Google Ads billing method. Agency manages campaign configuration and creative testing.",
+    "communicationChannel": "Official communication via WhatsApp Business Group and email. Bi-weekly video strategy calls on Google Meet.",
+    "communicationSla": "Standard response time within 2-4 business hours during working hours (Monday - Friday, 10:00 AM - 6:30 PM IST).",
+    "cancellationPolicy": "30 days written notice prior to the start of the next billing cycle.",
+    "ownershipPolicy": "Full intellectual property rights for published creatives transfer to the client upon receipt of full payment. Agency retains portfolio showcase rights.",
+    "rawFilePolicy": "Finished high-resolution master video and image files are provided. Raw project project files (.prproj, .aep) available upon special request.",
+    "disclaimerAcknowledged": true,
+    "signedBy": "Client Authorized Signatory",
+    "signedAt": "2026-10-01T10:00:00Z"
+  },
+  "meetings": [
+    {
+      "id": "meet-1",
+      "meetingDetails": {
+        "clientName": "aaaaa",
+        "date": "2026-10-08",
+        "time": "11:00 AM - 12:00 PM IST",
+        "type": "Monthly Strategy & Campaign Alignment Call"
+      },
+      "participants": [
+        {
+          "name": "Managing Director",
+          "role": "Client Stakeholder",
+          "representing": "Client Brand",
+          "contact": "director@example.com"
+        },
+        {
+          "name": "Rahul MDZ",
+          "role": "Creative Lead & Strategist",
+          "representing": "Millionaire Dizital",
+          "contact": "rahul@millionairedizital.com"
+        },
+        {
+          "name": "Sumit Rathod",
+          "role": "Lead Video Editor",
+          "representing": "Millionaire Dizital",
+          "contact": "sumit@millionairedizital.com"
+        }
+      ],
+      "objective": "Review September performance results and lock in Diwali Mega Launch campaign schedule & deliverables.",
+      "discussionPoints": [
+        "Topic 1: 60.7% follower growth surge following the viral reel breakdown.",
+        "Topic 2: Finalizing 25% discount festive offer messaging and hero reel scripts.",
+        "Topic 3: Influencer seeding package dispatch timelines and asset submission deadline.",
+        "Topic 4: Launching Meta retargeting ads to capture website visitors."
+      ],
+      "keyUpdates": [
+        "Client has received 500 units of the new festive gift box inventory.",
+        "Agency has completed 16 out of 30 monthly reels ahead of schedule."
+      ],
+      "clientFeedback": "Client loved the color grading on the new aesthetic reels; requested slightly louder background audio mix for Instagram mobile speakers.",
+      "clientRequirements": "Need 2 extra ad creative banners tailored for WhatsApp broadcast marketing by October 18.",
+      "decisionsMade": [
+        "Decision 1: Campaign launch date officially set for October 18.",
+        "Decision 2: Approved the 25% festive promo offer wording.",
+        "Decision 3: Video audio track volume adjusted to -6dB for optimal phone speaker clarity."
+      ],
+      "approvedIdeas": [
+        "Behind-the-scenes packaging video format approved.",
+        "Countdown story sticker engagement series approved."
+      ],
+      "changesRequested": [
+        "Change 1: Update font on slide 4 of the festive carousel to match brand font.",
+        "Change 2: Include phone number on website banner."
+      ],
+      "pendingQuestions": [
+        "Confirming influencer contract signing with creator @lifestyle_guru by Friday."
+      ],
+      "actionItems": [
+        {
+          "id": 1,
+          "task": "Deliver festive reel sound re-mix with enhanced audio",
+          "assignedTo": "Sumit Rathod",
+          "deadline": "2026-10-10",
+          "status": "Completed",
+          "comments": "Updated audio mix uploaded to Drive"
+        },
+        {
+          "id": 2,
+          "task": "Provide high-res photos of festive packaging box",
+          "assignedTo": "Client Team",
+          "deadline": "2026-10-12",
+          "status": "Completed",
+          "comments": "Assets received in Drive folder"
+        },
+        {
+          "id": 3,
+          "task": "Configure Meta Conversion Catalog ads for festive launch",
+          "assignedTo": "MDZ Ads Team",
+          "deadline": "2026-10-16",
+          "status": "In Progress",
+          "comments": "Ad copy and audience sets ready"
+        }
+      ],
+      "followUp": [
+        "Share revised carousel font draft via portal",
+        "Send calendar invite for next review call"
+      ],
+      "nextMeeting": {
+        "date": "2026-10-22",
+        "time": "03:00 PM IST",
+        "type": "Mid-Campaign Performance & Ads Optimization Review"
+      },
+      "notes": "Excellent strategic alignment. The client expressed high enthusiasm for the festive launch momentum."
+    }
+  ],
+  "updatedAt": "2026-10-16T10:08:23.850Z",
+  "updatedBy": "System Initializer"
+}

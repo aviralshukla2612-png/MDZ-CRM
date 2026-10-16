@@ -16,16 +16,116 @@ export default function ClientRegisterPage() {
     password: "",
   });
 
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+  const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // Validation functions
+  const validatePhone = (rawPhone: string): string | null => {
+    const trimmed = rawPhone.trim();
+    if (!trimmed) return "Phone number is required.";
+
+    const digits = trimmed.replace(/\D/g, "");
+    if (digits.length < 10) return "Phone number must contain at least 10 digits.";
+    if (digits.length > 15) return "Phone number cannot exceed 15 digits.";
+
+    // Check for repetitive fake numbers like 1111111111 or 0000000000
+    if (/^(\d)\1+$/.test(digits)) {
+      return "Please enter a valid, non-repetitive phone number.";
+    }
+
+    // For standard 10-digit Indian numbers
+    let checkDigits = digits;
+    if (digits.length === 12 && digits.startsWith("91")) {
+      checkDigits = digits.slice(2);
+    } else if (digits.length === 11 && digits.startsWith("0")) {
+      checkDigits = digits.slice(1);
+    }
+
+    if (checkDigits.length === 10 && !/^[6-9]\d{9}$/.test(checkDigits)) {
+      return "Indian mobile numbers must start with 6, 7, 8, or 9.";
+    }
+
+    return null;
+  };
+
+  const validateEmail = (emailStr: string): string | null => {
+    const trimmed = emailStr.trim();
+    if (!trimmed) return "Email address is required.";
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(trimmed)) {
+      return "Please enter a valid email address (e.g. name@company.com).";
+    }
+    return null;
+  };
+
+  const validateName = (nameStr: string, label: string): string | null => {
+    const trimmed = nameStr.trim();
+    if (!trimmed) return `${label} is required.`;
+    if (trimmed.length < 2) return `${label} must be at least 2 characters.`;
+    return null;
+  };
+
+  const validatePassword = (passStr: string): string | null => {
+    if (!passStr) return "Password is required.";
+    if (passStr.length < 6) return "Password must be at least 6 characters long.";
+    return null;
+  };
+
+  const handleBlur = (fieldName: string) => {
+    setTouched((prev) => ({ ...prev, [fieldName]: true }));
+    let err: string | null = null;
+    if (fieldName === "phone") err = validatePhone(formData.phone);
+    if (fieldName === "email") err = validateEmail(formData.email);
+    if (fieldName === "contactName") err = validateName(formData.contactName, "Client name");
+    if (fieldName === "companyName") err = validateName(formData.companyName, "Company name");
+    if (fieldName === "password") err = validatePassword(formData.password);
+
+    setFieldErrors((prev) => ({
+      ...prev,
+      [fieldName]: err || "",
+    }));
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    let cleanVal = value;
+
+    if (name === "phone") {
+      // Disallow non-numeric characters except + and spaces/dashes, cap at 16 characters
+      cleanVal = value.replace(/[^\d+\s-]/g, "").slice(0, 16);
+      if (touched.phone) {
+        const err = validatePhone(cleanVal);
+        setFieldErrors((prev) => ({ ...prev, phone: err || "" }));
+      }
+    } else if (name === "email") {
+      if (touched.email) {
+        const err = validateEmail(cleanVal);
+        setFieldErrors((prev) => ({ ...prev, email: err || "" }));
+      }
+    } else if (name === "contactName") {
+      if (touched.contactName) {
+        const err = validateName(cleanVal, "Client name");
+        setFieldErrors((prev) => ({ ...prev, contactName: err || "" }));
+      }
+    } else if (name === "companyName") {
+      if (touched.companyName) {
+        const err = validateName(cleanVal, "Company name");
+        setFieldErrors((prev) => ({ ...prev, companyName: err || "" }));
+      }
+    } else if (name === "password") {
+      if (touched.password) {
+        const err = validatePassword(cleanVal);
+        setFieldErrors((prev) => ({ ...prev, password: err || "" }));
+      }
+    }
+
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: cleanVal,
     }));
   };
 
@@ -33,24 +133,33 @@ export default function ClientRegisterPage() {
     e.preventDefault();
     setError(null);
 
-    if (!formData.contactName.trim()) {
-      setError("Please enter client full name.");
-      return;
-    }
-    if (!formData.companyName.trim()) {
-      setError("Please enter company name.");
-      return;
-    }
-    if (!formData.phone.trim()) {
-      setError("Please enter a valid phone number.");
-      return;
-    }
-    if (!formData.email.trim()) {
-      setError("Please enter your email address.");
-      return;
-    }
-    if (!formData.password || formData.password.length < 6) {
-      setError("Password must be at least 6 characters long.");
+    // Validate all fields
+    const nameErr = validateName(formData.contactName, "Client full name");
+    const compErr = validateName(formData.companyName, "Company name");
+    const phoneErr = validatePhone(formData.phone);
+    const emailErr = validateEmail(formData.email);
+    const passErr = validatePassword(formData.password);
+
+    const allErrors = {
+      contactName: nameErr || "",
+      companyName: compErr || "",
+      phone: phoneErr || "",
+      email: emailErr || "",
+      password: passErr || "",
+    };
+
+    setFieldErrors(allErrors);
+    setTouched({
+      contactName: true,
+      companyName: true,
+      phone: true,
+      email: true,
+      password: true,
+    });
+
+    const firstError = nameErr || compErr || phoneErr || emailErr || passErr;
+    if (firstError) {
+      setError(firstError);
       return;
     }
 
@@ -62,6 +171,8 @@ export default function ClientRegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          phone: formData.phone.trim(),
+          email: formData.email.trim().toLowerCase(),
           termsAccepted: true,
         }),
       });
@@ -140,9 +251,16 @@ export default function ClientRegisterPage() {
 
             {/* 1. Client Name */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>Client Name *</span>
+              <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Client Full Name *</span>
+                </span>
+                {touched.contactName && !fieldErrors.contactName && formData.contactName && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                    <CheckCircle2 className="w-3 h-3" /> Valid
+                  </span>
+                )}
               </label>
               <input
                 type="text"
@@ -151,16 +269,36 @@ export default function ClientRegisterPage() {
                 autoComplete="off"
                 value={formData.contactName}
                 onChange={handleChange}
+                onBlur={() => handleBlur("contactName")}
                 placeholder="Enter client full name"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none transition-all ${
+                  fieldErrors.contactName
+                    ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20 dark:bg-rose-950/20"
+                    : touched.contactName && formData.contactName
+                    ? "border-emerald-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/20"
+                    : "border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                }`}
               />
+              {fieldErrors.contactName && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1 font-medium mt-0.5">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>{fieldErrors.contactName}</span>
+                </p>
+              )}
             </div>
 
             {/* 2. Company Name */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                <Building2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>Company Name *</span>
+              <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Company Name *</span>
+                </span>
+                {touched.companyName && !fieldErrors.companyName && formData.companyName && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                    <CheckCircle2 className="w-3 h-3" /> Valid
+                  </span>
+                )}
               </label>
               <input
                 type="text"
@@ -169,34 +307,79 @@ export default function ClientRegisterPage() {
                 autoComplete="off"
                 value={formData.companyName}
                 onChange={handleChange}
-                placeholder="Enter company or organization name"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                onBlur={() => handleBlur("companyName")}
+                placeholder="Enter company or brand name"
+                className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none transition-all ${
+                  fieldErrors.companyName
+                    ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20 dark:bg-rose-950/20"
+                    : touched.companyName && formData.companyName
+                    ? "border-emerald-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/20"
+                    : "border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                }`}
               />
+              {fieldErrors.companyName && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1 font-medium mt-0.5">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>{fieldErrors.companyName}</span>
+                </p>
+              )}
             </div>
 
             {/* 3. Phone Number & 4. Email */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Phone Number *</span>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Phone Number *</span>
+                  </span>
+                  {touched.phone && !fieldErrors.phone && formData.phone && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                      <CheckCircle2 className="w-3 h-3" /> Valid
+                    </span>
+                  )}
                 </label>
                 <input
                   type="tel"
                   name="phone"
                   required
+                  maxLength={16}
                   autoComplete="off"
                   value={formData.phone}
                   onChange={handleChange}
+                  onBlur={() => handleBlur("phone")}
                   placeholder="e.g. +91 98765 43210"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none transition-all font-mono ${
+                    fieldErrors.phone
+                      ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20 dark:bg-rose-950/20"
+                      : touched.phone && formData.phone
+                      ? "border-emerald-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/20"
+                      : "border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  }`}
                 />
+                {fieldErrors.phone ? (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1 font-medium mt-0.5">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span>{fieldErrors.phone}</span>
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-stone-400 dark:text-stone-500">
+                    10-digit mobile or WhatsApp number
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                  <span>Email Address *</span>
+                <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>Email Address *</span>
+                  </span>
+                  {touched.email && !fieldErrors.email && formData.email && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                      <CheckCircle2 className="w-3 h-3" /> Valid
+                    </span>
+                  )}
                 </label>
                 <input
                   type="email"
@@ -206,17 +389,37 @@ export default function ClientRegisterPage() {
                   data-lpignore="true"
                   value={formData.email}
                   onChange={handleChange}
+                  onBlur={() => handleBlur("email")}
                   placeholder="name@company.com"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none transition-all ${
+                    fieldErrors.email
+                      ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20 dark:bg-rose-950/20"
+                      : touched.email && formData.email
+                      ? "border-emerald-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/20"
+                      : "border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  }`}
                 />
+                {fieldErrors.email && (
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1 font-medium mt-0.5">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span>{fieldErrors.email}</span>
+                  </p>
+                )}
               </div>
             </div>
 
             {/* 5. Password */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                <span>Create Password *</span>
+              <label className="text-xs font-semibold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                  <span>Create Password *</span>
+                </span>
+                {touched.password && !fieldErrors.password && formData.password && (
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-0.5">
+                    <CheckCircle2 className="w-3 h-3" /> Valid
+                  </span>
+                )}
               </label>
               <div className="relative">
                 <input
@@ -228,8 +431,15 @@ export default function ClientRegisterPage() {
                   data-lpignore="true"
                   value={formData.password}
                   onChange={handleChange}
+                  onBlur={() => handleBlur("password")}
                   placeholder="Minimum 6 characters"
-                  className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-all"
+                  className={`w-full pl-3.5 pr-10 py-2.5 rounded-xl border text-xs sm:text-sm text-stone-900 dark:text-stone-100 placeholder:text-stone-400 outline-none transition-all ${
+                    fieldErrors.password
+                      ? "border-rose-500 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 bg-rose-50/20 dark:bg-rose-950/20"
+                      : touched.password && formData.password
+                      ? "border-emerald-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-emerald-50/10 dark:bg-emerald-950/20"
+                      : "border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/80 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                  }`}
                 />
                 <button
                   type="button"
@@ -240,6 +450,12 @@ export default function ClientRegisterPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="text-[11px] text-rose-600 dark:text-rose-400 flex items-center gap-1 font-medium mt-0.5">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  <span>{fieldErrors.password}</span>
+                </p>
+              )}
             </div>
 
             {/* Submit Button */}

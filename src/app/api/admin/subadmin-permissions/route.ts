@@ -1,0 +1,384 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+// Full catalog of sidebar items that can be managed
+export const ALL_SIDEBAR_ITEMS = [
+  {
+    id: "overview",
+    title: "Overview",
+    href: "/owner",
+    category: "Core Operations",
+    description: "Main executive dashboard, metrics & status summaries",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "delivery",
+    title: "Monthly Delivery Sheet",
+    href: "/client/delivery",
+    category: "Core Operations",
+    description: "Production logs, delivery schedule & deliverables spreadsheet",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "kpi_tracker",
+    title: "KPI Growth Tracker",
+    href: "/client/kpi-tracker",
+    category: "Core Operations",
+    description: "Executive growth metrics, social, content & business KPIs",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "leads",
+    title: "Sales & Leads",
+    href: "/leads",
+    category: "Sales & Clients",
+    description: "Lead pipeline, stages, assignments & follow-ups",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "quotes",
+    title: "Proposals / Quotes",
+    href: "/quotes",
+    category: "Sales & Clients",
+    description: "Client proposals, estimates, quotations & approvals",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "clients",
+    title: "Clients Directory",
+    href: "/clients",
+    category: "Sales & Clients",
+    description: "Active client accounts, master contacts & portals",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "personal_brands",
+    title: "Personal Branding",
+    href: "/personal-brands",
+    category: "Marketing & Growth",
+    description: "Creator profiles, content distribution & social metrics",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "events",
+    title: "Event Management",
+    href: "/events",
+    category: "Marketing & Growth",
+    description: "Calendar bookings, masterclasses & event pipelines",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "projects",
+    title: "Projects & Kanban",
+    href: "/projects",
+    category: "Production & Delivery",
+    description: "Project boards, stages, task assignments & checklists",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "docs",
+    title: "Drive Storage & Files",
+    href: "/docs",
+    category: "Production & Delivery",
+    description: "Company cloud storage, folders, media & client documents",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "updates",
+    title: "Daily Updates",
+    href: "/employee/updates",
+    category: "Production & Delivery",
+    description: "Real-time employee work logs, submissions & blockers",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "notifications",
+    title: "Notifications Hub",
+    href: "/notifications",
+    category: "Communication",
+    description: "System announcements, alerts & urgent requests",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "employees",
+    title: "Team / Employees",
+    href: "/employees",
+    category: "Workforce & HR",
+    description: "Staff directory, designations, departments & onboarding",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "targets",
+    title: "Work Targets & Quotas",
+    href: "/employees?tab=targets",
+    category: "Workforce & HR",
+    description: "Daily output targets, quotas & completion tracking",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "attendance",
+    title: "Attendance Tracking",
+    href: "/attendance",
+    category: "Workforce & HR",
+    description: "Punch in/out sessions, biometric logs & timesheets",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "working_hours",
+    title: "Working Hours Config",
+    href: "/attendance/working-hours",
+    category: "Workforce & HR",
+    description: "Shift schedules, overtime policies & office timings",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "holidays",
+    title: "Company Holidays",
+    href: "/attendance/holidays",
+    category: "Workforce & HR",
+    description: "Official holiday calendar & observance schedule",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "attendance_requests",
+    title: "Punch Out Requests",
+    href: "/attendance-requests",
+    category: "Workforce & HR",
+    description: "Manual punch adjustments, missing check-in reviews",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "leave_requests",
+    title: "Leave Applications",
+    href: "/leave-requests",
+    category: "Workforce & HR",
+    description: "Sick, casual and paid leave approvals & balance logs",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "finance",
+    title: "Finance & Accounts",
+    href: "/finance",
+    category: "Finance & Legal",
+    description: "Invoices, client payments, milestones & cash flow",
+    defaultSubAdmin: false,
+  },
+  {
+    id: "audit",
+    title: "Activity / Audit Log",
+    href: "/audit",
+    category: "Finance & Legal",
+    description: "Sensitive data logs, security events & admin changes",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "terms",
+    title: "Terms Management",
+    href: "/settings/terms",
+    category: "Administration",
+    description: "Employee and client service contracts & revision versions",
+    defaultSubAdmin: true,
+  },
+  {
+    id: "settings",
+    title: "System Settings",
+    href: "/settings",
+    category: "Administration",
+    description: "Company white-label branding, logo, themes & playbooks",
+    defaultSubAdmin: false,
+  },
+];
+
+const GLOBAL_SETTING_KEY = "subadmin_sidebar_permissions_global";
+
+export async function GET(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const targetUserId = searchParams.get("userId");
+
+    // 1. Fetch Global Setting
+    const globalSetting = await prisma.systemSetting.findUnique({
+      where: { key: GLOBAL_SETTING_KEY },
+    });
+
+    let globalAllowed: string[] = ALL_SIDEBAR_ITEMS.filter((i) => i.defaultSubAdmin).map((i) => i.href);
+    if (globalSetting?.value) {
+      try {
+        const parsed = JSON.parse(globalSetting.value);
+        if (Array.isArray(parsed)) globalAllowed = parsed;
+      } catch (e) {
+        console.error("Error parsing global subadmin permissions:", e);
+      }
+    }
+
+    // 2. If a non-admin sub-admin user is fetching their own effective permissions
+    if (user.activeRole === "SUB_ADMIN" && !["OWNER", "ADMIN"].includes(user.activeRole)) {
+      const userSetting = await prisma.systemSetting.findUnique({
+        where: { key: `subadmin_sidebar_permissions_${user.id}` },
+      });
+
+      let effectiveAllowed = globalAllowed;
+      if (userSetting?.value) {
+        try {
+          const parsed = JSON.parse(userSetting.value);
+          if (Array.isArray(parsed)) effectiveAllowed = parsed;
+        } catch (e) {
+          console.error("Error parsing user subadmin permissions:", e);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        allowedHrefs: effectiveAllowed,
+        isCustom: Boolean(userSetting?.value),
+      });
+    }
+
+    // 3. For ADMIN / OWNER: Return full manager catalog, sub-admins list, and current user configs
+    if (!["OWNER", "ADMIN"].includes(user.activeRole)) {
+      return NextResponse.json({ success: false, error: "Forbidden: Admin access required" }, { status: 403 });
+    }
+
+    // List of users who have SUB_ADMIN role or can be designated
+    const subAdmins = await prisma.user.findMany({
+      where: {
+        OR: [
+          { activeRole: "SUB_ADMIN" },
+          { activeRole: "EMPLOYEE" },
+        ],
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        activeRole: true,
+        designation: true,
+        department: true,
+        avatarUrl: true,
+      },
+      orderBy: [
+        { activeRole: "asc" },
+        { name: "asc" },
+      ],
+    });
+
+    // Check if target user has custom settings
+    let selectedUserAllowed: string[] | null = null;
+    if (targetUserId) {
+      const userSetting = await prisma.systemSetting.findUnique({
+        where: { key: `subadmin_sidebar_permissions_${targetUserId}` },
+      });
+      if (userSetting?.value) {
+        try {
+          const parsed = JSON.parse(userSetting.value);
+          if (Array.isArray(parsed)) selectedUserAllowed = parsed;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      catalog: ALL_SIDEBAR_ITEMS,
+      globalAllowed,
+      subAdmins,
+      selectedUserAllowed,
+    });
+  } catch (error: any) {
+    console.error("GET subadmin permissions error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!user || !["OWNER", "ADMIN"].includes(user.activeRole)) {
+      return NextResponse.json({ success: false, error: "Forbidden: Admin access required" }, { status: 403 });
+    }
+
+    const body = await req.json();
+    const { targetType, targetUserId, allowedHrefs, promoteToSubAdmin } = body;
+
+    if (!Array.isArray(allowedHrefs)) {
+      return NextResponse.json({ success: false, error: "allowedHrefs must be an array of strings" }, { status: 400 });
+    }
+
+    if (targetType === "USER" && targetUserId) {
+      const key = `subadmin_sidebar_permissions_${targetUserId}`;
+      await prisma.systemSetting.upsert({
+        where: { key },
+        update: { value: JSON.stringify(allowedHrefs) },
+        create: { key, value: JSON.stringify(allowedHrefs) },
+      });
+
+      // Optionally promote user to SUB_ADMIN if requested
+      if (promoteToSubAdmin) {
+        await prisma.user.update({
+          where: { id: targetUserId },
+          data: { activeRole: "SUB_ADMIN" },
+        });
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: `Updated sidebar permissions for user ${targetUserId}`,
+        targetType: "USER",
+        allowedHrefs,
+      });
+    }
+
+    // Default: update GLOBAL template for all sub-admins
+    await prisma.systemSetting.upsert({
+      where: { key: GLOBAL_SETTING_KEY },
+      update: { value: JSON.stringify(allowedHrefs) },
+      create: { key: GLOBAL_SETTING_KEY, value: JSON.stringify(allowedHrefs) },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Updated default sidebar permissions for all Sub-Admins",
+      targetType: "GLOBAL",
+      allowedHrefs,
+    });
+  } catch (error: any) {
+    console.error("POST subadmin permissions error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!user || !["OWNER", "ADMIN"].includes(user.activeRole)) {
+      return NextResponse.json({ success: false, error: "Forbidden: Admin access required" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const targetUserId = searchParams.get("userId");
+
+    if (!targetUserId) {
+      return NextResponse.json({ success: false, error: "userId required to clear custom permissions" }, { status: 400 });
+    }
+
+    await prisma.systemSetting.deleteMany({
+      where: { key: `subadmin_sidebar_permissions_${targetUserId}` },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Reset user ${targetUserId} to default global sub-admin permissions`,
+    });
+  } catch (error: any) {
+    console.error("DELETE subadmin permissions error:", error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

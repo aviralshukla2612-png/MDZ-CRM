@@ -26,6 +26,51 @@ export async function GET() {
       });
     }
 
+    // 2. Ensure active projects are distributed to employees if they have 0 memberships
+    const allActiveProjects = await prisma.project.findMany({
+      where: { status: { in: ["IN_PROGRESS", "PLANNING", "ACTIVE"] } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (allActiveProjects.length > 0) {
+      const employeesWithoutProjects = await prisma.employee.findMany({
+        where: {
+          user: { activeRole: { not: "OWNER" } },
+          memberships: { none: { isActive: true } },
+        },
+        include: { user: true },
+      });
+
+      for (let i = 0; i < employeesWithoutProjects.length; i++) {
+        const emp = employeesWithoutProjects[i];
+        const proj1 = allActiveProjects[i % allActiveProjects.length];
+        await prisma.projectMembership.create({
+          data: {
+            projectId: proj1.id,
+            employeeId: emp.id,
+            roleInProject: emp.user?.activeRole === "SALES" ? "SALES_LEAD" : "DEV_LEAD",
+            isActive: true,
+            assignedById: emp.userId,
+          },
+        }).catch(() => null);
+
+        if (allActiveProjects.length > 1) {
+          const proj2 = allActiveProjects[(i + 1) % allActiveProjects.length];
+          if (proj2.id !== proj1.id) {
+            await prisma.projectMembership.create({
+              data: {
+                projectId: proj2.id,
+                employeeId: emp.id,
+                roleInProject: "COLLABORATOR",
+                isActive: true,
+                assignedById: emp.userId,
+              },
+            }).catch(() => null);
+          }
+        }
+      }
+    }
+
     const employees = await prisma.employee.findMany({
       where: {
         user: {
@@ -270,6 +315,15 @@ export async function POST(req: Request) {
 
       return { user: newUser, employee: newEmployee };
     });
+
+    // If role is SUB_ADMIN and allowed sidebar permissions were specified
+    if (body.role === "SUB_ADMIN" && Array.isArray(body.allowedHrefs) && body.allowedHrefs.length > 0) {
+      await prisma.systemSetting.upsert({
+        where: { key: `subadmin_sidebar_permissions_${result.user.id}` },
+        update: { value: JSON.stringify(body.allowedHrefs) },
+        create: { key: `subadmin_sidebar_permissions_${result.user.id}`, value: JSON.stringify(body.allowedHrefs) },
+      });
+    }
 
     const { passwordHash, ...safeUser } = result.user;
 

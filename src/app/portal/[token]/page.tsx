@@ -1,6 +1,7 @@
 import React from "react";
-import { ShieldCheck, CheckCircle2, ExternalLink, Calendar, FolderKanban, Clock, Sparkles, Users, Phone, Mail, FileText, Download } from "lucide-react";
+import { ShieldCheck, CheckCircle2, ExternalLink, Calendar, FolderKanban, Clock, Sparkles, Users, Phone, Mail, FileText, Download, TableProperties } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { ClientPortalOperatingHub } from "@/components/client/ClientPortalOperatingHub";
 
 export default async function ClientPortalPage({ params }: { params: { token: string } }) {
   const { token } = params;
@@ -46,7 +47,26 @@ export default async function ClientPortalPage({ params }: { params: { token: st
   let activeProject: any = portalToken?.project;
 
   if (!portalToken) {
-    if (token === "demo-token-abc" || token.startsWith("preview-")) {
+    // Direct lookup by Client ID or Client Number
+    const directClient = await prisma.client.findFirst({
+      where: { OR: [{ id: token }, { clientNumber: token }] },
+      include: {
+        projects: {
+          include: {
+            clientUpdates: { orderBy: { createdAt: "desc" } },
+            tasks: true,
+            stages: { include: { tasks: true } },
+            memberships: membershipInclude,
+          },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    if (directClient) {
+      clientRecord = directClient;
+      activeProject = directClient.projects[0] || null;
+    } else if (token === "demo-token-abc" || token.startsWith("preview-")) {
       const projectId = token.startsWith("preview-") ? token.replace("preview-", "") : undefined;
       const demoProject = projectId
         ? await prisma.project.findFirst({
@@ -336,6 +356,13 @@ export default async function ClientPortalPage({ params }: { params: { token: st
           </div>
         </div>
       )}
+
+      {/* Millionaire Dizital Operating Hub (Delivery Control Sheet & KPI Growth Tracker) */}
+      <ClientPortalOperatingHub
+        clientName={clientRecord?.companyName || "Client Account"}
+        clientId={clientRecord?.id}
+        isAdmin={false}
+      />
     </div>
   );
 }

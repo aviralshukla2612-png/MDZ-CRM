@@ -4,7 +4,14 @@ import React, { useState, useEffect } from "react";
 import { TrendingUp, IndianRupee, AlertCircle, FolderKanban, Users, Sparkles } from "lucide-react";
 
 export function CommandMetrics() {
-  const [financeData, setFinanceData] = useState<{ totalBilling: number; totalPending: number; upcoming: number; overdue: number; overdueCount: number } | null>(null);
+  const [financeData, setFinanceData] = useState<{
+    totalBilling: number;
+    totalPending: number;
+    upcoming: number;
+    overdue: number;
+    overdueCount: number;
+    pipelineValue: number;
+  } | null>(null);
   const [leadCount, setLeadCount] = useState<number>(0);
   const [projectCount, setProjectCount] = useState<number>(0);
   const [attendanceStats, setAttendanceStats] = useState<{ present: number; total: number }>({ present: 0, total: 0 });
@@ -28,14 +35,18 @@ export function CommandMetrics() {
         const overdueInvoices = invoices.filter((i: any) => i.status === "OVERDUE" || (i.status === "UNPAID" && new Date(i.dueDate).getTime() < now));
         const overdueAmount = finRes.data.metrics?.overdueBilling !== undefined && finRes.data.metrics.overdueBilling > 0
           ? finRes.data.metrics.overdueBilling
-          : overdueInvoices.reduce((sum: number, i: any) => sum + i.amount, 0);
+          : overdueInvoices.reduce((sum: number, i: any) => sum + (i.grandTotal || i.amount || 0), 0);
+
+        const pendingBilling = finRes.data.metrics?.pendingBilling || 0;
+        const upcomingAmount = Math.max(0, pendingBilling - overdueAmount);
 
         setFinanceData({
           totalBilling: finRes.data.metrics?.totalBilling || 0,
-          totalPending: finRes.data.metrics?.pendingBilling || 0,
-          upcoming: Math.max(0, (finRes.data.metrics?.pendingBilling || 0) - overdueAmount),
+          totalPending: pendingBilling,
+          upcoming: upcomingAmount > 0 ? upcomingAmount : pendingBilling,
           overdue: overdueAmount,
           overdueCount: overdueInvoices.length,
+          pipelineValue: finRes.data.metrics?.pipelineValue || finRes.data.metrics?.totalBilling || 0,
         });
       }
       if (leadRes?.success && Array.isArray(leadRes.data)) {
@@ -54,30 +65,38 @@ export function CommandMetrics() {
     }
   };
 
-  const formattedTotalBilling = financeData
-    ? `₹${(financeData.totalBilling / 100000).toFixed(1)} Lakh`
-    : "₹0.0 Lakh";
+  const formatCurrency = (amount: number) => {
+    if (!amount || amount === 0) return "₹0.0K";
+    if (amount >= 100000) {
+      return `₹${(amount / 100000).toFixed(1)} Lakh`;
+    }
+    return `₹${(amount / 1000).toFixed(1)}K`;
+  };
+
+  const activePipelineValue = formatCurrency(financeData?.pipelineValue || financeData?.totalBilling || 0);
+  const upcomingCollections = formatCurrency(financeData?.upcoming || financeData?.totalPending || 0);
+  const overduePayments = formatCurrency(financeData?.overdue || 0);
 
   const metrics = [
     {
       title: "Active Pipeline Value",
-      value: formattedTotalBilling,
-      subtext: `${leadCount} CRM Leads`,
+      value: activePipelineValue,
+      subtext: `${leadCount} Leads + Active Contracts`,
       icon: <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />,
       glow: "hover:border-emerald-500/50",
       accent: "from-emerald-500/10 to-transparent",
     },
     {
       title: "Upcoming Collections",
-      value: `₹${((financeData?.upcoming || 0) / 1000).toFixed(1)}K`,
-      subtext: "Pending Milestones",
+      value: upcomingCollections,
+      subtext: "Pending Milestones & Invoices",
       icon: <IndianRupee className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />,
       glow: "hover:border-indigo-500/50",
       accent: "from-indigo-500/10 to-transparent",
     },
     {
       title: "Overdue Payments",
-      value: `₹${((financeData?.overdue || 0) / 1000).toFixed(1)}K`,
+      value: overduePayments,
       subtext: `${financeData?.overdueCount || 0} Invoices overdue`,
       icon: <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400" />,
       glow: "hover:border-rose-500/50",

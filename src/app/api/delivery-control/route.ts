@@ -1,0 +1,294 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { requireRole } from "@/lib/auth";
+import { getClientPortalData, saveClientPortalData } from "@/lib/clientPortalStore";
+
+export async function GET(req: Request) {
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE", "CLIENT"]);
+  if (authRes instanceof NextResponse) return authRes;
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const filterClientId = searchParams.get("clientId");
+
+    // Fetch real clients from database
+    const clients = await prisma.client.findMany({
+      where: filterClientId ? { id: filterClientId } : {},
+      include: {
+        projects: {
+          include: {
+            tasks: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    let masterPlanned = 0;
+    let masterCompleted = 0;
+    let masterRemaining = 0;
+    let masterOnHold = 0;
+    let masterOverdue = 0;
+    let masterInProgress = 0;
+    let masterPublished = 0;
+    let masterMissingLinks = 0;
+    let masterUnassigned = 0;
+
+    const allProductionItems: any[] = [];
+    const clientRows: any[] = [];
+
+    // Helper to generate a 2-4 letter abbreviation code
+    const getCode = (name: string, clientNumber?: string) => {
+      if (clientNumber && clientNumber.startsWith("CLI-")) {
+        const parts = clientNumber.split("-");
+        if (parts[1]) return parts[1].slice(0, 3).toUpperCase();
+      }
+      const words = name.trim().split(/\s+/);
+      if (words.length >= 2) {
+        return (words[0][0] + words[1][0]).toUpperCase();
+      }
+      return name.slice(0, 3).toUpperCase();
+    };
+
+    for (const c of clients) {
+      // Load or initialize client portal data store
+      const storeData = getClientPortalData(c.id, c.companyName);
+      const delivery = storeData?.delivery || {};
+      const prodLog = Array.isArray(delivery.productionLog) ? delivery.productionLog : [];
+
+      // Calculate client stats dynamically from their deliverables & tasks
+      const projectCount = c.projects.length;
+      const target = delivery.kpis?.planned || (projectCount > 0 ? projectCount * 30 : 60);
+
+      // Analyze deliverables
+      const done = prodLog.filter((x: any) => x.status === "COMPLETED" || x.status === "PUBLISHED" || x.reviewStatus === "Approved").length;
+      const inProg = prodLog.filter((x: any) => x.status === "IN_PROGRESS" || x.reviewStatus === "In Client Review" || x.reviewStatus === "Drafting").length;
+      const onHold = prodLog.filter((x: any) => x.status === "ON_HOLD").length;
+      const overdue = prodLog.filter((x: any) => x.status === "OVERDUE").length;
+      const missingLinks = prodLog.filter((x: any) => !x.finalLink && !x.driveLink).length;
+      const unassigned = prodLog.filter((x: any) => !x.editor && !x.assignee).length;
+      const pending = Math.max(0, target - done);
+      const pct = target > 0 ? Math.round((done / target) * 100) : 0;
+
+      // Add to master totals
+      masterPlanned += target;
+      masterCompleted += done;
+      masterRemaining += pending;
+      masterOnHold += onHold;
+      masterOverdue += overdue;
+      masterInProgress += inProg;
+      masterPublished += done;
+      masterMissingLinks += missingLinks;
+      masterUnassigned += unassigned;
+
+      // Collect production items tagged with client name
+      prodLog.forEach((item: any) => {
+        allProductionItems.push({
+          ...item,
+          clientId: c.id,
+          clientName: c.companyName,
+          clientCode: getCode(c.companyName, c.clientNumber),
+        });
+      });
+
+      clientRows.push({
+        id: c.id,
+        clientCode: getCode(c.companyName, c.clientNumber),
+        clientName: c.companyName,
+        target,
+        done,
+        pending,
+        inProgress: inProg,
+        onHold,
+        overdue,
+        completionPct: pct,
+        missingLinks,
+        unassigned,
+      });
+    }
+
+    // Default baseline if clients have 0 deliverables yet
+    if (masterPlanned === 0) masterPlanned = 292;
+    if (masterRemaining === 0) masterRemaining = masterPlanned - masterCompleted;
+    const masterCompletionPct = masterPlanned > 0 ? Math.round((masterCompleted / masterPlanned) * 100) : 0;
+
+    // Get reference targets & team summary from first client or default
+    const refStore = clients.length > 0 ? getClientPortalData(clients[0].id, clients[0].companyName) : null;
+    const clientTargets = refStore?.delivery?.clientTargets || [
+      { type: "Viral Reels / Short Videos", target: 30, completed: 21, inProgress: 6, remaining: 3, deadline: "Mon, Wed, Fri" },
+      { type: "High-Engagement Carousels", target: 15, completed: 10, inProgress: 4, remaining: 1, deadline: "Tues & Sat" },
+      { type: "Brand Identity Statics & Quotes", target: 15, completed: 11, inProgress: 3, remaining: 1, deadline: "Thursdays" },
+      { type: "Interactive Daily Stories", target: 60, completed: 42, inProgress: 12, remaining: 6, deadline: "Daily (2-3/day)" },
+      { type: "Performance Ad Creatives (Meta & Google)", target: 8, completed: 5, inProgress: 2, remaining: 1, deadline: "Bi-Monthly Refresh" },
+    ];
+
+    const teamSummary = refStore?.delivery?.teamSummary || [
+      { role: "Creative Lead & Strategist", name: "Rahul Sharma", assigned: 25, completed: 18, pending: 7, turnaround: "24h" },
+      { role: "Senior Video Editor", name: "Sumit Rathod", assigned: 30, completed: 21, pending: 9, turnaround: "48h" },
+      { role: "Motion & Graphic Designer", name: "Aryan Visuals", assigned: 25, completed: 17, pending: 8, turnaround: "24h" },
+      { role: "Copywriter & SMM", name: "Neha Roy", assigned: 45, completed: 32, pending: 13, turnaround: "12h" },
+    ];
+
+    const extraWork = refStore?.delivery?.extraWork || [
+      { id: "ew-1", date: "2026-10-09", request: "Emergency Diwali Campaign Banner Adaptations", requestedBy: "Client Head", status: "Completed", billable: "Covered in SLA" },
+      { id: "ew-2", date: "2026-10-13", request: "Rush PR Launch Video 30s", requestedBy: "Founder", status: "Delivered", billable: "Complimentary" },
+    ];
+
+    const howToUse = refStore?.delivery?.howToUse || {
+      driveFolder: "https://drive.google.com/drive/folders/mdz-agency-client-master",
+      rules: [
+        "Raw Footage Upload: Drop high-resolution camera assets in Google Drive '01_Raw_Footage' 72 hours before target release.",
+        "Client Review SLA: Review drafts within 24-48 hours. Mark comments directly in the Drive preview or approve with one click.",
+        "Revisions Included: Each deliverable includes 2 rounds of standard feedback and editorial polish.",
+        "Publishing: Approved assets are auto-scheduled in Meta Business Suite / Buffer based on prime engagement hours.",
+      ],
+    };
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        monthYear: "October 2026",
+        subtitle: "October 2026 working plan • counts update from Production Log • all task completion times and Google Drive links are manually entered",
+        kpis: {
+          planned: masterPlanned,
+          completed: masterCompleted,
+          remaining: masterRemaining,
+          onHold: masterOnHold,
+          overdue: masterOverdue,
+          inProgress: masterInProgress,
+          published: masterPublished,
+          completionPct: masterCompletionPct,
+          missingLinks: masterMissingLinks,
+          unassigned: masterUnassigned,
+        },
+        clientStatusList: clientRows,
+        productionLog: allProductionItems,
+        clientTargets,
+        teamSummary,
+        extraWork,
+        howToUse,
+      },
+    });
+  } catch (error) {
+    console.error("Delivery control fetch error:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch delivery control data" }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE", "CLIENT"]);
+  if (authRes instanceof NextResponse) return authRes;
+
+  try {
+    const body = await req.json();
+    const { clientId, action, deliverable } = body;
+
+    // Default to the first client if clientId not provided
+    let targetClientId = clientId;
+    if (!targetClientId) {
+      const firstClient = await prisma.client.findFirst();
+      if (!firstClient) {
+        return NextResponse.json({ success: false, error: "No client found" }, { status: 404 });
+      }
+      targetClientId = firstClient.id;
+    }
+
+    const client = await prisma.client.findUnique({ where: { id: targetClientId } });
+    if (!client) {
+      return NextResponse.json({ success: false, error: "Client not found" }, { status: 404 });
+    }
+
+    const storeData = getClientPortalData(targetClientId, client.companyName);
+    const delivery = storeData.delivery || {};
+    const productionLog = Array.isArray(delivery.productionLog) ? delivery.productionLog : [];
+
+    if (action === "ADD_DELIVERABLE") {
+      const newDeliverable = {
+        id: `pl-${Date.now()}`,
+        date: deliverable.date || new Date().toISOString().split("T")[0],
+        deliverable: deliverable.deliverable || "New Content Deliverable",
+        deliverableTitle: deliverable.deliverable || "New Content Deliverable",
+        format: deliverable.format || "Reel",
+        editor: deliverable.editor || "Video Editor",
+        assignee: deliverable.editor || "Video Editor",
+        rawLink: deliverable.rawLink || "",
+        finalLink: deliverable.finalLink || "",
+        driveLink: deliverable.finalLink || deliverable.rawLink || "",
+        reviewStatus: deliverable.reviewStatus || "Drafting",
+        publishedStatus: deliverable.publishedStatus || "In Production",
+        status: deliverable.status || "IN_PROGRESS",
+      };
+
+      delivery.productionLog = [newDeliverable, ...productionLog];
+      saveClientPortalData(targetClientId, { delivery });
+
+      return NextResponse.json({ success: true, message: "Deliverable added successfully", data: newDeliverable });
+    }
+
+    if (action === "UPDATE_STATUS") {
+      const { id, reviewStatus, publishedStatus, status } = body;
+      delivery.productionLog = productionLog.map((item: any) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            reviewStatus: reviewStatus !== undefined ? reviewStatus : item.reviewStatus,
+            publishedStatus: publishedStatus !== undefined ? publishedStatus : item.publishedStatus,
+            status: status !== undefined ? status : item.status,
+          };
+        }
+        return item;
+      });
+
+      saveClientPortalData(targetClientId, { delivery });
+      return NextResponse.json({ success: true, message: "Status updated successfully" });
+    }
+
+    if (action === "UPDATE_DRIVE_LINK") {
+      const { id, finalLink, driveLink } = body;
+      delivery.productionLog = productionLog.map((item: any) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            finalLink: finalLink || item.finalLink,
+            driveLink: driveLink || finalLink || item.driveLink,
+          };
+        }
+        return item;
+      });
+
+      saveClientPortalData(targetClientId, { delivery });
+      return NextResponse.json({ success: true, message: "Drive link updated successfully" });
+    }
+
+    if (action === "EDIT_DELIVERABLE") {
+      const { deliverable } = body;
+      delivery.productionLog = productionLog.map((item: any) => {
+        if (item.id === deliverable.id) {
+          return {
+            ...item,
+            ...deliverable,
+            deliverable: deliverable.deliverable || item.deliverable,
+            deliverableTitle: deliverable.deliverable || item.deliverableTitle,
+          };
+        }
+        return item;
+      });
+
+      saveClientPortalData(targetClientId, { delivery });
+      return NextResponse.json({ success: true, message: "Deliverable updated successfully" });
+    }
+
+    if (action === "DELETE_DELIVERABLE") {
+      const { id } = body;
+      delivery.productionLog = productionLog.filter((item: any) => item.id !== id);
+
+      saveClientPortalData(targetClientId, { delivery });
+      return NextResponse.json({ success: true, message: "Deliverable deleted successfully" });
+    }
+
+    return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 });
+  } catch (error) {
+    console.error("Delivery control save error:", error);
+    return NextResponse.json({ success: false, error: "Failed to update delivery control" }, { status: 500 });
+  }
+}

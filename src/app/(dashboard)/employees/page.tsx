@@ -17,6 +17,7 @@ import {
   Phone,
   Users,
   ShieldAlert,
+  ShieldCheck,
   Target,
   BarChart2,
   Download,
@@ -28,6 +29,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from "lucide-react";
+import { ALL_SIDEBAR_ITEMS } from "@/lib/sidebarPermissions";
 
 export default function EmployeesPage() {
   const { showToast } = useToast();
@@ -51,6 +53,16 @@ export default function EmployeesPage() {
   const [password, setPassword] = useState("");
   const [designation, setDesignation] = useState("");
   const [role, setRole] = useState("EMPLOYEE");
+  const [subAdminPermissions, setSubAdminPermissions] = useState<string[]>(
+    ALL_SIDEBAR_ITEMS.filter((i) => i.defaultSubAdmin).map((i) => i.href)
+  );
+
+  // Sub-Admin Permissions Modal for existing employees
+  const [isPermOpen, setIsPermOpen] = useState(false);
+  const [permEmpId, setPermEmpId] = useState("");
+  const [permEmpName, setPermEmpName] = useState("");
+  const [editSubAdminPerms, setEditSubAdminPerms] = useState<string[]>([]);
+  const [savingPerms, setSavingPerms] = useState(false);
 
   // Initial Target on Creation
   const [initialTargetTitle, setInitialTargetTitle] = useState("Shoot Reels");
@@ -152,6 +164,7 @@ export default function EmployeesPage() {
           password,
           designation,
           role,
+          allowedHrefs: role === "SUB_ADMIN" ? subAdminPermissions : undefined,
           dailyTargetTitle: initialTargetTitle.trim(),
           dailyTargetCount: initialTargetCount,
           dailyTargetUnit: initialTargetUnit.trim(),
@@ -175,6 +188,7 @@ export default function EmployeesPage() {
         setPassword("");
         setDesignation("");
         setRole("EMPLOYEE");
+        setSubAdminPermissions(ALL_SIDEBAR_ITEMS.filter((i) => i.defaultSubAdmin).map((i) => i.href));
         setRel1Name("");
         setRel1Relation("Father");
         setRel1Phone("");
@@ -190,6 +204,48 @@ export default function EmployeesPage() {
       }
     } catch (e) {
       showToast("Network error", "error");
+    }
+  };
+
+  const loadEmpPermissions = async (userId: string) => {
+    try {
+      const res = await fetch(`/mdz-crm/api/admin/subadmin-permissions?userId=${userId}`);
+      const json = await res.json();
+      if (json.success) {
+        setEditSubAdminPerms(json.selectedUserAllowed || json.globalAllowed || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveEmpPermissions = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSavingPerms(true);
+      const res = await fetch("/mdz-crm/api/admin/subadmin-permissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: "USER",
+          targetUserId: permEmpId,
+          allowedHrefs: editSubAdminPerms,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Sidebar permissions updated for ${permEmpName}`, "success");
+        setIsPermOpen(false);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("mdz_subadmin_permissions_updated"));
+        }
+      } else {
+        showToast(json.error || "Failed to save permissions", "error");
+      }
+    } catch {
+      showToast("Network error saving permissions", "error");
+    } finally {
+      setSavingPerms(false);
     }
   };
 
@@ -608,6 +664,23 @@ export default function EmployeesPage() {
                         <Target className="w-3 h-3" />
                         <span>Set Quota</span>
                       </button>
+
+                      {emp.role === "SUB_ADMIN" && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPermEmpId(emp.user?.id || emp.userId || emp.id);
+                            setPermEmpName(emp.name);
+                            loadEmpPermissions(emp.user?.id || emp.userId || emp.id);
+                            setIsPermOpen(true);
+                          }}
+                          className="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 font-bold text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
+                          title="Configure Sidebar Access for this Sub-Admin"
+                        >
+                          <ShieldCheck className="w-3 h-3 text-indigo-600" />
+                          <span>Sidebar Access</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={(e) => {
@@ -1145,6 +1218,79 @@ export default function EmployeesPage() {
             </select>
           </div>
 
+          {/* SUB-ADMIN SIDEBAR ACCESS & PERMISSIONS (Visible when Sub Admin role is selected) */}
+          {role === "SUB_ADMIN" && (
+            <div className="p-4 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-indigo-200/70 dark:border-indigo-800/70 pb-2">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <span className="font-extrabold text-indigo-950 dark:text-indigo-200 text-xs uppercase tracking-wide">
+                    Sidebar Access &amp; Permissions
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold">
+                    {subAdminPermissions.length}/{ALL_SIDEBAR_ITEMS.length} Options
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setSubAdminPermissions(ALL_SIDEBAR_ITEMS.map((i) => i.href))}
+                    className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-slate-300">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setSubAdminPermissions([])}
+                    className="text-slate-500 font-bold hover:underline cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                Choose which sidebar tools, sheets, KPIs, and modules this Sub-Admin can access:
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
+                {ALL_SIDEBAR_ITEMS.map((item) => {
+                  const isChecked = subAdminPermissions.includes(item.href);
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      onClick={() => {
+                        if (isChecked) {
+                          setSubAdminPermissions(subAdminPermissions.filter((h) => h !== item.href));
+                        } else {
+                          setSubAdminPermissions([...subAdminPermissions, item.href]);
+                        }
+                      }}
+                      className={`p-2 rounded-xl text-left border text-[11px] font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                        isChecked
+                          ? "bg-white dark:bg-slate-900 border-indigo-500 text-indigo-950 dark:text-indigo-200 shadow-xs ring-1 ring-indigo-500/20"
+                          : "bg-slate-100/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      <span
+                        className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[9px] shrink-0 font-black ${
+                          isChecked
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                        }`}
+                      >
+                        {isChecked && "✓"}
+                      </span>
+                      <span className="truncate">{item.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* DAILY TARGET QUOTA SETTINGS */}
           <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-3">
             <div className="flex items-center gap-2">
@@ -1452,6 +1598,92 @@ export default function EmployeesPage() {
             className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
           >
             Save Work Output
+          </button>
+        </form>
+      </BottomSheet>
+
+      {/* ============================================================== */}
+      {/* MODAL 4: MANAGE SUB-ADMIN SIDEBAR PERMISSIONS                  */}
+      {/* ============================================================== */}
+      <BottomSheet
+        isOpen={isPermOpen}
+        onClose={() => setIsPermOpen(false)}
+        title="Sub-Admin Sidebar Access & Permissions"
+        subtitle={`Configure which modules & tools ${permEmpName} can access in the sidebar`}
+      >
+        <form onSubmit={handleSaveEmpPermissions} className="space-y-4 text-xs">
+          <div className="p-3.5 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 flex items-center justify-between">
+            <div>
+              <span className="font-extrabold text-indigo-950 dark:text-indigo-200 text-xs">
+                Active Permissions ({editSubAdminPerms.length} of {ALL_SIDEBAR_ITEMS.length} granted)
+              </span>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Sub-Admin will only see checked items in their desktop sidebar &amp; mobile navigation.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-[10px]">
+              <button
+                type="button"
+                onClick={() => setEditSubAdminPerms(ALL_SIDEBAR_ITEMS.map((i) => i.href))}
+                className="text-indigo-600 dark:text-indigo-400 font-bold hover:underline cursor-pointer"
+              >
+                Select All
+              </button>
+              <span className="text-slate-300">|</span>
+              <button
+                type="button"
+                onClick={() => setEditSubAdminPerms([])}
+                className="text-slate-500 font-bold hover:underline cursor-pointer"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[50vh] overflow-y-auto pr-1">
+            {ALL_SIDEBAR_ITEMS.map((item) => {
+              const isChecked = editSubAdminPerms.includes(item.href);
+              return (
+                <button
+                  key={item.href}
+                  type="button"
+                  onClick={() => {
+                    if (isChecked) {
+                      setEditSubAdminPerms(editSubAdminPerms.filter((h) => h !== item.href));
+                    } else {
+                      setEditSubAdminPerms([...editSubAdminPerms, item.href]);
+                    }
+                  }}
+                  className={`p-2.5 rounded-xl text-left border text-[11px] font-bold flex items-center gap-2 transition-all cursor-pointer ${
+                    isChecked
+                      ? "bg-white dark:bg-slate-900 border-indigo-500 text-indigo-950 dark:text-indigo-200 shadow-xs ring-1 ring-indigo-500/20"
+                      : "bg-slate-100/60 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-500 opacity-70 hover:opacity-100"
+                  }`}
+                >
+                  <span
+                    className={`w-4 h-4 rounded-md flex items-center justify-center border text-[9px] shrink-0 font-black ${
+                      isChecked
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                    }`}
+                  >
+                    {isChecked && "✓"}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="truncate">{item.title}</div>
+                    <div className="text-[9px] font-mono text-slate-400 truncate">{item.category}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="submit"
+            disabled={savingPerms}
+            className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50"
+          >
+            {savingPerms ? "Saving Permissions..." : `Save Permissions for ${permEmpName}`}
           </button>
         </form>
       </BottomSheet>

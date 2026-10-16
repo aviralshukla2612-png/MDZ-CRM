@@ -26,6 +26,7 @@ import {
   Cloud,
   Bell,
   Notebook,
+  TableProperties,
 } from "lucide-react";
 
 import { useBranding } from "@/components/providers/BrandingProvider";
@@ -48,12 +49,56 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
   const pathname = usePathname();
   const { branding, themeStyle } = useBranding();
 
+  const [subAdminAllowedHrefs, setSubAdminAllowedHrefs] = React.useState<string[] | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("mdz_subadmin_allowed_hrefs");
+        return cached ? JSON.parse(cached) : null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
+
+  React.useEffect(() => {
+    if ((role as string) === "SUB_ADMIN") {
+      const fetchPermissions = async () => {
+        try {
+          const res = await fetch("/mdz-crm/api/admin/subadmin-permissions");
+          const json = await res.json();
+          if (json.success && Array.isArray(json.allowedHrefs)) {
+            setSubAdminAllowedHrefs(json.allowedHrefs);
+            if (typeof window !== "undefined") {
+              localStorage.setItem("mdz_subadmin_allowed_hrefs", JSON.stringify(json.allowedHrefs));
+            }
+          }
+        } catch (e) {
+          console.error("Failed to load subadmin permissions", e);
+        }
+      };
+
+      fetchPermissions();
+
+      const handleUpdate = () => {
+        fetchPermissions();
+      };
+
+      window.addEventListener("mdz_subadmin_permissions_updated", handleUpdate);
+      return () => {
+        window.removeEventListener("mdz_subadmin_permissions_updated", handleUpdate);
+      };
+    }
+  }, [role]);
+
   const getNavItems = (): NavItem[] => {
     switch (role as string) {
       case "ADMIN":
       case "OWNER":
         return [
           { title: "Overview", href: "/owner", icon: <LayoutDashboard className="w-4 h-4" /> },
+          { title: "Monthly Delivery Sheet", href: "/client/delivery", icon: <TableProperties className="w-4 h-4 text-emerald-500" />, badge: "OS", badgeColor: "bg-emerald-500 text-white" },
+          { title: "KPI Growth Tracker", href: "/client/kpi-tracker", icon: <Target className="w-4 h-4 text-purple-500" />, badge: "GROWTH", badgeColor: "bg-purple-600 text-white" },
           { title: "Sales & Leads", href: "/leads", icon: <Target className="w-4 h-4" /> },
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
@@ -77,9 +122,11 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];
 
-      case "SUB_ADMIN":
-        return [
+      case "SUB_ADMIN": {
+        const subAdminAllItems: NavItem[] = [
           { title: "Overview", href: "/owner", icon: <LayoutDashboard className="w-4 h-4" /> },
+          { title: "Monthly Delivery Sheet", href: "/client/delivery", icon: <TableProperties className="w-4 h-4 text-emerald-500" />, badge: "OS", badgeColor: "bg-emerald-500 text-white" },
+          { title: "KPI Growth Tracker", href: "/client/kpi-tracker", icon: <Target className="w-4 h-4 text-purple-500" />, badge: "GROWTH", badgeColor: "bg-purple-600 text-white" },
           { title: "Sales & Leads", href: "/leads", icon: <Target className="w-4 h-4" /> },
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Clients", href: "/clients", icon: <Users className="w-4 h-4" /> },
@@ -96,10 +143,17 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Company Holidays", href: "/attendance/holidays", icon: <Calendar className="w-4 h-4" /> },
           { title: "Punch Out Requests", href: "/attendance-requests", icon: <Clock className="w-4 h-4" /> },
           { title: "Leave Applications", href: "/leave-requests", icon: <UserCheck className="w-4 h-4" /> },
+          { title: "Finance", href: "/finance", icon: <IndianRupee className="w-4 h-4" /> },
           { title: "Activity", href: "/audit", icon: <ShieldAlert className="w-4 h-4" /> },
           { title: "Terms Management", href: "/settings/terms", icon: <BookOpen className="w-4 h-4" /> },
           { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
         ];
+
+        if (subAdminAllowedHrefs && Array.isArray(subAdminAllowedHrefs)) {
+          return subAdminAllItems.filter((item) => subAdminAllowedHrefs.includes(item.href));
+        }
+        return subAdminAllItems;
+      }
 
       case "SALES":
         return [
@@ -137,6 +191,16 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
       case "CLIENT":
         return [
           { title: "Project Overview", href: "/client", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Monthly Delivery Sheet", href: "/client/delivery", icon: <TableProperties className="w-4 h-4 text-emerald-500" />, badge: "CONTROL", badgeColor: "bg-emerald-500 text-white" },
+          { title: "KPI & Growth Tracker", href: "/client/kpi-tracker", icon: <Target className="w-4 h-4" /> },
+          { title: "Campaign Planner", href: "/client/campaigns", icon: <Calendar className="w-4 h-4" /> },
+          { title: "Content Pillars", href: "/client/content-pillars", icon: <FolderKanban className="w-4 h-4" /> },
+          { title: "Competitor Analysis", href: "/client/competitors", icon: <ShieldAlert className="w-4 h-4" /> },
+          { title: "Brand Voice & Identity", href: "/client/brand-voice", icon: <Sparkles className="w-4 h-4" /> },
+          { title: "Onboarding & Access", href: "/client/onboarding", icon: <UserCheck className="w-4 h-4" /> },
+          { title: "Strategic Brief", href: "/client/brief", icon: <FileText className="w-4 h-4" /> },
+          { title: "Scope SLA & Sign-Off", href: "/client/scope", icon: <BookOpen className="w-4 h-4" /> },
+          { title: "Meeting Notes", href: "/client/meetings", icon: <Notebook className="w-4 h-4" /> },
           { title: "Change Requests (3 Max)", href: "/client/revisions", icon: <GitPullRequest className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/client/updates", icon: <Clock className="w-4 h-4" /> },
           { title: "Notifications", href: "/notifications", icon: <Bell className="w-4 h-4" /> },

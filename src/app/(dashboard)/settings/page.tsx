@@ -32,6 +32,7 @@ import {
   User,
 } from "lucide-react";
 import { useBranding, THEME_PALETTES } from "@/components/providers/BrandingProvider";
+import { SubAdminPermissionsManager } from "@/components/admin/SubAdminPermissionsManager";
 
 // ─── Inline Input Component ───────────────────────────────────────────────────
 function Field({
@@ -801,6 +802,11 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Sub-Admin Role & Granular Sidebar Access Control ──────────────────── */}
+      {(session?.user?.role === "OWNER" || session?.user?.role === "ADMIN") && (
+        <SubAdminPermissionsManager />
+      )}
 
       {/* ── White-Label Branding, Logo & Theme Customization ────────────────────── */}
       {(session?.user?.role === "OWNER" || session?.user?.role === "ADMIN" || session?.user?.role === "SUB_ADMIN") && (
