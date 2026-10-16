@@ -272,7 +272,9 @@ export function EmployeeProjectKanban({
       const json = await res.json();
       if (json.success) {
         if (nextStatus === "COMPLETED" || nextStatus === "DONE") {
-          showToast("✓ Task completed & moved to Calendar view!", "success");
+          showToast("✓ Task completed!", "success");
+        } else if (nextStatus === "IN_PROGRESS" || nextStatus === "TODO") {
+          showToast("✓ Task marked active", "success");
         } else {
           showToast(`✓ Task updated to ${nextStatus}`, "success");
         }
@@ -310,6 +312,7 @@ export function EmployeeProjectKanban({
   const [editingTask, setEditingTask] = useState<any | null>(null);
   const [editingTaskProjectId, setEditingTaskProjectId] = useState<string>("");
   const [editingTaskTeamMembers, setEditingTaskTeamMembers] = useState<any[]>([]);
+  const [expandedTasksProjects, setExpandedTasksProjects] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     fetch("/mdz-crm/api/project-roles")
@@ -1528,41 +1531,108 @@ export function EmployeeProjectKanban({
                             </div>
                           </div>
 
-                          {/* Active / Completed Tasks (clean compact representation) */}
+                          {/* All Project Tasks (Active & Past / Completed) */}
                           {(() => {
                             const currentEmpId = (session?.user as any)?.employeeId;
+                            const currentUserId = (session?.user as any)?.id;
                             const currentEmpName = session?.user?.name;
-                            const cardTasks = isEmployee
-                              ? (proj.tasks || []).filter((tsk: any) => {
-                                  return (
-                                    (currentEmpId && (tsk.assignedToId === currentEmpId || tsk.assignedTo?.id === currentEmpId)) ||
-                                    (currentEmpName && (tsk.assignee === currentEmpName || tsk.assignedTo?.name === currentEmpName))
-                                  );
-                                })
-                              : (proj.tasks || []);
+
+                            // Filter tasks based on context
+                            const cardTasks = (() => {
+                              const rawTasks = proj.tasks || [];
+                              if (selectedEmployee) {
+                                const filtered = rawTasks.filter((tsk: any) => {
+                                  const matchUser = selectedEmployee.userId && (tsk.assignedToId === selectedEmployee.userId || tsk.assignedTo?.id === selectedEmployee.userId);
+                                  const matchEmp = selectedEmployee.id && (tsk.assignedToId === selectedEmployee.id || tsk.assignedTo?.id === selectedEmployee.id || (tsk.assignedTo as any)?.employeeId === selectedEmployee.id);
+                                  const matchCode = selectedEmployee.employeeId && (tsk.assignedToId === selectedEmployee.employeeId || (tsk.assignedTo as any)?.employeeIdCode === selectedEmployee.employeeId);
+                                  const matchName = selectedEmployee.name && (tsk.assignee?.toLowerCase().trim() === selectedEmployee.name.toLowerCase().trim() || tsk.assignedTo?.name?.toLowerCase().trim() === selectedEmployee.name.toLowerCase().trim());
+                                  return matchUser || matchEmp || matchCode || matchName;
+                                });
+                                return filtered.length > 0 ? filtered : rawTasks;
+                              }
+                              if (isEmployee) {
+                                const myTasks = rawTasks.filter((tsk: any) => {
+                                  const matchUser = currentUserId && (tsk.assignedToId === currentUserId || tsk.assignedTo?.id === currentUserId);
+                                  const matchEmp = currentEmpId && (tsk.assignedToId === currentEmpId || tsk.assignedTo?.id === currentEmpId || (tsk.assignedTo as any)?.employeeId === currentEmpId);
+                                  const matchName = currentEmpName && (tsk.assignee?.toLowerCase().trim() === currentEmpName.toLowerCase().trim() || tsk.assignedTo?.name?.toLowerCase().trim() === currentEmpName.toLowerCase().trim());
+                                  return matchUser || matchEmp || matchName;
+                                });
+                                return myTasks.length > 0 ? myTasks : rawTasks;
+                              }
+                              return rawTasks;
+                            })();
 
                             if (cardTasks.length === 0) return null;
 
-                            const activeCardTasks = cardTasks.filter(
-                              (tsk: any) => tsk.status !== "COMPLETED" && tsk.status !== "DONE"
-                            );
-                            const completedTasksCount = cardTasks.filter(
-                              (tsk: any) => tsk.status === "COMPLETED" || tsk.status === "DONE"
-                            ).length;
+                            const isTaskDone = (s: string) =>
+                              ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON"].includes(String(s || "").trim().toUpperCase());
+
+                            // Sort tasks: Active tasks first, completed/past tasks after
+                            const sortedTasks = [...cardTasks].sort((a: any, b: any) => {
+                              const aDone = isTaskDone(a.status);
+                              const bDone = isTaskDone(b.status);
+                              if (aDone === bDone) return 0;
+                              return aDone ? 1 : -1;
+                            });
+
+                            const isExpanded = !!expandedTasksProjects[proj.id];
+                            const visibleTasksSlice = isExpanded ? sortedTasks : sortedTasks.slice(0, 3);
+                            const completedCount = cardTasks.filter((t: any) => isTaskDone(t.status)).length;
 
                             return (
                               <div className="space-y-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
-                                {activeCardTasks.length > 0 && (
-                                  <div className="space-y-1">
-                                    {activeCardTasks.slice(0, 2).map((tsk: any) => (
+                                <div className="space-y-1">
+                                  {visibleTasksSlice.map((tsk: any) => {
+                                    const done = isTaskDone(tsk.status);
+                                    return (
                                       <div
                                         key={tsk.id}
-                                        className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between gap-1.5 text-xs group/task"
+                                        className={`p-1.5 rounded-lg border flex items-center justify-between gap-1.5 text-xs group/task transition-all ${
+                                          done
+                                            ? "bg-slate-50/70 dark:bg-slate-900/40 border-slate-100 dark:border-slate-800/60 opacity-80"
+                                            : tsk.isMostImportant
+                                            ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/60"
+                                            : "bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800"
+                                        }`}
                                       >
-                                        <span className="truncate font-medium text-slate-800 dark:text-slate-200 text-[11px] flex-1">
-                                          {tsk.title}
-                                        </span>
+                                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleUpdateTaskFromKanban(
+                                                proj.id,
+                                                tsk.id,
+                                                done ? "IN_PROGRESS" : "COMPLETED"
+                                              );
+                                            }}
+                                            className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                                              done
+                                                ? "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                                                : "text-slate-300 dark:text-slate-600 hover:text-emerald-600"
+                                            }`}
+                                            title={done ? "Completed past task. Click to mark In Progress" : "Click to mark as Completed"}
+                                          >
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                          </button>
+                                          <span
+                                            className={`truncate font-medium text-[11px] flex-1 ${
+                                              done
+                                                ? "line-through text-slate-400 dark:text-slate-500 font-normal"
+                                                : "text-slate-800 dark:text-slate-200"
+                                            }`}
+                                            title={`${tsk.title}${done ? " (Completed)" : ""}`}
+                                          >
+                                            {tsk.title}
+                                          </span>
+                                        </div>
+
                                         <div className="flex items-center gap-1 shrink-0">
+                                          {tsk.isMostImportant && !done && (
+                                            <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                                              ⭐
+                                            </span>
+                                          )}
                                           <button
                                             type="button"
                                             onClick={(e) => {
@@ -1588,46 +1658,29 @@ export function EmployeeProjectKanban({
                                           >
                                             <Edit3 className="w-3 h-3" />
                                           </button>
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleUpdateTaskFromKanban(proj.id, tsk.id, "COMPLETED");
-                                            }}
-                                            className="p-1 rounded hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 transition-colors shrink-0 cursor-pointer"
-                                            title="Complete task"
-                                          >
-                                            <CheckCircle2 className="w-3 h-3" />
-                                          </button>
                                         </div>
                                       </div>
-                                    ))}
-                                    {activeCardTasks.length > 2 && (
-                                      <div className="text-[10px] text-slate-400 font-medium text-right pr-0.5">
-                                        +{activeCardTasks.length - 2} more tasks
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                    );
+                                  })}
+                                </div>
 
-                                {completedTasksCount > 0 && (
-                                  <div className="flex items-center justify-between text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-800/40 px-2 py-0.5 rounded-md">
-                                    <span className="flex items-center gap-1">
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                      <span>{completedTasksCount} task{completedTasksCount > 1 ? "s" : ""} done</span>
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setViewMode("calendar");
-                                      }}
-                                      className="underline hover:text-emerald-900 dark:hover:text-emerald-200 font-bold flex items-center gap-0.5 cursor-pointer"
-                                    >
-                                      <span>Calendar</span>
-                                      <ArrowRight className="w-2.5 h-2.5" />
-                                    </button>
-                                  </div>
+                                {/* Expand / Collapse toggle if more than 3 tasks */}
+                                {sortedTasks.length > 3 && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExpandedTasksProjects((prev) => ({
+                                        ...prev,
+                                        [proj.id]: !prev[proj.id],
+                                      }));
+                                    }}
+                                    className="w-full text-right pr-0.5 text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer block"
+                                  >
+                                    {isExpanded
+                                      ? "▲ Show less"
+                                      : `+${sortedTasks.length - 3} more tasks (Show all)`}
+                                  </button>
                                 )}
                               </div>
                             );

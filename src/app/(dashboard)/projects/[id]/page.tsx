@@ -657,6 +657,7 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
 
   const isEmployee = userRole === "EMPLOYEE";
   const isAdminOrOwner = isAdminOrSubAdmin || userRole === "SALES";
+  const currentUserId = (session?.user as any)?.id;
   const currentEmpId =
     (session?.user as any)?.employeeId ||
     project.memberships?.find(
@@ -669,10 +670,10 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
   const visibleTasks = (project.tasks || []).filter((tsk: any) => {
     if (tsk.status === "ARCHIVED") return false;
     if (!isEmployee) return true;
-    return (
-      (currentEmpId && (tsk.assignedToId === currentEmpId || tsk.assignedTo?.id === currentEmpId)) ||
-      (currentEmpName && (tsk.assignee === currentEmpName || tsk.assignedTo?.name === currentEmpName))
-    );
+    const matchUser = currentUserId && (tsk.assignedToId === currentUserId || tsk.assignedTo?.id === currentUserId);
+    const matchEmp = currentEmpId && (tsk.assignedToId === currentEmpId || tsk.assignedTo?.id === currentEmpId || (tsk.assignedTo as any)?.employeeId === currentEmpId);
+    const matchName = currentEmpName && (tsk.assignee?.toLowerCase().trim() === currentEmpName.toLowerCase().trim() || tsk.assignedTo?.name?.toLowerCase().trim() === currentEmpName.toLowerCase().trim());
+    return matchUser || matchEmp || matchName;
   });
 
   const allTabs = [

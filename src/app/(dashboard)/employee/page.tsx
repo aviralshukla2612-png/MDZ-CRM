@@ -141,16 +141,17 @@ export default function EmployeeDeskPage() {
 
   // Derived Task Metrics across all assigned projects - strictly filtered to tasks assigned to this employee
   const currentEmpId = (session?.user as any)?.employeeId;
+  const currentUserId = (session?.user as any)?.id;
   const currentEmpName = session?.user?.name;
 
   const allTasks = projects.flatMap((p) =>
     (p.tasks || [])
       .filter((t: any) => {
-        if (!currentEmpId && !currentEmpName) return true;
-        return (
-          (currentEmpId && (t.assignedToId === currentEmpId || t.assignedTo?.id === currentEmpId)) ||
-          (currentEmpName && (t.assignee === currentEmpName || t.assignedTo?.name === currentEmpName))
-        );
+        if (!currentEmpId && !currentUserId && !currentEmpName) return true;
+        const matchUser = currentUserId && (t.assignedToId === currentUserId || t.assignedTo?.id === currentUserId);
+        const matchEmp = currentEmpId && (t.assignedToId === currentEmpId || t.assignedTo?.id === currentEmpId || (t.assignedTo as any)?.employeeId === currentEmpId);
+        const matchName = currentEmpName && (t.assignee?.toLowerCase().trim() === currentEmpName.toLowerCase().trim() || t.assignedTo?.name?.toLowerCase().trim() === currentEmpName.toLowerCase().trim());
+        return matchUser || matchEmp || matchName;
       })
       .map((t: any) => ({ ...t, projectId: p.id, projectName: p.name }))
   );
