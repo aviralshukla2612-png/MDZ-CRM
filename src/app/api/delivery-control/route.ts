@@ -73,16 +73,14 @@ export async function GET(req: Request) {
     const clientCtx = await getClientAccountForUser(authRes.email);
     const isClientUser = authRes.activeRole === "CLIENT" || Boolean(clientCtx);
 
-    // Filter if specific clientId requested or if client user is logged in
-    const effectiveClientId = isClientUser && clientCtx ? clientCtx.client.id : filterClientId;
-
-    if (effectiveClientId && effectiveClientId !== "" && effectiveClientId !== "ALL" && effectiveClientId !== "undefined") {
+    // If client user is logged in, restrict to their client row
+    if (isClientUser && clientCtx) {
       clientRows = clientRows.filter(
-        (r) => r.id === effectiveClientId || r.clientCode === effectiveClientId || (clientCtx && r.clientName.toLowerCase() === clientCtx.client.companyName.toLowerCase())
+        (r) => r.id === clientCtx.client.id || r.clientCode === clientCtx.client.id || r.clientName.toLowerCase() === clientCtx.client.companyName.toLowerCase()
       );
 
       // If client user doesn't have an entry yet in clientRows, create one immediately
-      if (clientRows.length === 0 && clientCtx) {
+      if (clientRows.length === 0) {
         const code = getCode(clientCtx.client.companyName, clientCtx.client.clientNumber);
         clientRows = [{
           id: clientCtx.client.id,
@@ -100,6 +98,9 @@ export async function GET(req: Request) {
         }];
       }
     }
+
+    // Effective clientId for filtering deliverables & log
+    const effectiveClientId = isClientUser && clientCtx ? clientCtx.client.id : filterClientId;
 
     // Recalculate pending, completionPct, and master totals
     let masterPlanned = 0;
@@ -144,6 +145,7 @@ export async function GET(req: Request) {
         completionPct,
         missingLinks,
         unassigned,
+        isSelected: Boolean(effectiveClientId && (r.id === effectiveClientId || r.clientCode === effectiveClientId)),
       };
     });
 

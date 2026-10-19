@@ -19,7 +19,12 @@ export default function DeliveryControlPage() {
   const getClientId = () => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      return params.get("clientId") || localStorage.getItem("mdz_active_client_id") || "";
+      const queryCid = params.get("clientId");
+      if (queryCid) return queryCid;
+      if (!isAdmin) {
+        return localStorage.getItem("mdz_active_client_id") || "";
+      }
+      return "";
     }
     return "";
   };
@@ -80,8 +85,8 @@ export default function DeliveryControlPage() {
       {/* Main Google Sheets Style Monthly Delivery Control */}
       <MillionaireDeliverySpreadsheet
         initialData={data}
-        clientId={clientInfo?.id}
-        clientName={clientInfo?.companyName || "My Brand Account"}
+        clientId={getClientId()}
+        clientName={getClientId() ? (clientInfo?.companyName || "Client Account") : "Agency Master Sheet"}
         isAdmin={isAdmin}
         onSave={handleSave}
       />

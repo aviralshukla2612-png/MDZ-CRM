@@ -142,7 +142,7 @@ export function ClientPortalNav({ currentTab, className = "" }: Props) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data)) {
             setClients(json.data);
-            if (!activeClientId && json.data.length > 0) {
+            if (!activeClientId && json.data.length > 0 && pathname !== "/client/delivery") {
               const firstId = json.data[0].id;
               setActiveClientId(firstId);
               if (typeof window !== "undefined") {
@@ -156,14 +156,19 @@ export function ClientPortalNav({ currentTab, className = "" }: Props) {
       }
       fetchClients();
     }
-  }, [isAdminOrStaff, activeClientId]);
+  }, [isAdminOrStaff, activeClientId, pathname]);
 
   const handleClientChange = (newId: string) => {
     setActiveClientId(newId);
     if (typeof window !== "undefined") {
-      localStorage.setItem("mdz_active_client_id", newId);
       const url = new URL(window.location.href);
-      url.searchParams.set("clientId", newId);
+      if (newId) {
+        localStorage.setItem("mdz_active_client_id", newId);
+        url.searchParams.set("clientId", newId);
+      } else {
+        localStorage.removeItem("mdz_active_client_id");
+        url.searchParams.delete("clientId");
+      }
       router.push(url.pathname + url.search);
     }
   };
@@ -194,14 +199,12 @@ export function ClientPortalNav({ currentTab, className = "" }: Props) {
                 onChange={(e) => handleClientChange(e.target.value)}
                 className="bg-white dark:bg-stone-950 border border-slate-300 dark:border-stone-700 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-900 dark:text-stone-100 outline-none focus:border-indigo-500 shadow-2xs pr-7 cursor-pointer"
               >
+                <option value="">🌐 Master Agency (All Clients)</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.companyName}
                   </option>
                 ))}
-                {clients.length === 0 && (
-                  <option value="default-client">MDZ Enterprise Client</option>
-                )}
               </select>
               <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-2 pointer-events-none" />
             </div>
