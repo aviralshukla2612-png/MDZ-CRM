@@ -46,29 +46,7 @@ export async function GET(req: Request) {
       return name.slice(0, 3).toUpperCase();
     };
 
-    // Add any CRM clients that don't exist yet in clientRows
-    for (const c of dbClients) {
-      const code = getCode(c.companyName, c.clientNumber);
-      const exists = clientRows.some(
-        (r) => r.id === c.id || r.clientCode.toUpperCase() === code.toUpperCase()
-      );
-      if (!exists) {
-        clientRows.push({
-          id: c.id,
-          clientCode: code,
-          clientName: c.companyName,
-          target: 30,
-          done: 0,
-          pending: 30,
-          inProgress: 0,
-          onHold: 0,
-          overdue: 0,
-          completionPct: 0,
-          missingLinks: 0,
-          unassigned: 30,
-        });
-      }
-    }
+
 
     // Check if authenticated user is a CLIENT
     const clientCtx = await getClientAccountForUser(authRes.email);
