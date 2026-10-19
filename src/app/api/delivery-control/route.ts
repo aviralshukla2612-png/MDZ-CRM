@@ -6,6 +6,7 @@ import {
   getDeliveryMasterData,
   saveDeliveryMasterData,
   ClientDeliveryStatus,
+  DEFAULT_GOOGLE_SHEET_URL,
 } from "@/lib/deliveryMasterStore";
 import { getClientAccountForUser } from "@/lib/client-auth";
 
@@ -189,13 +190,13 @@ export async function GET(req: Request) {
       }
     }
 
-    // Reference targets & team summary
+    // Reference targets & team summary (matching live Google Sheet October 2026 plan: sum = 292)
     const clientTargets = [
-      { type: "Viral Reels / Short Videos", target: 30, completed: 21, inProgress: 6, remaining: 3, deadline: "Mon, Wed, Fri" },
-      { type: "High-Engagement Carousels", target: 15, completed: 10, inProgress: 4, remaining: 1, deadline: "Tues & Sat" },
-      { type: "Brand Identity Statics & Quotes", target: 15, completed: 11, inProgress: 3, remaining: 1, deadline: "Thursdays" },
-      { type: "Interactive Daily Stories", target: 60, completed: 42, inProgress: 12, remaining: 6, deadline: "Daily (2-3/day)" },
-      { type: "Performance Ad Creatives (Meta & Google)", target: 8, completed: 5, inProgress: 2, remaining: 1, deadline: "Bi-Monthly Refresh" },
+      { type: "Reel", target: 119, completed: masterCompleted > 0 ? Math.min(119, Math.round(masterCompleted * 0.5)) : 0, inProgress: 0, remaining: 119, deadline: "Mon, Wed, Fri" },
+      { type: "Carousel", target: 28, completed: masterCompleted > 0 ? Math.min(28, Math.round(masterCompleted * 0.15)) : 0, inProgress: 0, remaining: 28, deadline: "Tues & Sat" },
+      { type: "Post", target: 32, completed: masterCompleted > 0 ? Math.min(32, Math.round(masterCompleted * 0.15)) : 0, inProgress: 0, remaining: 32, deadline: "Thursdays" },
+      { type: "C/P Unsplit", target: 38, completed: 0, inProgress: 0, remaining: 38, deadline: "Weekly Balance" },
+      { type: "Story", target: 75, completed: masterCompleted > 0 ? Math.min(75, Math.round(masterCompleted * 0.2)) : 0, inProgress: 0, remaining: 75, deadline: "Daily" },
     ];
 
     // Fetch all real company employees from database
@@ -247,8 +248,8 @@ export async function GET(req: Request) {
       { id: "ew-2", date: "2026-10-13", request: "Rush PR Launch Video 30s", requestedBy: "Founder", status: "Delivered", billable: "Complimentary" },
     ];
 
-    // Determine Google Drive link: use client's configured drive folder if available
-    let clientDriveFolder: string = masterData.driveUrl || "https://drive.google.com";
+    // Determine Google Drive link: use client's configured drive folder or the agency Google Sheet
+    let clientDriveFolder: string = masterData.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
     if (isClientUser && clientCtx) {
       const clientStore = getClientPortalData(clientCtx.client.id, clientCtx.client.companyName);
       if (clientStore?.onboarding?.brandAssets?.rawFootageDriveUrl) {
@@ -446,8 +447,99 @@ export async function POST(req: Request) {
     // 5. Update Master Drive Folder or Sheet URL
     if (action === "UPDATE_DRIVE_URL") {
       const { driveUrl } = body;
-      saveDeliveryMasterData({ driveUrl: driveUrl || "https://drive.google.com" });
+      saveDeliveryMasterData({ driveUrl: driveUrl || DEFAULT_GOOGLE_SHEET_URL });
       return NextResponse.json({ success: true, message: "Google Drive URL updated successfully" });
+    }
+
+    // 6. Live 1-Click Sync from Google Spreadsheet
+    if (action === "SYNC_FROM_GOOGLE_SHEET") {
+      try {
+        const master = getDeliveryMasterData();
+        const sheetUrl = master.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
+
+        // Extract Google Sheet ID
+        const match = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+        const sheetId = match ? match[1] : "1j3wK1YdRaqG9Xi3P4ynXdrV1RrlTw86C";
+
+        // Fetch Dashboard CSV (gid=1693502346)
+        const csvRes = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1693502346`, {
+          cache: "no-store",
+        });
+
+        if (!csvRes.ok) {
+          return NextResponse.json(
+            { success: false, error: "Unable to download Google Sheet CSV. Please make sure link sharing is turned on ('Anyone with link can view')." },
+            { status: 400 }
+          );
+        }
+
+        const csvText = await csvRes.text();
+        const lines = csvText.split(/\r?\n/);
+
+        let inClientTable = false;
+        const newClientRows: ClientDeliveryStatus[] = [];
+
+        for (const line of lines) {
+          const parts = line.split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
+          const firstCol = parts[0]?.toUpperCase() || "";
+
+          if (firstCol === "CLIENT" && parts[1]?.toUpperCase() === "TARGET") {
+            inClientTable = true;
+            continue;
+          }
+
+          if (inClientTable) {
+            // Stop when reaching empty row or content-type breakdown
+            if (!parts[0] || parts[0].includes("CONTENT-TYPE") || parts[0].includes("ACTION ITEMS")) {
+              break;
+            }
+
+            const clientCodeRaw = parts[0].replace(/\s*\[\?\]/g, "").trim();
+            const target = parseInt(parts[1]) || 0;
+            const done = parseInt(parts[2]) || 0;
+            const pending = parseInt(parts[3]) || Math.max(0, target - done);
+            const inProgress = parseInt(parts[4]) || 0;
+            const onHold = parseInt(parts[5]) || 0;
+            const overdue = parseInt(parts[6]) || 0;
+            const completionPct = target > 0 ? Math.round((done / target) * 100) : 0;
+            const missingLinks = parseInt(parts[8]) || 0;
+            const unassigned = parseInt(parts[9]) || 0;
+
+            const existingRow = master.clientStatusList.find(
+              (r) => r.clientCode.toUpperCase() === clientCodeRaw.toUpperCase()
+            );
+
+            newClientRows.push({
+              id: existingRow?.id || `cl-${clientCodeRaw.toLowerCase()}`,
+              clientCode: clientCodeRaw.toUpperCase(),
+              clientName: existingRow?.clientName || clientCodeRaw,
+              target,
+              done,
+              pending,
+              inProgress,
+              onHold,
+              overdue,
+              completionPct,
+              missingLinks,
+              unassigned,
+            });
+          }
+        }
+
+        if (newClientRows.length > 0) {
+          saveDeliveryMasterData({ clientStatusList: newClientRows });
+          return NextResponse.json({
+            success: true,
+            message: `✓ Synchronized ${newClientRows.length} clients directly from live Google Sheet!`,
+            clientCount: newClientRows.length,
+          });
+        } else {
+          return NextResponse.json({ success: false, error: "Could not locate client table in Google Sheet" }, { status: 400 });
+        }
+      } catch (err: any) {
+        console.error("Error syncing Google Sheet:", err);
+        return NextResponse.json({ success: false, error: err?.message || "Error syncing from Google Sheet" }, { status: 500 });
+      }
     }
 
     // Production log deliverable actions

@@ -24,6 +24,8 @@ import {
   Check,
   Save,
   Share2,
+  FileSpreadsheet,
+  CloudDownload,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -145,6 +147,10 @@ export function MillionaireDeliverySpreadsheet({
   const [newClient, setNewClient] = useState({ clientCode: "", clientName: "", target: 30 });
   const [showDriveModal, setShowDriveModal] = useState(false);
   const [driveModalUrl, setDriveModalUrl] = useState("");
+  const [syncingSheet, setSyncingSheet] = useState(false);
+
+  const DEFAULT_GOOGLE_SHEET_URL =
+    "https://docs.google.com/spreadsheets/d/1j3wK1YdRaqG9Xi3P4ynXdrV1RrlTw86C/edit?gid=1693502346#gid=1693502346";
 
   const handleSaveDriveUrl = async () => {
     try {
@@ -153,18 +159,41 @@ export function MillionaireDeliverySpreadsheet({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "UPDATE_DRIVE_URL",
-          driveUrl: driveModalUrl.trim() || "https://drive.google.com",
+          driveUrl: driveModalUrl.trim() || DEFAULT_GOOGLE_SHEET_URL,
         }),
       });
       const json = await res.json();
       if (json.success) {
-        showToast("✓ Google Drive link saved successfully", "success");
+        showToast("✓ Google Drive / Sheet link saved successfully", "success");
         setShowDriveModal(false);
         await fetchLiveDeliveryData();
       }
     } catch (e) {
       console.error(e);
       showToast("Error saving Drive link", "error");
+    }
+  };
+
+  const handleSyncFromGoogleSheet = async () => {
+    try {
+      setSyncingSheet(true);
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "SYNC_FROM_GOOGLE_SHEET" }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message || "✓ Live Google Sheet synchronized successfully!", "success");
+        await fetchLiveDeliveryData();
+      } else {
+        showToast(json.error || "Failed to sync from Google Sheet", "error");
+      }
+    } catch (e: any) {
+      console.error(e);
+      showToast("Network error syncing with Google Sheet", "error");
+    } finally {
+      setSyncingSheet(false);
     }
   };
 
@@ -587,28 +616,40 @@ export function MillionaireDeliverySpreadsheet({
           </button>
           <div className="flex items-center shrink-0">
             <a
-              href={data?.howToUse?.driveFolder || "https://drive.google.com"}
+              href={data?.howToUse?.driveFolder || DEFAULT_GOOGLE_SHEET_URL}
               target="_blank"
               rel="noreferrer"
-              className="px-2.5 py-1.5 rounded-l-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-sans text-[11px] font-semibold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 whitespace-nowrap shadow-2xs"
+              className="px-2.5 py-1.5 rounded-l-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 font-sans text-[11px] font-bold flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-700 whitespace-nowrap shadow-2xs transition-colors"
+              title="Open Live Google Spreadsheet in Google Drive"
             >
-              <FolderOpen className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Open Drive</span>
-              <ExternalLink className="w-2.5 h-2.5 opacity-60 shrink-0" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Google Sheet</span>
+              <ExternalLink className="w-2.5 h-2.5 opacity-70 shrink-0" />
             </a>
             {isAdmin && (
               <button
                 onClick={() => {
-                  setDriveModalUrl(data?.howToUse?.driveFolder || "https://drive.google.com");
+                  setDriveModalUrl(data?.howToUse?.driveFolder || DEFAULT_GOOGLE_SHEET_URL);
                   setShowDriveModal(true);
                 }}
-                className="px-2 py-1.5 rounded-r-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-y border-r border-slate-300 dark:border-slate-700 cursor-pointer shrink-0"
+                className="px-2 py-1.5 rounded-r-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 hover:text-emerald-900 dark:hover:text-emerald-200 border-y border-r border-emerald-300 dark:border-emerald-700 cursor-pointer shrink-0 transition-colors"
                 title="Edit Google Drive / Sheet URL"
               >
-                <Edit3 className="w-3 h-3 text-slate-500 hover:text-emerald-600" />
+                <Edit3 className="w-3 h-3 text-emerald-700" />
               </button>
             )}
           </div>
+          {isAdmin && (
+            <button
+              onClick={handleSyncFromGoogleSheet}
+              disabled={syncingSheet}
+              className="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-sans text-[11px] font-bold flex items-center gap-1.5 border border-emerald-800 whitespace-nowrap shadow-2xs cursor-pointer shrink-0 disabled:opacity-50 transition-colors"
+              title="Sync latest rows and quotas directly from Google Sheet"
+            >
+              <CloudDownload className={`w-3.5 h-3.5 shrink-0 ${syncingSheet ? "animate-bounce" : ""}`} />
+              <span>{syncingSheet ? "Syncing Sheet..." : "Sync from Sheet"}</span>
+            </button>
+          )}
           <button
             onClick={handleShareLink}
             className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-sans text-[11px] font-semibold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 whitespace-nowrap shadow-2xs cursor-pointer shrink-0"
@@ -1006,7 +1047,7 @@ export function MillionaireDeliverySpreadsheet({
                       <span>View Production Log Sheet</span>
                     </button>
                     <a
-                      href={data?.howToUse?.driveFolder || "https://drive.google.com"}
+                      href={data?.howToUse?.driveFolder || DEFAULT_GOOGLE_SHEET_URL}
                       target="_blank"
                       rel="noreferrer"
                       className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700"
@@ -1148,7 +1189,7 @@ export function MillionaireDeliverySpreadsheet({
                               </td>
                               <td className="py-2 px-3 text-center">
                                 <a
-                                  href={item.finalLink || item.driveLink || data?.howToUse?.driveFolder || "https://drive.google.com"}
+                                  href={item.finalLink || item.driveLink || data?.howToUse?.driveFolder || DEFAULT_GOOGLE_SHEET_URL}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs"
