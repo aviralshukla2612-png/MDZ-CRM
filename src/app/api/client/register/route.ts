@@ -203,36 +203,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // 2. Automatically create initial Project container so client has a clean workspace
-    const projectCount = await prisma.project.count();
-    const projectNumber = `PRJ-2026-${String(projectCount + 1).padStart(3, "0")}-${Math.floor(100 + Math.random() * 900)}`;
-
-    const initialProject = await prisma.project.create({
-      data: {
-        projectNumber,
-        name: `${companyName.trim()} Brand Production & Operations`,
-        clientId: newClient.id,
-        contractValue: 0,
-        status: "PLANNING",
-        priority: "MEDIUM",
-        progressPercentage: 0,
-        targetDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        createdById: creatorId,
-      },
-    });
-
-    // 3. Create active ClientPortalToken
-    await prisma.clientPortalToken.create({
-      data: {
-        clientId: newClient.id,
-        projectId: initialProject.id,
-        token: newClient.id,
-        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-        isActive: true,
-      },
-    }).catch(() => null);
-
-    // 6. Pre-seed persistent JSON store with client's actual details
+    // 2. Pre-seed persistent JSON store with client's actual details
     try {
       const { getClientPortalData, saveClientPortalData } = await import("@/lib/clientPortalStore");
       const initialPortalData = getClientPortalData(newClient.id, newClient.companyName);
