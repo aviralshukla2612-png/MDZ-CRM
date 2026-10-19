@@ -69,7 +69,7 @@ export async function GET(req: Request) {
     }
 
     // Filter if specific clientId requested
-    if (filterClientId) {
+    if (filterClientId && filterClientId !== "" && filterClientId !== "ALL" && filterClientId !== "undefined") {
       clientRows = clientRows.filter(
         (r) => r.id === filterClientId || r.clientCode === filterClientId
       );

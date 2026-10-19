@@ -73,7 +73,7 @@ export function MillionaireDeliverySpreadsheet({
     try {
       setLoading(true);
       const effectiveId = targetId !== undefined ? targetId : (activeClientId || clientId);
-      const url = effectiveId
+      const url = effectiveId && effectiveId !== "" && effectiveId !== "ALL"
         ? `/mdz-crm/api/delivery-control?clientId=${effectiveId}`
         : `/mdz-crm/api/delivery-control`;
       const res = await fetch(url);
@@ -97,11 +97,6 @@ export function MillionaireDeliverySpreadsheet({
           const json = await res.json();
           if (json.success && Array.isArray(json.data) && json.data.length > 0) {
             setClientsList(json.data);
-            if (!activeClientId && !clientId) {
-              const firstId = json.data[0].id;
-              setActiveClientId(firstId);
-              fetchLiveDeliveryData(firstId);
-            }
           }
         } catch (e) {
           console.error("Error loading clients:", e);
@@ -115,8 +110,8 @@ export function MillionaireDeliverySpreadsheet({
     if (clientId) {
       setActiveClientId(clientId);
       fetchLiveDeliveryData(clientId);
-    } else if (!isAdmin) {
-      fetchLiveDeliveryData();
+    } else {
+      fetchLiveDeliveryData("");
     }
   }, [clientId]);
 
@@ -468,7 +463,7 @@ export function MillionaireDeliverySpreadsheet({
         </div>
 
         <div className="flex items-center gap-2">
-          {isAdmin && clientsList.length > 0 && (
+          {isAdmin && (
             <div className="flex items-center gap-1.5 mr-2">
               <span className="text-[11px] font-sans font-bold text-slate-500">Client:</span>
               <select
@@ -480,6 +475,7 @@ export function MillionaireDeliverySpreadsheet({
                 }}
                 className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-sans text-xs font-bold outline-none cursor-pointer"
               >
+                <option value="">All Clients (Master Sheet - 16 Clients)</option>
                 {clientsList.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.companyName} {c.clientCode ? `(${c.clientCode})` : ""}
