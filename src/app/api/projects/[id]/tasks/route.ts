@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/auth";
 import { verifyClientProjectAccess } from "@/lib/client-auth";
 import { recalculateProjectProgress } from "@/lib/progressEngine";
 import { sendNotificationToAdmins } from "@/lib/notifications";
+import { syncTaskCompletionToEmployeeQuota } from "@/lib/quotaSync";
 
 export async function GET(
   req: Request,
@@ -272,6 +273,17 @@ export async function POST(
 
     // Recalculate Progress Engine & Update Project Cache
     const progress = await recalculateProjectProgress(actualProjectId);
+
+    if (body.status === "COMPLETED" || body.status === "DONE") {
+      if (resolvedAssignedToId) {
+        await syncTaskCompletionToEmployeeQuota({
+          userId: resolvedAssignedToId,
+          taskTitle: body.title.trim(),
+          increment: 1,
+          loggedById: authRes.id,
+        });
+      }
+    }
 
     // If created by employee, notify Admins & Sub-Admins
     if (authRes.activeRole === "EMPLOYEE") {

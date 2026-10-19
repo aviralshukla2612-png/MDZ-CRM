@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { recalculateProjectProgress } from "@/lib/progressEngine";
+import { syncTaskCompletionToEmployeeQuota } from "@/lib/quotaSync";
 
 export async function GET(req: Request) {
   const authRes = await requireAuth();
@@ -186,6 +187,18 @@ export async function POST(req: Request) {
     });
 
     await recalculateProjectProgress(actualProjectId);
+
+    if (body.status === "COMPLETED" || body.status === "DONE") {
+      const taskAssignee = body.assignedToId || (authRes.activeRole === "EMPLOYEE" ? authRes.employeeId : null);
+      if (taskAssignee) {
+        await syncTaskCompletionToEmployeeQuota({
+          userId: taskAssignee,
+          taskTitle: title.trim(),
+          increment: 1,
+          loggedById: authRes.id,
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

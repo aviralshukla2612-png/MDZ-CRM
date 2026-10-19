@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { recalculateProjectProgress } from "@/lib/progressEngine";
 import { sendNotificationToUser } from "@/lib/notifications";
+import { syncTaskCompletionToEmployeeQuota } from "@/lib/quotaSync";
 
 export async function PATCH(
   req: Request,
@@ -228,6 +229,19 @@ export async function PATCH(
       await prisma.task.update({
         where: { id: taskId },
         data: updateData,
+      });
+    }
+
+    // Automatically sync task completion to Employee Daily Target Quota (+1 on completed, -1 on revert)
+    const wasCompleted = (existingTask.status === "COMPLETED" || existingTask.status === "DONE");
+    const isNowCompleted = (body.status === "COMPLETED" || body.status === "DONE");
+    if (body.status !== undefined && isNowCompleted !== wasCompleted) {
+      const taskAssigneeId = targetAssignedToId || existingTask.assignedToId || authRes.id;
+      await syncTaskCompletionToEmployeeQuota({
+        userId: taskAssigneeId,
+        taskTitle: body.title || existingTask.title,
+        increment: isNowCompleted ? 1 : -1,
+        loggedById: authRes.id,
       });
     }
 

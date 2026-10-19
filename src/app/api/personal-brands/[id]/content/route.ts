@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { syncTaskCompletionToEmployeeQuota } from "@/lib/quotaSync";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const authRes = await requireAuth();
@@ -138,6 +139,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       where: { id: contentId },
       data: dataToUpdate,
     });
+
+    // Auto-sync completed reel/content to employee daily quota
+    if (updates.productionStage && ["PUBLISHED", "CLIENT_APPROVED"].includes(updates.productionStage)) {
+      const assignee = updated.videoEditorId || updated.designerId || updated.scriptwriterId;
+      if (assignee) {
+        await syncTaskCompletionToEmployeeQuota({
+          userId: assignee,
+          taskTitle: updated.title,
+          increment: 1,
+          loggedById: authRes.id,
+          unit: updated.contentType === "REEL" ? "reels" : "units",
+        });
+      }
+    }
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error: any) {
