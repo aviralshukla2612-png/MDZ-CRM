@@ -77,12 +77,30 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     delete updateData.client;
     delete updateData._count;
 
-    if (updateData.startDate) updateData.startDate = new Date(updateData.startDate);
-    if (updateData.endDate) updateData.endDate = new Date(updateData.endDate);
-    if (updateData.estimatedBudget !== undefined) updateData.estimatedBudget = Number(updateData.estimatedBudget);
-    if (updateData.approvedBudget !== undefined) updateData.approvedBudget = Number(updateData.approvedBudget);
-    if (updateData.quotationAmount !== undefined) updateData.quotationAmount = Number(updateData.quotationAmount);
-    if (updateData.actualCost !== undefined) updateData.actualCost = Number(updateData.actualCost);
+    if (updateData.startDate) {
+      const parsedStart = new Date(updateData.startDate);
+      if (!isNaN(parsedStart.getTime())) {
+        updateData.startDate = parsedStart;
+      } else {
+        delete updateData.startDate;
+      }
+    }
+    if (updateData.endDate !== undefined) {
+      if (updateData.endDate) {
+        const parsedEnd = new Date(updateData.endDate);
+        if (!isNaN(parsedEnd.getTime())) {
+          updateData.endDate = parsedEnd;
+        } else {
+          updateData.endDate = null;
+        }
+      } else {
+        updateData.endDate = null;
+      }
+    }
+    if (updateData.estimatedBudget !== undefined) updateData.estimatedBudget = Number(updateData.estimatedBudget) || 0;
+    if (updateData.approvedBudget !== undefined) updateData.approvedBudget = Number(updateData.approvedBudget) || 0;
+    if (updateData.quotationAmount !== undefined) updateData.quotationAmount = Number(updateData.quotationAmount) || 0;
+    if (updateData.actualCost !== undefined) updateData.actualCost = Number(updateData.actualCost) || 0;
 
     const updated = await prisma.eventProject.update({
       where: { id: params.id },

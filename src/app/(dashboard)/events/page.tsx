@@ -35,6 +35,8 @@ import {
   Briefcase,
   PlayCircle,
   Sparkles,
+  Edit3,
+  Save,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -110,6 +112,9 @@ export default function EventManagementPage() {
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [showIncidentModal, setShowIncidentModal] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(false);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [editEventData, setEditEventData] = useState<any>({});
+  const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
 
   // Form states
   const [newEventData, setNewEventData] = useState({
@@ -316,6 +321,90 @@ export default function EventManagementPage() {
       }
     } catch (err) {
       toast.error("Error creating event");
+    }
+  };
+
+  // Open Edit Event Modal
+  const openEditEventModal = () => {
+    if (!activeEvent) return;
+    const formatLocalDatetime = (d: any) => {
+      if (!d) return "";
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return "";
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+    };
+
+    setEditEventData({
+      title: activeEvent.title || "",
+      type: activeEvent.type || "CORPORATE",
+      status: activeEvent.status || "PLANNING",
+      startDate: formatLocalDatetime(activeEvent.startDate),
+      endDate: formatLocalDatetime(activeEvent.endDate),
+      venueName: activeEvent.venueName || "",
+      venueAddress: activeEvent.venueAddress || "",
+      clientName: activeEvent.clientName || "",
+      eventOwner: activeEvent.eventOwner || "Lead Producer",
+      productionManager: activeEvent.productionManager || "",
+      estimatedBudget: activeEvent.estimatedBudget || 0,
+      approvedBudget: activeEvent.approvedBudget || 0,
+      quotationAmount: activeEvent.quotationAmount || 0,
+      priority: activeEvent.priority || "MEDIUM",
+      riskLevel: activeEvent.riskLevel || "LOW",
+      riskOverview: activeEvent.riskOverview || "",
+      blockersOverview: activeEvent.blockersOverview || "",
+      notes: activeEvent.notes || "",
+    });
+    setShowEditEventModal(true);
+  };
+
+  // Handle Event Update
+  const handleUpdateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedEventId) return;
+    try {
+      setIsUpdatingEvent(true);
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editEventData),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("Event details updated successfully!");
+        setShowEditEventModal(false);
+        await fetchEvents();
+        await fetchActiveEventDetail(selectedEventId);
+      } else {
+        toast.error(json.error || "Failed to update event details");
+      }
+    } catch (err) {
+      toast.error("Error updating event details");
+    } finally {
+      setIsUpdatingEvent(false);
+    }
+  };
+
+  // Handle Event Deletion
+  const handleDeleteEvent = async () => {
+    if (!selectedEventId) return;
+    if (!confirm("Are you sure you want to permanently delete this event project? All sub-items will be removed.")) return;
+    try {
+      const res = await fetch(`/mdz-crm/api/events/${selectedEventId}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("Event deleted successfully");
+        setShowEditEventModal(false);
+        setSelectedEventId("");
+        setActiveEvent(null);
+        await fetchEvents();
+      } else {
+        toast.error(json.error || "Failed to delete event");
+      }
+    } catch (err) {
+      toast.error("Error deleting event");
     }
   };
 
@@ -669,9 +758,18 @@ export default function EventManagementPage() {
                   </span>
                 </div>
 
-                <h2 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white">
-                  {activeEvent.title}
-                </h2>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white">
+                    {activeEvent.title}
+                  </h2>
+                  <button
+                    onClick={openEditEventModal}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white shadow-md shadow-orange-600/20 transition-all cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    Edit Event Details
+                  </button>
+                </div>
 
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs md:text-sm text-slate-600 dark:text-slate-400">
                   <div className="flex items-center gap-1.5">
@@ -772,10 +870,18 @@ export default function EventManagementPage() {
               <div className="md:col-span-2 space-y-6">
                 {/* Event Highlights & Notes */}
                 <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-                  <h3 className="text-base font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                    <CheckSquare className="w-4 h-4 text-orange-500" />
-                    Event Directives & Strategic Scope
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-bold flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                      <CheckSquare className="w-4 h-4 text-orange-500" />
+                      Event Directives & Strategic Scope
+                    </h3>
+                    <button
+                      onClick={openEditEventModal}
+                      className="text-xs text-orange-600 dark:text-orange-400 font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" /> Edit Scope & Directives
+                    </button>
+                  </div>
                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
                     {activeEvent.notes || "No special directives logged yet."}
                   </p>
@@ -871,6 +977,13 @@ export default function EventManagementPage() {
                 <div className="p-5 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 text-white space-y-3 shadow-lg shadow-orange-500/20">
                   <h4 className="text-sm font-extrabold uppercase tracking-wider">Quick Action Shortcuts</h4>
                   <div className="flex flex-col gap-2">
+                    <button
+                      onClick={openEditEventModal}
+                      className="w-full text-left px-3 py-2 rounded-xl bg-white/20 hover:bg-white/30 text-xs font-semibold backdrop-blur transition-all flex items-center justify-between"
+                    >
+                      <span>Edit Event Details & Budget</span>
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
                     <button
                       onClick={() => setShowTimelineModal(true)}
                       className="w-full text-left px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-semibold backdrop-blur transition-all flex items-center justify-between"
@@ -1815,6 +1928,274 @@ export default function EventManagementPage() {
                 >
                   Save & Launch Event
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT EVENT PROJECT */}
+      {showEditEventModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-lg bg-orange-100 text-orange-600 dark:bg-orange-950/60 dark:text-orange-400">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Edit Event Details</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Update event parameters, budget, schedule, and team leads</p>
+                </div>
+              </div>
+              <button onClick={() => setShowEditEventModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateEvent} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Event Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editEventData.title || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, title: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Event Type</label>
+                  <select
+                    value={editEventData.type || "CORPORATE"}
+                    onChange={(e) => setEditEventData({ ...editEventData, type: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  >
+                    <option value="CORPORATE">Corporate Conference / Summit</option>
+                    <option value="CONCERT">Concert / Live Show</option>
+                    <option value="WEDDING">Luxury Wedding</option>
+                    <option value="PRODUCT_LAUNCH">Product Launch</option>
+                    <option value="EXHIBITION">Exhibition / Expo</option>
+                    <option value="GALA">Gala Dinner / Awards</option>
+                    <option value="PRIVATE_PARTY">Private VIP Party</option>
+                    <option value="SPORTS">Sports Event</option>
+                    <option value="FASHION_SHOW">Fashion Show</option>
+                    <option value="FESTIVAL">Festival / Fair</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Status</label>
+                  <select
+                    value={editEventData.status || "PLANNING"}
+                    onChange={(e) => setEditEventData({ ...editEventData, status: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  >
+                    <option value="PLANNING">Planning</option>
+                    <option value="PREPARATION">Pre-Production</option>
+                    <option value="LIVE">Live / In Execution</option>
+                    <option value="CLOSURE">Closure</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Priority Tier</label>
+                  <select
+                    value={editEventData.priority || "MEDIUM"}
+                    onChange={(e) => setEditEventData({ ...editEventData, priority: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="CRITICAL">Critical</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Client Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editEventData.clientName || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, clientName: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Start Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={editEventData.startDate || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, startDate: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">End Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={editEventData.endDate || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, endDate: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Venue Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editEventData.venueName || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, venueName: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Venue Address / City</label>
+                  <input
+                    type="text"
+                    value={editEventData.venueAddress || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, venueAddress: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Quotation (Revenue ₹)</label>
+                  <input
+                    type="number"
+                    value={editEventData.quotationAmount ?? 0}
+                    onChange={(e) => setEditEventData({ ...editEventData, quotationAmount: Number(e.target.value) })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Approved Budget (₹)</label>
+                  <input
+                    type="number"
+                    value={editEventData.approvedBudget ?? 0}
+                    onChange={(e) => setEditEventData({ ...editEventData, approvedBudget: Number(e.target.value) })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Estimated Budget (₹)</label>
+                  <input
+                    type="number"
+                    value={editEventData.estimatedBudget ?? 0}
+                    onChange={(e) => setEditEventData({ ...editEventData, estimatedBudget: Number(e.target.value) })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Lead Producer / Event Owner</label>
+                  <input
+                    type="text"
+                    value={editEventData.eventOwner || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, eventOwner: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Production Manager</label>
+                  <input
+                    type="text"
+                    value={editEventData.productionManager || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, productionManager: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Event Directives & Strategic Scope</label>
+                <textarea
+                  rows={3}
+                  value={editEventData.notes || ""}
+                  onChange={(e) => setEditEventData({ ...editEventData, notes: e.target.value })}
+                  placeholder="Key deliverables, stage specifications, guest experience guidelines..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Risk Level</label>
+                  <select
+                    value={editEventData.riskLevel || "LOW"}
+                    onChange={(e) => setEditEventData({ ...editEventData, riskLevel: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="CRITICAL">Critical</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Risk Factors / Overview</label>
+                  <input
+                    type="text"
+                    value={editEventData.riskOverview || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, riskOverview: e.target.value })}
+                    placeholder="e.g. Weather risk, vendor delay"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Active Blockers</label>
+                  <input
+                    type="text"
+                    value={editEventData.blockersOverview || ""}
+                    onChange={(e) => setEditEventData({ ...editEventData, blockersOverview: e.target.value })}
+                    placeholder="e.g. Venue sound license pending"
+                    className="w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-transparent text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleDeleteEvent}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200 dark:border-rose-900/40 font-bold transition-all text-xs"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete Event
+                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditEventModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingEvent}
+                    className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold shadow-md shadow-orange-600/25 text-xs transition-all disabled:opacity-50"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    {isUpdatingEvent ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
