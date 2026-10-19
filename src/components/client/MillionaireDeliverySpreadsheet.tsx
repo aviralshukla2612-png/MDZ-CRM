@@ -513,7 +513,7 @@ export function MillionaireDeliverySpreadsheet({
 
   const handleShareLink = () => {
     if (typeof window !== "undefined") {
-      let shareUrl = `${window.location.origin}/client/delivery`;
+      let shareUrl = `${window.location.origin}/mdz-crm/client/delivery`;
       if (activeClientId) {
         shareUrl += `?clientId=${activeClientId}`;
       }
