@@ -44,9 +44,10 @@ RUN apk add --no-cache openssl
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Set the correct permission for prerender cache
-RUN mkdir .next
-RUN chown nextjs:nodejs .next
+# Set the correct permission for prerender cache and writable storage directories
+RUN mkdir -p .next uploads data data/client-portal public/uploads prisma/data \
+    && chown -R nextjs:nodejs /app \
+    && chmod -R 777 uploads data public/uploads prisma/data
 
 # Automatically leverage output traces to reduce image size
 # https://nextjs.org/docs/advanced-features/output-file-tracing
@@ -59,6 +60,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/server.js ./server.js
+
+# Ensure runtime directory permissions
+RUN mkdir -p uploads data data/client-portal public/uploads \
+    && chown -R nextjs:nodejs /app \
+    && chmod -R 777 uploads data public/uploads
 
 USER nextjs
 

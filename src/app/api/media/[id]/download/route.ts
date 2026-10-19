@@ -7,6 +7,8 @@ import { Readable } from "stream";
 import fs from "fs";
 import path from "path";
 
+import { findLocalFile } from "@/lib/storageHelper";
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -46,24 +48,22 @@ export async function GET(
     const encodedFileName = encodeURIComponent(mediaFile.originalName);
 
     // 1. Check if stored locally or if local copy exists
-    const localFilePath = path.join(process.cwd(), "uploads", mediaFile.fileName);
-    if (mediaFile.storageProvider === "LOCAL" || fs.existsSync(localFilePath)) {
-      if (fs.existsSync(localFilePath)) {
-        const fileBuffer = await fs.promises.readFile(localFilePath);
-        const headers = new Headers();
-        headers.set("Content-Type", mediaFile.mimeType || "application/octet-stream");
-        headers.set(
-          "Content-Disposition",
-          `${dispositionType}; filename="${mediaFile.originalName}"; filename*=UTF-8''${encodedFileName}`
-        );
-        headers.set("Content-Length", fileBuffer.length.toString());
-        headers.set("Cache-Control", "private, max-age=3600");
+    const localFilePath = findLocalFile(mediaFile.fileName);
+    if (localFilePath) {
+      const fileBuffer = await fs.promises.readFile(localFilePath);
+      const headers = new Headers();
+      headers.set("Content-Type", mediaFile.mimeType || "application/octet-stream");
+      headers.set(
+        "Content-Disposition",
+        `${dispositionType}; filename="${mediaFile.originalName}"; filename*=UTF-8''${encodedFileName}`
+      );
+      headers.set("Content-Length", fileBuffer.length.toString());
+      headers.set("Cache-Control", "private, max-age=3600");
 
-        return new Response(fileBuffer, {
-          status: 200,
-          headers,
-        });
-      }
+      return new Response(fileBuffer, {
+        status: 200,
+        headers,
+      });
     }
 
     // 2. Stream from Google Drive

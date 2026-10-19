@@ -8,6 +8,7 @@ import {
   uploadStreamToDrive,
   deleteDriveFile,
 } from "@/lib/googleDrive";
+import { getSafeUploadDir } from "@/lib/storageHelper";
 import { Readable } from "stream";
 import fs from "fs";
 import path from "path";
@@ -102,17 +103,17 @@ export async function POST(req: NextRequest) {
         if (errMsg.includes("invalid_grant")) {
           driveErrorNotice = "Google Drive authorization expired (invalid_grant). File saved securely to local storage.";
         } else {
-          driveErrorNotice = "Google Drive unavailable. File saved securely to local storage.";
+          driveErrorNotice = `Google Drive notice: ${errMsg}. File saved securely to local storage.`;
         }
       }
     }
 
     // 2. Fallback to Local Storage if Drive wasn't configured or failed
+    let finalLocalPath = "";
     if (!driveUploadSuccessful) {
-      const uploadDir = path.join(process.cwd(), "uploads");
-      await fs.promises.mkdir(uploadDir, { recursive: true });
-      const localFilePath = path.join(uploadDir, uniqueFileName);
-      await fs.promises.writeFile(localFilePath, buffer);
+      const uploadDir = await getSafeUploadDir();
+      finalLocalPath = path.join(uploadDir, uniqueFileName);
+      await fs.promises.writeFile(finalLocalPath, buffer);
       storageProvider = "LOCAL";
     }
 
@@ -172,9 +173,8 @@ export async function POST(req: NextRequest) {
         await deleteDriveFile(driveFileId).catch((cleanupErr) =>
           console.error("[MediaUpload] Drive rollback cleanup failed:", cleanupErr)
         );
-      } else {
-        const localFilePath = path.join(process.cwd(), "uploads", uniqueFileName);
-        await fs.promises.unlink(localFilePath).catch(() => {});
+      } else if (finalLocalPath) {
+        await fs.promises.unlink(finalLocalPath).catch(() => {});
       }
       return NextResponse.json(
         { success: false, error: "Failed to persist media record in database. Upload rolled back." },

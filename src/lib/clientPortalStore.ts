@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { getSafeDataDirSync } from "@/lib/storageHelper";
 
 export interface ClientPortalData {
   delivery: any;
@@ -16,16 +17,21 @@ export interface ClientPortalData {
   updatedBy?: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), "data", "client-portal");
+function getDataDir(): string {
+  return getSafeDataDirSync("client-portal");
+}
 
 function ensureDirectoryExists() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  const dir = getDataDir();
+  if (!fs.existsSync(dir)) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {}
   }
 }
 
 function getFilePath(clientId: string): string {
-  return path.join(DATA_DIR, `${clientId}.json`);
+  return path.join(getDataDir(), `${clientId}.json`);
 }
 
 export function getDefaultPortalData(clientName: string = "Client Brand"): ClientPortalData {

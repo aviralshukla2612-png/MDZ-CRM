@@ -8,6 +8,7 @@ import {
   deleteDriveFile,
 } from "@/lib/googleDrive";
 import { syncInquiryToGoogleSheets } from "@/lib/googleSheets";
+import { getSafeUploadDir } from "@/lib/storageHelper";
 import { Readable } from "stream";
 import fs from "fs";
 import path from "path";
@@ -207,8 +208,7 @@ export async function POST(req: NextRequest) {
         // Graceful Local Fallback: Always ensure file is securely saved on disk if Drive didn't succeed
         if (!driveUploaded) {
           try {
-            const uploadDir = path.join(process.cwd(), "uploads");
-            await fs.promises.mkdir(uploadDir, { recursive: true });
+            const uploadDir = await getSafeUploadDir();
             await fs.promises.writeFile(path.join(uploadDir, safeName), buffer);
             storageProvider = "LOCAL";
           } catch (fsErr) {

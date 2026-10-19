@@ -181,7 +181,16 @@ export function MediaUploader({
       try {
         const response = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300 && response.success) {
-          showToast(`Uploaded "${selectedFile.name}" to Google Drive successfully!`, "success");
+          if (response.storageProvider === "GOOGLE_DRIVE") {
+            showToast(`Uploaded "${selectedFile.name}" to Google Drive successfully!`, "success");
+          } else {
+            showToast(`Uploaded "${selectedFile.name}" to Secure Storage successfully!`, "success");
+            if (response.warning) {
+              setTimeout(() => {
+                showToast(response.warning, "info");
+              }, 1200);
+            }
+          }
           setSelectedFile(null);
           if (fileInputRef.current) {
             fileInputRef.current.value = "";
@@ -190,7 +199,7 @@ export function MediaUploader({
             onUploadSuccess(response.file);
           }
         } else {
-          showToast(response.error || "Failed to upload file to Google Drive.", "error");
+          showToast(response.error || "Failed to upload file.", "error");
         }
       } catch (parseErr) {
         showToast("Error processing server response.", "error");
