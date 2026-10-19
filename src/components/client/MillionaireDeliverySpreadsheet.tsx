@@ -23,6 +23,7 @@ import {
   X,
   Check,
   Save,
+  Share2,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -510,6 +511,22 @@ export function MillionaireDeliverySpreadsheet({
     }
   };
 
+  const handleShareLink = () => {
+    if (typeof window !== "undefined") {
+      let shareUrl = `${window.location.origin}/client/delivery`;
+      if (activeClientId) {
+        shareUrl += `?clientId=${activeClientId}`;
+      }
+      navigator.clipboard.writeText(shareUrl);
+      showToast(
+        activeClientId
+          ? `✓ Link for ${clientsList.find((c) => c.id === activeClientId)?.companyName || "Client"} copied to clipboard!`
+          : "✓ Master Delivery Sheet link copied to clipboard!",
+        "success"
+      );
+    }
+  };
+
   if (loading && !data) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-300 dark:border-slate-800 p-8 text-center space-y-3 font-mono text-xs">
@@ -592,6 +609,14 @@ export function MillionaireDeliverySpreadsheet({
               </button>
             )}
           </div>
+          <button
+            onClick={handleShareLink}
+            className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-sans text-[11px] font-semibold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700 whitespace-nowrap shadow-2xs cursor-pointer shrink-0"
+            title="Copy Direct Shareable Link to Clipboard"
+          >
+            <Share2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <span>Share Link</span>
+          </button>
           {isAdmin && (
             <button
               onClick={() => setShowAddModal(true)}
