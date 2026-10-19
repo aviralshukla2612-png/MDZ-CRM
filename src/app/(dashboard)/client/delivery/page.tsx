@@ -1,12 +1,17 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { ClientPortalNav } from "@/components/client/ClientPortalNav";
 import { MillionaireDeliverySpreadsheet } from "@/components/client/MillionaireDeliverySpreadsheet";
 import { useToast } from "@/components/ui/Toast";
 
 export default function DeliveryControlPage() {
   const { showToast } = useToast();
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role;
+  const isAdmin = userRole === "OWNER" || userRole === "ADMIN" || userRole === "SUB_ADMIN";
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [clientInfo, setClientInfo] = useState<any>(null);
@@ -64,7 +69,7 @@ export default function DeliveryControlPage() {
       <MillionaireDeliverySpreadsheet
         initialData={data}
         clientName={clientInfo?.companyName || "My Brand Account"}
-        isAdmin={false}
+        isAdmin={isAdmin}
         onSave={handleSave}
       />
     </div>

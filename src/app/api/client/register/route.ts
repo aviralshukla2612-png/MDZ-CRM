@@ -165,29 +165,21 @@ export async function POST(request: Request) {
       },
     });
 
-    // 2. Automatically create initial Project so client has active deliverables & dashboard metrics
+    // 2. Automatically create initial Project container so client has a clean workspace
     const projectCount = await prisma.project.count();
     const projectNumber = `PRJ-2026-${String(projectCount + 1).padStart(3, "0")}-${Math.floor(100 + Math.random() * 900)}`;
 
     const initialProject = await prisma.project.create({
       data: {
         projectNumber,
-        name: "Brand Growth & Digital Marketing Retainer",
+        name: `${companyName.trim()} Brand Production & Operations`,
         clientId: newClient.id,
-        contractValue: 150000,
-        status: "IN_PROGRESS",
-        priority: "HIGH",
-        progressPercentage: 50,
+        contractValue: 0,
+        status: "PLANNING",
+        priority: "MEDIUM",
+        progressPercentage: 0,
         targetDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         createdById: creatorId,
-        stages: {
-          create: [
-            { name: "01_Onboarding_&_Brand_Audit", orderIndex: 1, weight: 20, progressPercentage: 100, status: "COMPLETED" },
-            { name: "02_Creative_Production_&_Reels", orderIndex: 2, weight: 30, progressPercentage: 70, status: "IN_PROGRESS" },
-            { name: "03_Performance_Ads_Launch", orderIndex: 3, weight: 30, progressPercentage: 30, status: "IN_PROGRESS" },
-            { name: "04_Revenue_Scale_&_Optimization", orderIndex: 4, weight: 20, progressPercentage: 0, status: "PENDING" },
-          ],
-        },
       },
     });
 
@@ -201,83 +193,6 @@ export async function POST(request: Request) {
         isActive: true,
       },
     }).catch(() => null);
-
-    // 4. Create initial Invoices and Milestones
-    const paidAmount = 90000;
-    const pendingAmount = 60000;
-    const inv1Num = `INV-2026-${Date.now().toString().slice(-4)}1`;
-    const inv2Num = `INV-2026-${Date.now().toString().slice(-4)}2`;
-
-    await prisma.invoice.create({
-      data: {
-        invoiceNumber: inv1Num,
-        projectId: initialProject.id,
-        clientId: newClient.id,
-        issueDate: new Date(),
-        dueDate: new Date(),
-        totalAmount: paidAmount,
-        taxAmount: Math.round(paidAmount * 0.18),
-        grandTotal: paidAmount,
-        status: "PAID",
-        itemsJson: JSON.stringify([{ description: "Advance Retainer & Onboarding Setup", amount: paidAmount }]),
-      },
-    }).catch(() => null);
-
-    await prisma.invoice.create({
-      data: {
-        invoiceNumber: inv2Num,
-        projectId: initialProject.id,
-        clientId: newClient.id,
-        issueDate: new Date(),
-        dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-        totalAmount: pendingAmount,
-        taxAmount: Math.round(pendingAmount * 0.18),
-        grandTotal: pendingAmount,
-        status: "UNPAID",
-        itemsJson: JSON.stringify([{ description: "Mid-Term Milestone: Ads Scaling & Production", amount: pendingAmount }]),
-      },
-    }).catch(() => null);
-
-    await prisma.paymentMilestone.create({
-      data: {
-        projectId: initialProject.id,
-        title: "Milestone 1: Retainer Setup & Onboarding",
-        amount: paidAmount,
-        dueDate: new Date(),
-        status: "PAID",
-        paidAmount: paidAmount,
-        paidAt: new Date(),
-        invoiceNumber: inv1Num,
-      },
-    }).catch(() => null);
-
-    await prisma.paymentMilestone.create({
-      data: {
-        projectId: initialProject.id,
-        title: "Milestone 2: Execution & Ads Scaling",
-        amount: pendingAmount,
-        dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000),
-        status: "UPCOMING",
-        paidAmount: 0,
-        invoiceNumber: inv2Num,
-      },
-    }).catch(() => null);
-
-    // 5. Assign to a team member (Employee C / Sales rep) for workload visibility
-    const nonOwnerEmployee = await prisma.employee.findFirst({
-      where: { user: { activeRole: { not: "OWNER" } } },
-    });
-    if (nonOwnerEmployee) {
-      await prisma.projectMembership.create({
-        data: {
-          projectId: initialProject.id,
-          employeeId: nonOwnerEmployee.id,
-          roleInProject: "DEV_LEAD",
-          isActive: true,
-          assignedById: newClient.createdById,
-        },
-      }).catch(() => null);
-    }
 
     // 6. Pre-seed persistent JSON store with client's actual company name
     try {

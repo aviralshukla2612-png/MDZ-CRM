@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/auth";
 import { getClientPortalData, saveClientPortalData } from "@/lib/clientPortalStore";
+import {
+  getDeliveryMasterData,
+  saveDeliveryMasterData,
+  ClientDeliveryStatus,
+} from "@/lib/deliveryMasterStore";
 
 export async function GET(req: Request) {
   const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE", "CLIENT"]);
@@ -11,9 +16,12 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const filterClientId = searchParams.get("clientId");
 
-    // Fetch real clients from database
-    const clients = await prisma.client.findMany({
-      where: filterClientId ? { id: filterClientId } : {},
+    // 1. Load persistent Master Delivery Data (seeded with 16 clients matching Excel sheet)
+    const masterData = getDeliveryMasterData();
+    let clientRows: ClientDeliveryStatus[] = [...masterData.clientStatusList];
+
+    // 2. Fetch clients from database to ensure any newly added CRM clients are also included
+    const dbClients = await prisma.client.findMany({
       include: {
         projects: {
           include: {
@@ -24,20 +32,6 @@ export async function GET(req: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    let masterPlanned = 0;
-    let masterCompleted = 0;
-    let masterRemaining = 0;
-    let masterOnHold = 0;
-    let masterOverdue = 0;
-    let masterInProgress = 0;
-    let masterPublished = 0;
-    let masterMissingLinks = 0;
-    let masterUnassigned = 0;
-
-    const allProductionItems: any[] = [];
-    const clientRows: any[] = [];
-
-    // Helper to generate a 2-4 letter abbreviation code
     const getCode = (name: string, clientNumber?: string) => {
       if (clientNumber && clientNumber.startsWith("CLI-")) {
         const parts = clientNumber.split("-");
@@ -50,38 +44,93 @@ export async function GET(req: Request) {
       return name.slice(0, 3).toUpperCase();
     };
 
-    for (const c of clients) {
-      // Load or initialize client portal data store
-      const storeData = getClientPortalData(c.id, c.companyName);
-      const delivery = storeData?.delivery || {};
-      const prodLog = Array.isArray(delivery.productionLog) ? delivery.productionLog : [];
+    // Add any CRM clients that don't exist yet in clientRows
+    for (const c of dbClients) {
+      const code = getCode(c.companyName, c.clientNumber);
+      const exists = clientRows.some(
+        (r) => r.id === c.id || r.clientCode.toUpperCase() === code.toUpperCase()
+      );
+      if (!exists) {
+        clientRows.push({
+          id: c.id,
+          clientCode: code,
+          clientName: c.companyName,
+          target: 30,
+          done: 0,
+          pending: 30,
+          inProgress: 0,
+          onHold: 0,
+          overdue: 0,
+          completionPct: 0,
+          missingLinks: 0,
+          unassigned: 30,
+        });
+      }
+    }
 
-      // Calculate client stats dynamically from their deliverables & tasks
-      const projectCount = c.projects.length;
-      const target = delivery.kpis?.planned || (projectCount > 0 ? projectCount * 30 : 60);
+    // Filter if specific clientId requested
+    if (filterClientId) {
+      clientRows = clientRows.filter(
+        (r) => r.id === filterClientId || r.clientCode === filterClientId
+      );
+    }
 
-      // Analyze deliverables
-      const done = prodLog.filter((x: any) => x.status === "COMPLETED" || x.status === "PUBLISHED" || x.reviewStatus === "Approved").length;
-      const inProg = prodLog.filter((x: any) => x.status === "IN_PROGRESS" || x.reviewStatus === "In Client Review" || x.reviewStatus === "Drafting").length;
-      const onHold = prodLog.filter((x: any) => x.status === "ON_HOLD").length;
-      const overdue = prodLog.filter((x: any) => x.status === "OVERDUE").length;
-      const missingLinks = prodLog.filter((x: any) => !x.finalLink && !x.driveLink).length;
-      const unassigned = prodLog.filter((x: any) => !x.editor && !x.assignee).length;
+    // Recalculate pending, completionPct, and master totals
+    let masterPlanned = 0;
+    let masterCompleted = 0;
+    let masterRemaining = 0;
+    let masterOnHold = 0;
+    let masterOverdue = 0;
+    let masterInProgress = 0;
+    let masterPublished = 0;
+    let masterMissingLinks = 0;
+    let masterUnassigned = 0;
+
+    const sanitizedClientRows = clientRows.map((r) => {
+      const target = Number(r.target) || 0;
+      const done = Number(r.done) || 0;
+      const inProgress = Number(r.inProgress) || 0;
+      const onHold = Number(r.onHold) || 0;
+      const overdue = Number(r.overdue) || 0;
+      const missingLinks = Number(r.missingLinks) || 0;
+      const unassigned = Number(r.unassigned) || 0;
       const pending = Math.max(0, target - done);
-      const pct = target > 0 ? Math.round((done / target) * 100) : 0;
+      const completionPct = target > 0 ? Math.round((done / target) * 100) : 0;
 
-      // Add to master totals
       masterPlanned += target;
       masterCompleted += done;
       masterRemaining += pending;
       masterOnHold += onHold;
       masterOverdue += overdue;
-      masterInProgress += inProg;
+      masterInProgress += inProgress;
       masterPublished += done;
       masterMissingLinks += missingLinks;
       masterUnassigned += unassigned;
 
-      // Collect production items tagged with client name
+      return {
+        ...r,
+        target,
+        done,
+        pending,
+        inProgress,
+        onHold,
+        overdue,
+        completionPct,
+        missingLinks,
+        unassigned,
+      };
+    });
+
+    const masterCompletionPct =
+      masterPlanned > 0 ? Math.round((masterCompleted / masterPlanned) * 100) : 0;
+
+    // Collect production log deliverables
+    const allProductionItems: any[] = [];
+    for (const c of dbClients) {
+      const storeData = getClientPortalData(c.id, c.companyName);
+      const prodLog = Array.isArray(storeData?.delivery?.productionLog)
+        ? storeData.delivery.productionLog
+        : [];
       prodLog.forEach((item: any) => {
         allProductionItems.push({
           ...item,
@@ -90,31 +139,10 @@ export async function GET(req: Request) {
           clientCode: getCode(c.companyName, c.clientNumber),
         });
       });
-
-      clientRows.push({
-        id: c.id,
-        clientCode: getCode(c.companyName, c.clientNumber),
-        clientName: c.companyName,
-        target,
-        done,
-        pending,
-        inProgress: inProg,
-        onHold,
-        overdue,
-        completionPct: pct,
-        missingLinks,
-        unassigned,
-      });
     }
 
-    // Default baseline if clients have 0 deliverables yet
-    if (masterPlanned === 0) masterPlanned = 292;
-    if (masterRemaining === 0) masterRemaining = masterPlanned - masterCompleted;
-    const masterCompletionPct = masterPlanned > 0 ? Math.round((masterCompleted / masterPlanned) * 100) : 0;
-
-    // Get reference targets & team summary from first client or default
-    const refStore = clients.length > 0 ? getClientPortalData(clients[0].id, clients[0].companyName) : null;
-    const clientTargets = refStore?.delivery?.clientTargets || [
+    // Reference targets & team summary
+    const clientTargets = [
       { type: "Viral Reels / Short Videos", target: 30, completed: 21, inProgress: 6, remaining: 3, deadline: "Mon, Wed, Fri" },
       { type: "High-Engagement Carousels", target: 15, completed: 10, inProgress: 4, remaining: 1, deadline: "Tues & Sat" },
       { type: "Brand Identity Statics & Quotes", target: 15, completed: 11, inProgress: 3, remaining: 1, deadline: "Thursdays" },
@@ -122,19 +150,19 @@ export async function GET(req: Request) {
       { type: "Performance Ad Creatives (Meta & Google)", target: 8, completed: 5, inProgress: 2, remaining: 1, deadline: "Bi-Monthly Refresh" },
     ];
 
-    const teamSummary = refStore?.delivery?.teamSummary || [
+    const teamSummary = [
       { role: "Creative Lead & Strategist", name: "Rahul Sharma", assigned: 25, completed: 18, pending: 7, turnaround: "24h" },
       { role: "Senior Video Editor", name: "Sumit Rathod", assigned: 30, completed: 21, pending: 9, turnaround: "48h" },
       { role: "Motion & Graphic Designer", name: "Aryan Visuals", assigned: 25, completed: 17, pending: 8, turnaround: "24h" },
       { role: "Copywriter & SMM", name: "Neha Roy", assigned: 45, completed: 32, pending: 13, turnaround: "12h" },
     ];
 
-    const extraWork = refStore?.delivery?.extraWork || [
+    const extraWork = [
       { id: "ew-1", date: "2026-10-09", request: "Emergency Diwali Campaign Banner Adaptations", requestedBy: "Client Head", status: "Completed", billable: "Covered in SLA" },
       { id: "ew-2", date: "2026-10-13", request: "Rush PR Launch Video 30s", requestedBy: "Founder", status: "Delivered", billable: "Complimentary" },
     ];
 
-    const howToUse = refStore?.delivery?.howToUse || {
+    const howToUse = {
       driveFolder: "https://drive.google.com/drive/folders/mdz-agency-client-master",
       rules: [
         "Raw Footage Upload: Drop high-resolution camera assets in Google Drive '01_Raw_Footage' 72 hours before target release.",
@@ -147,8 +175,8 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        monthYear: "October 2026",
-        subtitle: "October 2026 working plan • counts update from Production Log • all task completion times and Google Drive links are manually entered",
+        monthYear: masterData.monthYear || "October 2026",
+        subtitle: masterData.subtitle || "October 2026 working plan • counts update from Production Log • all task completion times and Google Drive links are manually entered",
         kpis: {
           planned: masterPlanned,
           completed: masterCompleted,
@@ -161,7 +189,7 @@ export async function GET(req: Request) {
           missingLinks: masterMissingLinks,
           unassigned: masterUnassigned,
         },
-        clientStatusList: clientRows,
+        clientStatusList: sanitizedClientRows,
         productionLog: allProductionItems,
         clientTargets,
         teamSummary,
@@ -181,9 +209,123 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { clientId, action, deliverable } = body;
+    const { action } = body;
 
-    // Default to the first client if clientId not provided
+    // 1. Update single client row in delivery master
+    if (action === "UPDATE_CLIENT_ROW") {
+      const { row } = body;
+      if (!row || !row.id) {
+        return NextResponse.json({ success: false, error: "Missing row data" }, { status: 400 });
+      }
+
+      const master = getDeliveryMasterData();
+      const updatedList = master.clientStatusList.map((item) => {
+        if (item.id === row.id || item.clientCode === row.clientCode) {
+          const target = Number(row.target) || 0;
+          const done = Number(row.done) || 0;
+          const inProgress = Number(row.inProgress) || 0;
+          const onHold = Number(row.onHold) || 0;
+          const overdue = Number(row.overdue) || 0;
+          const missingLinks = Number(row.missingLinks) || 0;
+          const unassigned = Number(row.unassigned) || 0;
+          const pending = Math.max(0, target - done);
+          const completionPct = target > 0 ? Math.round((done / target) * 100) : 0;
+
+          return {
+            ...item,
+            ...row,
+            target,
+            done,
+            pending,
+            inProgress,
+            onHold,
+            overdue,
+            completionPct,
+            missingLinks,
+            unassigned,
+          };
+        }
+        return item;
+      });
+
+      saveDeliveryMasterData({ clientStatusList: updatedList });
+      return NextResponse.json({ success: true, message: "Client target row updated successfully" });
+    }
+
+    // 2. Bulk update all client rows in delivery master
+    if (action === "UPDATE_ALL_CLIENT_ROWS") {
+      const { rows } = body;
+      if (!Array.isArray(rows)) {
+        return NextResponse.json({ success: false, error: "Rows must be an array" }, { status: 400 });
+      }
+
+      const sanitized: ClientDeliveryStatus[] = rows.map((r: any) => {
+        const target = Number(r.target) || 0;
+        const done = Number(r.done) || 0;
+        const inProgress = Number(r.inProgress) || 0;
+        const onHold = Number(r.onHold) || 0;
+        const overdue = Number(r.overdue) || 0;
+        const missingLinks = Number(r.missingLinks) || 0;
+        const unassigned = Number(r.unassigned) || 0;
+        const pending = Math.max(0, target - done);
+        const completionPct = target > 0 ? Math.round((done / target) * 100) : 0;
+
+        return {
+          id: r.id || `cl-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          clientCode: (r.clientCode || "CLI").toUpperCase().trim(),
+          clientName: r.clientName || "Client Account",
+          target,
+          done,
+          pending,
+          inProgress,
+          onHold,
+          overdue,
+          completionPct,
+          missingLinks,
+          unassigned,
+        };
+      });
+
+      saveDeliveryMasterData({ clientStatusList: sanitized });
+      return NextResponse.json({ success: true, message: "All client targets saved successfully" });
+    }
+
+    // 3. Add a new client row to delivery master
+    if (action === "ADD_CLIENT_ROW") {
+      const { clientCode, clientName, target } = body;
+      const master = getDeliveryMasterData();
+      const numTarget = Number(target) || 0;
+      const newRow: ClientDeliveryStatus = {
+        id: `cl-${Date.now()}`,
+        clientCode: (clientCode || "NEW").toUpperCase().trim(),
+        clientName: clientName || "New Client Account",
+        target: numTarget,
+        done: 0,
+        pending: numTarget,
+        inProgress: 0,
+        onHold: 0,
+        overdue: 0,
+        completionPct: 0,
+        missingLinks: 0,
+        unassigned: numTarget,
+      };
+
+      const updated = [...master.clientStatusList, newRow];
+      saveDeliveryMasterData({ clientStatusList: updated });
+      return NextResponse.json({ success: true, message: "Client added successfully", data: newRow });
+    }
+
+    // 4. Delete client row from delivery master
+    if (action === "DELETE_CLIENT_ROW") {
+      const { id } = body;
+      const master = getDeliveryMasterData();
+      const filtered = master.clientStatusList.filter((item) => item.id !== id);
+      saveDeliveryMasterData({ clientStatusList: filtered });
+      return NextResponse.json({ success: true, message: "Client row removed successfully" });
+    }
+
+    // Production log deliverable actions
+    const { clientId, deliverable } = body;
     let targetClientId = clientId;
     if (!targetClientId) {
       const firstClient = await prisma.client.findFirst();
@@ -261,14 +403,14 @@ export async function POST(req: Request) {
     }
 
     if (action === "EDIT_DELIVERABLE") {
-      const { deliverable } = body;
+      const { deliverable: deliv } = body;
       delivery.productionLog = productionLog.map((item: any) => {
-        if (item.id === deliverable.id) {
+        if (item.id === deliv.id) {
           return {
             ...item,
-            ...deliverable,
-            deliverable: deliverable.deliverable || item.deliverable,
-            deliverableTitle: deliverable.deliverable || item.deliverableTitle,
+            ...deliv,
+            deliverable: deliv.deliverable || item.deliverable,
+            deliverableTitle: deliv.deliverable || item.deliverableTitle,
           };
         }
         return item;

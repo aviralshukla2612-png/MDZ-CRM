@@ -22,6 +22,7 @@ import {
   Trash2,
   X,
   Check,
+  Save,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -119,24 +120,180 @@ export function MillionaireDeliverySpreadsheet({
     }
   }, [clientId]);
 
-  // Dynamic live KPIs computed directly from production log and client status
-  const liveKpis = useMemo(() => {
-    if (!data) {
-      return {
-        planned: 292,
-        completed: 0,
-        remaining: 292,
-        onHold: 0,
-        overdue: 0,
-        inProgress: 0,
-        published: 0,
-        completionPct: 0,
-        missingLinks: 0,
-        unassigned: 0,
-      };
+  // Client Table State & Live Inline Editing
+  const [clientRows, setClientRows] = useState<any[]>([]);
+  const [hasUnsavedClientChanges, setHasUnsavedClientChanges] = useState(false);
+  const [savingClients, setSavingClients] = useState(false);
+  const [showAddClientModal, setShowAddClientModal] = useState(false);
+  const [newClient, setNewClient] = useState({ clientCode: "", clientName: "", target: 30 });
+
+  // Sync clientRows whenever data loads
+  useEffect(() => {
+    if (data && Array.isArray(data.clientStatusList)) {
+      setClientRows(data.clientStatusList);
+      setHasUnsavedClientChanges(false);
     }
-    return data.kpis;
   }, [data]);
+
+  // Dynamic live KPIs computed directly from clientRows and production log
+  const liveKpis = useMemo(() => {
+    if (!clientRows || clientRows.length === 0) {
+      return (
+        data?.kpis || {
+          planned: 292,
+          completed: 0,
+          remaining: 292,
+          onHold: 0,
+          overdue: 0,
+          inProgress: 0,
+          published: 0,
+          completionPct: 0,
+          missingLinks: 0,
+          unassigned: 292,
+        }
+      );
+    }
+
+    let planned = 0;
+    let completed = 0;
+    let remaining = 0;
+    let onHold = 0;
+    let overdue = 0;
+    let inProgress = 0;
+    let missingLinks = 0;
+    let unassigned = 0;
+
+    clientRows.forEach((r: any) => {
+      const t = Number(r.target) || 0;
+      const d = Number(r.done) || 0;
+      planned += t;
+      completed += d;
+      remaining += Math.max(0, t - d);
+      inProgress += Number(r.inProgress) || 0;
+      onHold += Number(r.onHold) || 0;
+      overdue += Number(r.overdue) || 0;
+      missingLinks += Number(r.missingLinks) || 0;
+      unassigned += Number(r.unassigned) || 0;
+    });
+
+    const completionPct = planned > 0 ? Math.round((completed / planned) * 100) : 0;
+    return {
+      planned,
+      completed,
+      remaining,
+      onHold,
+      overdue,
+      inProgress,
+      published: completed,
+      completionPct,
+      missingLinks,
+      unassigned,
+    };
+  }, [clientRows, data]);
+
+  const handleCellChange = (id: string, field: string, rawVal: any) => {
+    const val = field === "clientCode" || field === "clientName" ? rawVal : Number(rawVal) || 0;
+    setClientRows((prev) =>
+      prev.map((row) => {
+        if (row.id === id) {
+          const updated = { ...row, [field]: val };
+          if (field === "target" || field === "done") {
+            const t = Number(field === "target" ? val : row.target) || 0;
+            const d = Number(field === "done" ? val : row.done) || 0;
+            updated.pending = Math.max(0, t - d);
+            updated.completionPct = t > 0 ? Math.round((d / t) * 100) : 0;
+          }
+          return updated;
+        }
+        return row;
+      })
+    );
+    setHasUnsavedClientChanges(true);
+  };
+
+  const handleSaveAllClientRows = async () => {
+    try {
+      setSavingClients(true);
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_ALL_CLIENT_ROWS",
+          rows: clientRows,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ All client delivery targets & status saved to database", "success");
+        setHasUnsavedClientChanges(false);
+      } else {
+        showToast(json.error || "Failed to save client targets", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Network error saving client status", "error");
+    } finally {
+      setSavingClients(false);
+    }
+  };
+
+  const handleAddClientRow = async () => {
+    if (!newClient.clientCode.trim() || !newClient.clientName.trim()) {
+      showToast("Please enter client abbreviation code and name", "info");
+      return;
+    }
+    try {
+      setSavingClients(true);
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "ADD_CLIENT_ROW",
+          clientCode: newClient.clientCode.toUpperCase().trim(),
+          clientName: newClient.clientName.trim(),
+          target: Number(newClient.target) || 0,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ New client added to delivery matrix", "success");
+        setShowAddClientModal(false);
+        setNewClient({ clientCode: "", clientName: "", target: 30 });
+        await fetchLiveDeliveryData();
+      } else {
+        showToast(json.error || "Failed to add client", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error adding client", "error");
+    } finally {
+      setSavingClients(false);
+    }
+  };
+
+  const handleDeleteClientRow = async (id: string, code: string) => {
+    if (!confirm(`Are you sure you want to remove client "${code}" from this delivery matrix?`)) return;
+    try {
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "DELETE_CLIENT_ROW",
+          id,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Client ${code} removed`, "success");
+        setClientRows((prev) => prev.filter((r) => r.id !== id));
+      } else {
+        showToast(json.error || "Failed to delete client", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error deleting client", "error");
+    }
+  };
 
   const handleAddDeliverable = async () => {
     if (!newRow.deliverable.trim()) {
@@ -437,9 +594,45 @@ export function MillionaireDeliverySpreadsheet({
             {/* ROW 7: Spacer Row */}
             <div className="h-2 bg-[#F8F9FA] dark:bg-slate-950 border-b border-slate-300 dark:border-slate-800" />
 
-            {/* ROW 8: Mustard Gold Full-Width Bar (Exact match to screenshot) */}
-            <div className="bg-[#B58A38] text-white px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider border-b border-[#967129]">
-              CLIENT-WISE DELIVERY STATUS
+            {/* ROW 8: Mustard Gold Full-Width Bar with Actions */}
+            <div className="bg-[#B58A38] text-white px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider border-b border-[#967129] flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span>CLIENT-WISE DELIVERY STATUS</span>
+                {isAdmin && (
+                  <span className="text-[10px] font-sans font-normal lowercase bg-black/20 px-2 py-0.5 rounded text-amber-100">
+                    (click any number to edit like Excel)
+                  </span>
+                )}
+              </div>
+
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  {hasUnsavedClientChanges && (
+                    <span className="text-[10px] bg-amber-300 text-slate-900 font-bold px-2 py-0.5 rounded-full animate-pulse">
+                      Unsaved Edits
+                    </span>
+                  )}
+                  <button
+                    onClick={handleSaveAllClientRows}
+                    disabled={savingClients}
+                    className={`px-3 py-1 rounded text-xs font-sans font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
+                      hasUnsavedClientChanges
+                        ? "bg-[#13381B] hover:bg-[#1a4a24] text-white border border-emerald-400 scale-105"
+                        : "bg-white/20 hover:bg-white/30 text-white"
+                    }`}
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{savingClients ? "Saving..." : "Save Table Changes"}</span>
+                  </button>
+                  <button
+                    onClick={() => setShowAddClientModal(true)}
+                    className="px-3 py-1 rounded bg-[#13381B] hover:bg-[#1a4a24] text-white text-xs font-sans font-bold flex items-center gap-1.5 shadow-sm border border-emerald-600/50 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Add Client</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* ROW 9: Spacer Row */}
@@ -482,45 +675,128 @@ export function MillionaireDeliverySpreadsheet({
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                {clientList.map((row: any, idx: number) => (
+                {clientRows.map((row: any, idx: number) => (
                   <tr
                     key={row.id || idx}
-                    className="hover:bg-[#F1F8F5] dark:hover:bg-slate-800 font-mono transition-colors"
+                    className="hover:bg-[#F1F8F5] dark:hover:bg-slate-800/60 font-mono transition-colors group"
                   >
-                    <td className="py-2.5 px-4 text-left border-r border-slate-300 dark:border-slate-800 font-sans font-bold text-slate-800 dark:text-slate-200">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-                          {row.clientCode}
-                        </span>
-                        <span className="truncate max-w-[200px]">{row.clientName}</span>
+                    <td className="py-2 px-3 text-left border-r border-slate-300 dark:border-slate-800 font-sans font-bold text-slate-800 dark:text-slate-200">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300">
+                            {row.clientCode}
+                          </span>
+                          <span className="truncate max-w-[170px]" title={row.clientName}>
+                            {row.clientName}
+                          </span>
+                        </div>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDeleteClientRow(row.id, row.clientCode)}
+                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition-opacity p-0.5 cursor-pointer"
+                            title={`Delete client ${row.clientCode}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold">
-                      {row.target}
+                    <td className="py-1 px-1 text-center border-r border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={row.target}
+                          onChange={(e) => handleCellChange(row.id, "target", e.target.value)}
+                          className="w-14 text-center font-bold bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
+                        />
+                      ) : (
+                        row.target
+                      )}
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-emerald-700 dark:text-emerald-400 font-bold">
-                      {row.done}
+                    <td className="py-1 px-1 text-center border-r border-slate-300 dark:border-slate-800 text-emerald-700 dark:text-emerald-400 font-bold">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={row.done}
+                          onChange={(e) => handleCellChange(row.id, "done", e.target.value)}
+                          className="w-14 text-center font-bold text-emerald-700 dark:text-emerald-400 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
+                        />
+                      ) : (
+                        row.done
+                      )}
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-bold">
                       {row.pending}
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300">
-                      {row.inProgress}
+                    <td className="py-1 px-1 text-center border-r border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={row.inProgress || 0}
+                          onChange={(e) => handleCellChange(row.id, "inProgress", e.target.value)}
+                          className="w-14 text-center bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
+                        />
+                      ) : (
+                        row.inProgress || 0
+                      )}
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400">
-                      {row.onHold}
+                    <td className="py-1 px-1 text-center border-r border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={row.onHold || 0}
+                          onChange={(e) => handleCellChange(row.id, "onHold", e.target.value)}
+                          className="w-14 text-center bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
+                        />
+                      ) : (
+                        row.onHold || 0
+                      )}
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400">
-                      {row.overdue}
+                    <td className="py-1 px-1 text-center border-r border-slate-300 dark:border-slate-800 text-rose-600 dark:text-rose-400 font-bold">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={row.overdue || 0}
+                          onChange={(e) => handleCellChange(row.id, "overdue", e.target.value)}
+                          className="w-14 text-center text-rose-600 dark:text-rose-400 font-bold bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
+                        />
+                      ) : (
+                        row.overdue || 0
+                      )}
                     </td>
                     <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold">
                       {row.completionPct}%
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-600 dark:text-slate-400">
-                      {row.missingLinks}
+                    <td className="py-1 px-1 text-center border-r border-slate-300 dark:border-slate-800 text-amber-600 dark:text-amber-400 font-bold">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={row.missingLinks || 0}
+                          onChange={(e) => handleCellChange(row.id, "missingLinks", e.target.value)}
+                          className="w-14 text-center text-amber-600 dark:text-amber-400 font-bold bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
+                        />
+                      ) : (
+                        row.missingLinks || 0
+                      )}
                     </td>
-                    <td className="py-2.5 px-3 text-center text-slate-600 dark:text-slate-400">
-                      {row.unassigned}
+                    <td className="py-1 px-1 text-center text-slate-700 dark:text-slate-300 font-bold">
+                      {isAdmin ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={row.unassigned || 0}
+                          onChange={(e) => handleCellChange(row.id, "unassigned", e.target.value)}
+                          className="w-14 text-center font-bold bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
+                        />
+                      ) : (
+                        row.unassigned || 0
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1066,6 +1342,87 @@ export function MillionaireDeliverySpreadsheet({
                 className="px-4 py-1.5 rounded-xl bg-[#13381B] hover:bg-[#1a4a24] text-white font-bold text-xs shadow-xs cursor-pointer"
               >
                 {submitting ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. ADD CLIENT MODAL */}
+      {showAddClientModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl font-sans">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-emerald-600" />
+                <span>Add Client to Delivery Matrix</span>
+              </h3>
+              <button
+                onClick={() => setShowAddClientModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Client Code / Initials (2-4 letters)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. AM, MDZ, XS"
+                  value={newClient.clientCode}
+                  maxLength={6}
+                  onChange={(e) => setNewClient({ ...newClient, clientCode: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono font-bold uppercase tracking-wider"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Client / Brand Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Zenith Tech Labs"
+                  value={newClient.clientName}
+                  onChange={(e) => setNewClient({ ...newClient, clientName: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Monthly Deliverables Target
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 30"
+                  value={newClient.target}
+                  onChange={(e) => setNewClient({ ...newClient, target: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono font-bold"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowAddClientModal(false)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddClientRow}
+                disabled={savingClients}
+                className="px-4 py-1.5 rounded-xl bg-[#13381B] hover:bg-[#1a4a24] text-white font-bold text-xs shadow-xs cursor-pointer"
+              >
+                {savingClients ? "Adding..." : "Add Client"}
               </button>
             </div>
           </div>
