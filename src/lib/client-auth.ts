@@ -114,7 +114,7 @@ export async function canUserCreateDailyUpdate(
 ): Promise<boolean> {
   if (!userId || !projectId) return false;
 
-  if (userRole === "OWNER") {
+  if (userRole === "OWNER" || userRole === "ADMIN" || userRole === "SUB_ADMIN") {
     return true;
   }
 

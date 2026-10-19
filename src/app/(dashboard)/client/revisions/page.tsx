@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { ClientPortalNav } from "@/components/client/ClientPortalNav";
 import {
   GitPullRequest,
   Plus,
@@ -87,9 +88,19 @@ export default function ClientRevisionsPage() {
     setIsModalOpen(true);
   };
 
+  const getClientId = () => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("clientId") || localStorage.getItem("mdz_active_client_id") || "";
+    }
+    return "";
+  };
+
   async function fetchProjects() {
     try {
-      const res = await fetch("/mdz-crm/api/client/projects");
+      const cid = getClientId();
+      const url = cid ? `/mdz-crm/api/client/projects?clientId=${cid}` : "/mdz-crm/api/client/projects";
+      const res = await fetch(url);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
@@ -97,6 +108,7 @@ export default function ClientRevisionsPage() {
       } else {
         const projs = data.projects || [];
         setProjects(projs);
+        setError(null);
         if (projs.length > 0 && !selectedProjectId) {
           setSelectedProjectId(projs[0].id);
         }
@@ -253,6 +265,8 @@ export default function ClientRevisionsPage() {
 
   return (
     <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6 font-sans">
+      <ClientPortalNav currentTab="/client/revisions" />
+
       {/* Header Banner */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">

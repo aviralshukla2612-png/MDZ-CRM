@@ -16,10 +16,20 @@ export default function DeliveryControlPage() {
   const [data, setData] = useState<any>(null);
   const [clientInfo, setClientInfo] = useState<any>(null);
 
+  const getClientId = () => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("clientId") || localStorage.getItem("mdz_active_client_id") || "";
+    }
+    return "";
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/mdz-crm/api/client/portal-data");
+      const cid = getClientId();
+      const url = cid ? `/mdz-crm/api/client/portal-data?clientId=${cid}` : "/mdz-crm/api/client/portal-data";
+      const res = await fetch(url);
       const json = await res.json();
       if (json.success && json.data) {
         setData(json.data.delivery);
@@ -39,10 +49,12 @@ export default function DeliveryControlPage() {
 
   const handleSave = async (updatedDelivery: any) => {
     try {
+      const cid = getClientId() || clientInfo?.id;
       const res = await fetch("/mdz-crm/api/client/portal-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          clientId: cid || undefined,
           section: "delivery",
           sectionData: updatedDelivery,
         }),

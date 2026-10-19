@@ -29,6 +29,9 @@ export async function GET(req: NextRequest) {
       if (dbClient) {
         targetClientId = dbClient.id;
         targetClientName = dbClient.companyName;
+      } else {
+        targetClientId = requestedClientId;
+        targetClientName = requestedClientId;
       }
     } else {
       // If admin/employee is previewing without clientId, grab first client or default

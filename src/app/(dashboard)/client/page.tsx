@@ -51,10 +51,20 @@ export default function ClientDashboardPage() {
     ? Math.round(projects.reduce((acc, p) => acc + (p.progressPercentage || 0), 0) / projects.length)
     : 0;
 
+  const getClientId = () => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("clientId") || localStorage.getItem("mdz_active_client_id") || "";
+    }
+    return "";
+  };
+
   useEffect(() => {
     async function fetchDashboard() {
       try {
-        const res = await fetch("/mdz-crm/api/client/projects");
+        const cid = getClientId();
+        const url = cid ? `/mdz-crm/api/client/projects?clientId=${cid}` : "/mdz-crm/api/client/projects";
+        const res = await fetch(url);
         const data = await res.json();
 
         if (!res.ok || !data.success) {
@@ -63,6 +73,7 @@ export default function ClientDashboardPage() {
           setProjects(data.projects || []);
           setClient(data.client || null);
           setContact(data.contact || null);
+          setError(null);
         }
       } catch (err) {
         console.error("Dashboard fetch error:", err);
@@ -89,7 +100,8 @@ export default function ClientDashboardPage() {
 
   if (error) {
     return (
-      <div className="p-8 max-w-4xl mx-auto font-sans">
+      <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-6 font-sans">
+        <ClientPortalNav currentTab="/client" />
         <div className="p-6 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-3">
           <AlertCircle className="w-5 h-5 shrink-0" />
           <span>{error}</span>

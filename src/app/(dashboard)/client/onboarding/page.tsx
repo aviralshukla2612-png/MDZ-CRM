@@ -61,10 +61,23 @@ export default function ClientOnboardingPage() {
     },
   });
 
+  const [clientId, setClientId] = useState<string>("");
+
+  const getClientId = () => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("clientId") || localStorage.getItem("mdz_active_client_id") || "";
+    }
+    return "";
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/mdz-crm/api/client/portal-data");
+      const cid = getClientId();
+      setClientId(cid);
+      const url = cid ? `/mdz-crm/api/client/portal-data?clientId=${cid}` : "/mdz-crm/api/client/portal-data";
+      const res = await fetch(url);
       const json = await res.json();
       if (json.success && json.data && json.data.onboarding) {
         setFormData(json.data.onboarding);
@@ -84,10 +97,12 @@ export default function ClientOnboardingPage() {
   const handleSave = async () => {
     try {
       setSaving(true);
+      const cid = clientId || getClientId();
       const res = await fetch("/mdz-crm/api/client/portal-data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          clientId: cid || undefined,
           section: "onboarding",
           sectionData: formData,
         }),

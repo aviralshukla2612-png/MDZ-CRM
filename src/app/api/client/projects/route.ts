@@ -1,23 +1,32 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getClientAccountForUser } from "@/lib/client-auth";
 import { prisma } from "@/lib/prisma";
 import { calculateProgressFromProjectData, isTaskCompleted, isTaskActive } from "@/lib/progressEngine";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const userOrRes = await requireAuth();
   if (userOrRes instanceof NextResponse) return userOrRes;
 
+  const { searchParams } = new URL(req.url);
+  const requestedClientId = searchParams.get("clientId");
+
   const clientCtx = await getClientAccountForUser(userOrRes.email);
-  if (!clientCtx) {
-    return NextResponse.json(
-      { success: false, error: "No client account associated with this user." },
-      { status: 404 }
-    );
+  let targetClientId: string | undefined = undefined;
+
+  if (clientCtx) {
+    targetClientId = clientCtx.client.id;
+  } else if (requestedClientId && requestedClientId !== "all") {
+    targetClientId = requestedClientId;
+  }
+
+  const whereClause: any = {};
+  if (targetClientId) {
+    whereClause.clientId = targetClientId;
   }
 
   const projects = await prisma.project.findMany({
-    where: { clientId: clientCtx.client.id },
+    where: whereClause,
     include: {
       tasks: {
         select: { id: true, title: true, status: true, assignedToId: true },
@@ -162,8 +171,8 @@ export async function GET() {
 
   return NextResponse.json({
     success: true,
-    client: clientCtx.client,
-    contact: clientCtx.contact,
+    client: clientCtx?.client || null,
+    contact: clientCtx?.contact || null,
     projects: formattedProjects,
   });
 }

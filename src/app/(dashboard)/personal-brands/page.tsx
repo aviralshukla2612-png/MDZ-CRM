@@ -77,6 +77,29 @@ export default function PersonalBrandsPage() {
   const [newYoutube, setNewYoutube] = useState("");
   const [newTwitter, setNewTwitter] = useState("");
 
+  // Edit Profile Modal State
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [editClientName, setEditClientName] = useState("");
+  const [editHandle, setEditHandle] = useState("");
+  const [editNiche, setEditNiche] = useState("");
+  const [editStatus, setEditStatus] = useState("ACTIVE");
+  const [editBio, setEditBio] = useState("");
+  const [editPositioning, setEditPositioning] = useState("");
+  const [editAudience, setEditAudience] = useState("");
+  const [editGeography, setEditGeography] = useState("");
+  const [editTone, setEditTone] = useState("");
+  const [editGuidelines, setEditGuidelines] = useState("");
+  const [editMonthlyPackage, setEditMonthlyPackage] = useState("");
+  const [editMonthlyCommitments, setEditMonthlyCommitments] = useState("");
+  const [editGoalsKpis, setEditGoalsKpis] = useState("");
+  const [editBrandAudit, setEditBrandAudit] = useState("");
+  const [editCompetitors, setEditCompetitors] = useState("");
+  const [editInstagram, setEditInstagram] = useState("");
+  const [editLinkedin, setEditLinkedin] = useState("");
+  const [editYoutube, setEditYoutube] = useState("");
+  const [editTwitter, setEditTwitter] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
   // Create Content Item Modal State
   const [isAddContentOpen, setIsAddContentOpen] = useState(false);
   const [contentTitle, setContentTitle] = useState("");
@@ -249,6 +272,90 @@ export default function PersonalBrandsPage() {
       }
     } catch (e) {
       showToast("Network error", "error");
+    }
+  };
+
+  const openEditProfileModal = () => {
+    if (!selectedProfile) return;
+    setEditClientName(selectedProfile.clientName || "");
+    setEditHandle(selectedProfile.handle || "");
+    setEditNiche(selectedProfile.niche || "");
+    setEditStatus(selectedProfile.status || "ACTIVE");
+    setEditBio(selectedProfile.professionalBio || "");
+    setEditPositioning(selectedProfile.brandPositioning || "");
+    setEditAudience(selectedProfile.targetAudience || "");
+    setEditGeography(selectedProfile.targetGeography || "");
+    setEditTone(selectedProfile.toneOfVoice || "");
+    setEditGuidelines(selectedProfile.brandGuidelines || "");
+    setEditMonthlyPackage(selectedProfile.monthlyPackage || "");
+    setEditMonthlyCommitments(selectedProfile.monthlyCommitments || "");
+    setEditGoalsKpis(selectedProfile.monthlyGoalsKpis || "");
+    setEditBrandAudit(selectedProfile.brandAuditSummary || "");
+    setEditCompetitors(selectedProfile.competitorTracking || "");
+
+    let socials: any = {};
+    if (selectedProfile.socialLinksJson) {
+      try {
+        socials = JSON.parse(selectedProfile.socialLinksJson);
+      } catch (e) {}
+    }
+    setEditInstagram(socials.instagram || "");
+    setEditLinkedin(socials.linkedin || "");
+    setEditYoutube(socials.youtube || "");
+    setEditTwitter(socials.twitter || "");
+
+    setIsEditProfileOpen(true);
+  };
+
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProfile) return;
+    try {
+      setEditSaving(true);
+      const socialLinksJson = JSON.stringify({
+        instagram: editInstagram.trim(),
+        linkedin: editLinkedin.trim(),
+        youtube: editYoutube.trim(),
+        twitter: editTwitter.trim(),
+      });
+
+      const res = await fetch(`/mdz-crm/api/personal-brands/${selectedProfile.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientName: editClientName,
+          handle: editHandle,
+          niche: editNiche,
+          status: editStatus,
+          professionalBio: editBio,
+          brandPositioning: editPositioning,
+          targetAudience: editAudience,
+          targetGeography: editGeography,
+          toneOfVoice: editTone,
+          brandGuidelines: editGuidelines,
+          socialLinksJson,
+          monthlyPackage: editMonthlyPackage,
+          monthlyCommitments: editMonthlyCommitments,
+          brandAuditSummary: editBrandAudit,
+          competitorTracking: editCompetitors,
+          monthlyGoalsKpis: editGoalsKpis,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✓ Personal Brand details updated for "${editClientName}"!`, "success");
+        setIsEditProfileOpen(false);
+        await fetchProfileDetail(selectedProfile.id);
+        fetchProfiles();
+      } else {
+        showToast(json.error || "Failed to update profile", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Network error while updating profile", "error");
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -627,6 +734,15 @@ export default function PersonalBrandsPage() {
             )}
 
             <button
+              onClick={() => openEditProfileModal()}
+              className="px-3 py-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-200 border border-indigo-400/30 transition-all flex items-center gap-1.5 text-xs font-bold cursor-pointer shadow-xs"
+              title="Edit Profile & Dossier Details"
+            >
+              <Edit3 className="w-3.5 h-3.5 text-indigo-300" />
+              <span>Edit Details</span>
+            </button>
+
+            <button
               onClick={() => {
                 setConfirmDelete({
                   isOpen: true,
@@ -634,7 +750,7 @@ export default function PersonalBrandsPage() {
                   name: selectedProfile.clientName,
                 });
               }}
-              className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 transition-colors ml-2"
+              className="p-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 transition-colors"
               title="Delete Profile"
             >
               <Trash2 className="w-4 h-4" />
@@ -728,9 +844,18 @@ export default function PersonalBrandsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Card 1: Brand Positioning & Unique Expertise */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
-              <Sparkles className="w-4 h-4" />
-              <span>Brand Positioning & Unique Expertise</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
+                <Sparkles className="w-4 h-4" />
+                <span>Brand Positioning & Unique Expertise</span>
+              </div>
+              <button
+                onClick={() => openEditProfileModal()}
+                className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
             </div>
             <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed whitespace-pre-line">
               {selectedProfile.brandPositioning || "No brand positioning statement defined yet."}
@@ -742,9 +867,18 @@ export default function PersonalBrandsPage() {
 
           {/* Card 2: Audience Demographics & Target Geography */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-purple-600 dark:text-purple-400">
-              <Globe className="w-4 h-4" />
-              <span>Audience Demographics & Target Geography</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-purple-600 dark:text-purple-400">
+                <Globe className="w-4 h-4" />
+                <span>Audience Demographics & Target Geography</span>
+              </div>
+              <button
+                onClick={() => openEditProfileModal()}
+                className="text-[11px] font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
             </div>
             <div className="space-y-2 text-xs">
               <div>
@@ -763,9 +897,18 @@ export default function PersonalBrandsPage() {
 
           {/* Card 3: Tone of Voice & Brand Guidelines */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-amber-600 dark:text-amber-400">
-              <Sliders className="w-4 h-4" />
-              <span>Tone of Voice & Brand Guidelines</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                <Sliders className="w-4 h-4" />
+                <span>Tone of Voice & Brand Guidelines</span>
+              </div>
+              <button
+                onClick={() => openEditProfileModal()}
+                className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
             </div>
             <div className="space-y-2 text-xs">
               <div className="p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40">
@@ -783,9 +926,18 @@ export default function PersonalBrandsPage() {
 
           {/* Card 4: Monthly Package & Deliverable Commitments */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
-              <Target className="w-4 h-4" />
-              <span>Goals, Monthly Package & Commitments</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
+                <Target className="w-4 h-4" />
+                <span>Goals, Monthly Package & Commitments</span>
+              </div>
+              <button
+                onClick={() => openEditProfileModal()}
+                className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
             </div>
             <div className="space-y-2.5 text-xs">
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200/60 dark:border-emerald-900/40">
@@ -805,9 +957,18 @@ export default function PersonalBrandsPage() {
 
           {/* Card 5: Personal Brand Audit */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-sky-600 dark:text-sky-400">
-              <BarChart3 className="w-4 h-4" />
-              <span>Personal Brand Audit & Baseline</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-sky-600 dark:text-sky-400">
+                <BarChart3 className="w-4 h-4" />
+                <span>Personal Brand Audit & Baseline</span>
+              </div>
+              <button
+                onClick={() => openEditProfileModal()}
+                className="text-[11px] font-bold text-sky-600 dark:text-sky-400 hover:text-sky-700 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
             </div>
             <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
               {selectedProfile.brandAuditSummary || "Initial audit completed: Profile bio needs optimization, engagement rate 2.4%, lacks clear lead magnet CTA in profile link."}
@@ -816,9 +977,18 @@ export default function PersonalBrandsPage() {
 
           {/* Card 6: Competitor & Reference Tracking */}
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-5 shadow-xs space-y-3">
-            <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-rose-600 dark:text-rose-400">
-              <TrendingUp className="w-4 h-4" />
-              <span>Competitor & Benchmark Reference Tracking</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-xs font-extrabold uppercase tracking-wide text-rose-600 dark:text-rose-400">
+                <TrendingUp className="w-4 h-4" />
+                <span>Competitor & Benchmark Reference Tracking</span>
+              </div>
+              <button
+                onClick={() => openEditProfileModal()}
+                className="text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:text-rose-700 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Edit3 className="w-3 h-3" />
+                <span>Edit</span>
+              </button>
             </div>
             <p className="text-xs text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">
               {selectedProfile.competitorTracking || "Benchmarks: @garyvee, @naval, @alexhormozi. Analyze high-retention 3-second visual hooks and short punchy sentences."}
@@ -1573,6 +1743,259 @@ export default function PersonalBrandsPage() {
             className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all"
           >
             Create Brand Profile
+          </button>
+        </form>
+      </BottomSheet>
+
+      {/* ============================================================== */}
+      {/* MODAL 1.5: EDIT PERSONAL BRAND CLIENT & DOSSIER                */}
+      {/* ============================================================== */}
+      <BottomSheet
+        isOpen={isEditProfileOpen}
+        onClose={() => setIsEditProfileOpen(false)}
+        title="Edit Personal Brand Profile & Dossier"
+        subtitle="Modify brand positioning, bio, audience geography, tone, package commitments, audit, and social links."
+      >
+        <form onSubmit={handleUpdateProfile} className="space-y-4 text-xs max-h-[75vh] overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="font-semibold block mb-1">Client Full Name *</label>
+              <input
+                type="text"
+                required
+                value={editClientName}
+                onChange={(e) => setEditClientName(e.target.value)}
+                placeholder="e.g. Helin Limbasiya"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="font-semibold block mb-1">Primary Handle / Username</label>
+              <input
+                type="text"
+                value={editHandle}
+                onChange={(e) => setEditHandle(e.target.value)}
+                placeholder="@handle"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-indigo-500 font-mono"
+              />
+            </div>
+            <div>
+              <label className="font-semibold block mb-1">Status</label>
+              <select
+                value={editStatus}
+                onChange={(e) => setEditStatus(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-indigo-500 font-semibold"
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="PAUSED">PAUSED</option>
+                <option value="COMPLETED">COMPLETED</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="font-semibold block mb-1">Domain / Niche</label>
+              <input
+                type="text"
+                value={editNiche}
+                onChange={(e) => setEditNiche(e.target.value)}
+                placeholder="e.g. Fintech Founder / Real Estate / Creator"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="font-semibold block mb-1">Professional Bio</label>
+              <input
+                type="text"
+                value={editBio}
+                onChange={(e) => setEditBio(e.target.value)}
+                placeholder="Short bio or background summary"
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          {/* Section 1: Positioning */}
+          <div className="p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-900/40 space-y-2">
+            <span className="font-bold text-indigo-900 dark:text-indigo-200 block text-xs">
+              Card 1: Brand Positioning & Unique Expertise
+            </span>
+            <textarea
+              rows={3}
+              value={editPositioning}
+              onChange={(e) => setEditPositioning(e.target.value)}
+              placeholder="What makes this personal brand uniquely credible and stand out?"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Section 2: Audience & Geography */}
+          <div className="p-3.5 rounded-2xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-900/40 space-y-2">
+            <span className="font-bold text-purple-900 dark:text-purple-200 block text-xs">
+              Card 2: Audience Demographics & Target Geography
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Target Audience Profile</label>
+                <input
+                  type="text"
+                  value={editAudience}
+                  onChange={(e) => setEditAudience(e.target.value)}
+                  placeholder="e.g. Tech founders, CXOs, investors"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-purple-500"
+                />
+              </div>
+              <div>
+                <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Target Geography</label>
+                <input
+                  type="text"
+                  value={editGeography}
+                  onChange={(e) => setEditGeography(e.target.value)}
+                  placeholder="e.g. India, Dubai, US West Coast"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-purple-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Tone of Voice & Guidelines */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 space-y-2">
+            <span className="font-bold text-amber-900 dark:text-amber-200 block text-xs">
+              Card 3: Tone of Voice & Brand Guidelines
+            </span>
+            <div>
+              <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Tone of Voice</label>
+              <input
+                type="text"
+                value={editTone}
+                onChange={(e) => setEditTone(e.target.value)}
+                placeholder="e.g. Direct, insightful, storytelling-focused, authoritative"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Visual & Content Guidelines</label>
+              <textarea
+                rows={2}
+                value={editGuidelines}
+                onChange={(e) => setEditGuidelines(e.target.value)}
+                placeholder="Dark aesthetic, high-contrast captions, bold sans-serif fonts, crisp 4K vertical footage"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-amber-500"
+              />
+            </div>
+          </div>
+
+          {/* Section 4: Package & Commitments */}
+          <div className="p-3.5 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200/60 dark:border-emerald-900/40 space-y-2">
+            <span className="font-bold text-emerald-900 dark:text-emerald-200 block text-xs">
+              Card 4: Goals, Monthly Package & Commitments
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Package Tier</label>
+                <input
+                  type="text"
+                  value={editMonthlyPackage}
+                  onChange={(e) => setEditMonthlyPackage(e.target.value)}
+                  placeholder="e.g. 16 Reels + 8 LinkedIn Articles + 4 Carousels"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Monthly Goals & KPIs</label>
+                <input
+                  type="text"
+                  value={editGoalsKpis}
+                  onChange={(e) => setEditGoalsKpis(e.target.value)}
+                  placeholder="e.g. +10K followers, 100K reach, 25 inbound DM leads"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-emerald-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="font-semibold block mb-1 text-slate-700 dark:text-slate-300">Deliverable Commitments</label>
+              <textarea
+                rows={2}
+                value={editMonthlyCommitments}
+                onChange={(e) => setEditMonthlyCommitments(e.target.value)}
+                placeholder="Weekly 4 video shoots, daily content publishing"
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-emerald-500"
+              />
+            </div>
+          </div>
+
+          {/* Section 5: Brand Audit */}
+          <div className="p-3.5 rounded-2xl bg-sky-50/50 dark:bg-sky-950/30 border border-sky-200/60 dark:border-sky-900/40 space-y-2">
+            <span className="font-bold text-sky-900 dark:text-sky-200 block text-xs">
+              Card 5: Personal Brand Audit & Baseline
+            </span>
+            <textarea
+              rows={2}
+              value={editBrandAudit}
+              onChange={(e) => setEditBrandAudit(e.target.value)}
+              placeholder="Initial audit notes, engagement rates, profile optimizations needed"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-sky-500"
+            />
+          </div>
+
+          {/* Section 6: Competitor Tracking */}
+          <div className="p-3.5 rounded-2xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 space-y-2">
+            <span className="font-bold text-rose-900 dark:text-rose-200 block text-xs">
+              Card 6: Competitor & Benchmark Reference Tracking
+            </span>
+            <textarea
+              rows={2}
+              value={editCompetitors}
+              onChange={(e) => setEditCompetitors(e.target.value)}
+              placeholder="Benchmarks: @garyvee, @naval, @alexhormozi. Analyze high-retention 3-second visual hooks"
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 outline-none focus:border-rose-500"
+            />
+          </div>
+
+          {/* Social Links */}
+          <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+            <span className="font-bold text-slate-800 dark:text-slate-200 block text-xs">
+              Social Media Accounts
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <input
+                type="text"
+                value={editInstagram}
+                onChange={(e) => setEditInstagram(e.target.value)}
+                placeholder="Instagram handle/URL"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs font-mono"
+              />
+              <input
+                type="text"
+                value={editLinkedin}
+                onChange={(e) => setEditLinkedin(e.target.value)}
+                placeholder="LinkedIn URL"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs font-mono"
+              />
+              <input
+                type="text"
+                value={editYoutube}
+                onChange={(e) => setEditYoutube(e.target.value)}
+                placeholder="YouTube Channel URL"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs font-mono"
+              />
+              <input
+                type="text"
+                value={editTwitter}
+                onChange={(e) => setEditTwitter(e.target.value)}
+                placeholder="Twitter / X handle"
+                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={editSaving}
+            className="w-full py-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all cursor-pointer"
+          >
+            {editSaving ? "Saving Changes..." : "✓ Save & Update Brand Dossier"}
           </button>
         </form>
       </BottomSheet>
