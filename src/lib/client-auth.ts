@@ -36,6 +36,11 @@ export async function getClientAccountForUser(userEmail: string): Promise<Resolv
     },
   });
 
+  // Internal agency staff (OWNER, ADMIN, SUB_ADMIN, SALES, EMPLOYEE) do NOT have a client account
+  if (user && user.activeRole !== "CLIENT") {
+    return null;
+  }
+
   // 2. Primary lookup: Find ClientContact by email
   let contact = await prisma.clientContact.findFirst({
     where: {

@@ -82,8 +82,10 @@ export default function DeliveryControlPage() {
     }
   };
 
-  const effectiveCid = getClientId() || clientInfo?.id;
-  const effectiveCName = clientInfo?.companyName || (effectiveCid ? "Client Account" : "Agency Master Sheet");
+  const effectiveCid = isAdmin ? (getClientId() || "") : (getClientId() || clientInfo?.id || "");
+  const effectiveCName = !isAdmin
+    ? (clientInfo?.companyName || "My Brand")
+    : (effectiveCid ? (clientInfo?.companyName || "Client Account") : "Agency Master Sheet");
 
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 font-sans pb-16">

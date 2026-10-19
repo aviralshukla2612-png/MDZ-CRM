@@ -52,7 +52,7 @@ export async function GET(req: Request) {
 
     // Check if authenticated user is a CLIENT
     const clientCtx = await getClientAccountForUser(authRes.email);
-    const isClientUser = authRes.activeRole === "CLIENT" || Boolean(clientCtx);
+    const isClientUser = authRes.activeRole === "CLIENT";
     const effectiveClientId = isClientUser && clientCtx
       ? clientCtx.client.id
       : (filterClientId && filterClientId !== "ALL" ? filterClientId : null);
