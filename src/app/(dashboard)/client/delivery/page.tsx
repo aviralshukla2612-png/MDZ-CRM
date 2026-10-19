@@ -39,6 +39,11 @@ export default function DeliveryControlPage() {
       if (json.success && json.data) {
         setData(json.data.delivery);
         setClientInfo(json.client || { id: json.clientId, companyName: json.clientName });
+        if (json.clientId && typeof window !== "undefined" && !isAdmin) {
+          try {
+            localStorage.setItem("mdz_active_client_id", json.clientId);
+          } catch {}
+        }
       }
     } catch (e) {
       console.error(e);
@@ -77,6 +82,9 @@ export default function DeliveryControlPage() {
     }
   };
 
+  const effectiveCid = getClientId() || clientInfo?.id;
+  const effectiveCName = clientInfo?.companyName || (effectiveCid ? "Client Account" : "Agency Master Sheet");
+
   return (
     <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6 font-sans pb-16">
       {/* Client Portal Navigation Tabs */}
@@ -85,8 +93,8 @@ export default function DeliveryControlPage() {
       {/* Main Google Sheets Style Monthly Delivery Control */}
       <MillionaireDeliverySpreadsheet
         initialData={data}
-        clientId={getClientId()}
-        clientName={getClientId() ? (clientInfo?.companyName || "Client Account") : "Agency Master Sheet"}
+        clientId={effectiveCid}
+        clientName={effectiveCName}
         isAdmin={isAdmin}
         onSave={handleSave}
       />

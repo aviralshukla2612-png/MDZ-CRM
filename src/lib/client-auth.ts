@@ -26,41 +26,92 @@ export interface ResolvedClientContext {
 export async function getClientAccountForUser(userEmail: string): Promise<ResolvedClientContext | null> {
   if (!userEmail) return null;
 
-  // Primary lookup: Find ClientContact by email
-  const contact = await prisma.clientContact.findFirst({
-    where: { email: userEmail },
+  const trimmed = userEmail.trim();
+  const lower = trimmed.toLowerCase();
+
+  // 1. Fetch user to check role and id
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [{ email: trimmed }, { email: lower }],
+    },
+  });
+
+  // 2. Primary lookup: Find ClientContact by email
+  let contact = await prisma.clientContact.findFirst({
+    where: {
+      OR: [{ email: trimmed }, { email: lower }],
+    },
     include: { client: true },
   });
 
-  if (contact?.client) {
-    return {
-      client: {
-        id: contact.client.id,
-        clientNumber: contact.client.clientNumber,
-        companyName: contact.client.companyName,
-        email: contact.client.email,
-        gstNumber: contact.client.gstNumber,
+  // 3. Fallback lookup: Find Client by email
+  let client = contact?.client || null;
+  if (!client) {
+    client = await prisma.client.findFirst({
+      where: {
+        OR: [{ email: trimmed }, { email: lower }],
       },
-      contact: {
-        id: contact.id,
-        name: contact.name,
-        email: contact.email,
-        designation: contact.designation,
-        termsAccepted: contact.termsAccepted,
-        termsAcceptedAt: contact.termsAcceptedAt,
-        termsVersion: contact.termsVersion,
-      },
-    };
+      include: { contacts: true },
+    });
   }
 
-  // Fallback lookup: Find Client by email
-  const client = await prisma.client.findFirst({
-    where: { email: userEmail },
-    include: { contacts: true },
-  });
+  // 4. Fallback lookup: Find Client created by this user
+  if (!client && user) {
+    client = await prisma.client.findFirst({
+      where: { createdById: user.id },
+      include: { contacts: true },
+    });
+  }
+
+  // 5. Fallback lookup for CLIENT role: match by companyName or phone
+  if (!client && user && user.activeRole === "CLIENT") {
+    client = await prisma.client.findFirst({
+      where: { companyName: user.name },
+      include: { contacts: true },
+    });
+
+    if (!client && user.phone) {
+      client = await prisma.client.findFirst({
+        where: { phone: user.phone },
+        include: { contacts: true },
+      });
+    }
+
+    // Provision client if missing for active CLIENT user so they are never unmapped
+    if (!client) {
+      const clientNumber = `CLI-${Date.now().toString().slice(-6)}`;
+      client = await prisma.client.create({
+        data: {
+          clientNumber,
+          companyName: user.name || "Client Brand",
+          email: lower,
+          phone: user.phone || "",
+          createdById: user.id,
+          contacts: {
+            create: {
+              name: user.name || "Primary Contact",
+              designation: user.designation || "Primary Contact",
+              email: lower,
+              isPrimary: true,
+              termsAccepted: true,
+              termsAcceptedAt: new Date(),
+            },
+          },
+        },
+        include: { contacts: true },
+      });
+    }
+  }
 
   if (client) {
-    const primaryContact = client.contacts.find((c) => c.isPrimary) || client.contacts[0] || null;
+    if (!contact) {
+      contact = await prisma.clientContact.findFirst({
+        where: { clientId: client.id },
+        include: { client: true },
+        orderBy: { isPrimary: "desc" },
+      });
+    }
+
     return {
       client: {
         id: client.id,
@@ -69,15 +120,15 @@ export async function getClientAccountForUser(userEmail: string): Promise<Resolv
         email: client.email,
         gstNumber: client.gstNumber,
       },
-      contact: primaryContact
+      contact: contact
         ? {
-            id: primaryContact.id,
-            name: primaryContact.name,
-            email: primaryContact.email,
-            designation: primaryContact.designation,
-            termsAccepted: primaryContact.termsAccepted,
-            termsAcceptedAt: primaryContact.termsAcceptedAt,
-            termsVersion: primaryContact.termsVersion,
+            id: contact.id,
+            name: contact.name,
+            email: contact.email,
+            designation: contact.designation,
+            termsAccepted: contact.termsAccepted,
+            termsAcceptedAt: contact.termsAcceptedAt,
+            termsVersion: contact.termsVersion,
           }
         : null,
     };

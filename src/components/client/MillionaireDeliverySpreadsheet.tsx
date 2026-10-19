@@ -219,8 +219,30 @@ export function MillionaireDeliverySpreadsheet({
     }
   }, [data]);
 
-  const targetTotals = useMemo(() => {
+  const displayedTargetRows = useMemo(() => {
     const list = targetRows.length > 0 ? targetRows : (data?.clientTargetCommitments || []);
+    if (!isAdmin) {
+      if (activeClientId) {
+        const match = list.filter((r: any) => r.id === `ct-${activeClientId}` || r.id === activeClientId || r.client?.toLowerCase() === activeClientId.toLowerCase());
+        if (match.length > 0) return match;
+      }
+      if (clientName && clientName !== "Agency Master Sheet" && clientName !== "Client Account") {
+        const byName = list.filter((r: any) => r.client?.toLowerCase() === clientName.toLowerCase() || clientName.toLowerCase().includes(r.client?.toLowerCase()));
+        if (byName.length > 0) return byName;
+      }
+      if (list.length > 0) return [list[0]];
+      return [];
+    }
+    return list.filter((r: any) =>
+      !targetSearch ||
+      r.client?.toLowerCase().includes(targetSearch.toLowerCase()) ||
+      r.notes?.toLowerCase().includes(targetSearch.toLowerCase()) ||
+      r.review?.toLowerCase().includes(targetSearch.toLowerCase())
+    );
+  }, [isAdmin, activeClientId, clientName, targetRows, data?.clientTargetCommitments, targetSearch]);
+
+  const targetTotals = useMemo(() => {
+    const list = !isAdmin ? displayedTargetRows : (targetRows.length > 0 ? targetRows : (data?.clientTargetCommitments || []));
     return list.reduce(
       (acc: any, row: any) => {
         acc.reels += Number(row.reels) || 0;
@@ -233,7 +255,7 @@ export function MillionaireDeliverySpreadsheet({
       },
       { reels: 0, carousels: 0, posts: 0, cpUnsplit: 0, stories: 0, total: 0 }
     );
-  }, [targetRows, data?.clientTargetCommitments]);
+  }, [isAdmin, displayedTargetRows, targetRows, data?.clientTargetCommitments]);
 
   const handleUpdateTargetField = (rowId: string, field: string, value: any) => {
     setTargetRows((prev) =>
@@ -297,13 +319,38 @@ export function MillionaireDeliverySpreadsheet({
     }
   };
 
+  // Filtered rows to display on client dashboard table
+  const displayedClientRows = useMemo(() => {
+    if (!isAdmin) {
+      if (activeClientId) {
+        const match = clientRows.filter(
+          (r: any) => r.id === activeClientId || r.clientCode === activeClientId
+        );
+        if (match.length > 0) return match;
+      }
+      if (clientName && clientName !== "Agency Master Sheet" && clientName !== "Client Account") {
+        const byName = clientRows.filter(
+          (r: any) => r.clientName?.toLowerCase() === clientName.toLowerCase()
+        );
+        if (byName.length > 0) return byName;
+      }
+      if (clientRows.length > 0) {
+        return [clientRows[0]];
+      }
+      return [];
+    }
+    return clientRows;
+  }, [isAdmin, activeClientId, clientName, clientRows]);
+
   // Dynamic live KPIs computed directly from clientRows and production log
   const liveKpis = useMemo(() => {
-    // If activeClientId is chosen, calculate for that active client
-    if (activeClientId && clientRows && clientRows.length > 0) {
-      const activeRow = clientRows.find(
-        (r: any) => r.id === activeClientId || r.clientCode === activeClientId
-      );
+    const rowsToCompute = !isAdmin ? displayedClientRows : clientRows;
+
+    // If activeClientId is chosen or !isAdmin and exactly 1 row, calculate for that active client
+    if ((activeClientId || !isAdmin) && rowsToCompute && rowsToCompute.length > 0) {
+      const activeRow = activeClientId
+        ? rowsToCompute.find((r: any) => r.id === activeClientId || r.clientCode === activeClientId) || rowsToCompute[0]
+        : rowsToCompute[0];
       if (activeRow) {
         const target = Number(activeRow.target) || 0;
         const done = Number(activeRow.done) || 0;
@@ -329,19 +376,19 @@ export function MillionaireDeliverySpreadsheet({
       }
     }
 
-    if (!clientRows || clientRows.length === 0) {
+    if (!rowsToCompute || rowsToCompute.length === 0) {
       return (
         data?.kpis || {
-          planned: 292,
+          planned: 60,
           completed: 0,
-          remaining: 292,
+          remaining: 60,
           onHold: 0,
           overdue: 0,
           inProgress: 0,
           published: 0,
           completionPct: 0,
           missingLinks: 0,
-          unassigned: 292,
+          unassigned: 60,
         }
       );
     }
@@ -355,7 +402,7 @@ export function MillionaireDeliverySpreadsheet({
     let missingLinks = 0;
     let unassigned = 0;
 
-    clientRows.forEach((r: any) => {
+    rowsToCompute.forEach((r: any) => {
       const t = Number(r.target) || 0;
       const d = Number(r.done) || 0;
       planned += t;
@@ -381,7 +428,7 @@ export function MillionaireDeliverySpreadsheet({
       missingLinks,
       unassigned,
     };
-  }, [clientRows, activeClientId, data]);
+  }, [isAdmin, displayedClientRows, clientRows, activeClientId, data]);
 
   const handleCellChange = (id: string, field: string, rawVal: any) => {
     const val = field === "clientCode" || field === "clientName" ? rawVal : Number(rawVal) || 0;
@@ -930,7 +977,7 @@ export function MillionaireDeliverySpreadsheet({
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                {clientRows.map((row: any, idx: number) => {
+                {displayedClientRows.map((row: any, idx: number) => {
                   const isRowActive = activeClientId && (row.id === activeClientId || row.clientCode === activeClientId);
                   return (
                   <tr
@@ -1502,9 +1549,7 @@ export function MillionaireDeliverySpreadsheet({
                 Source: handwritten client plan 12 Oct 2026 • slash values provisionally split Carousel/Post • single C/P totals remain UNSPLIT
               </span>
               <span className="not-italic font-sans text-slate-500 font-semibold text-[11px]">
-                Showing {((targetRows.length > 0 ? targetRows : (data?.clientTargetCommitments || [])).filter((r: any) =>
-                  !targetSearch || r.client?.toLowerCase().includes(targetSearch.toLowerCase())
-                )).length} of 16 Clients
+                Showing {displayedTargetRows.length} {isAdmin ? "of 16 Clients" : "Brand Content Commitment"}
               </span>
             </div>
 
@@ -1536,14 +1581,7 @@ export function MillionaireDeliverySpreadsheet({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-mono text-xs">
-                  {((targetRows.length > 0 ? targetRows : (data?.clientTargetCommitments || []))
-                    .filter((r: any) =>
-                      !targetSearch ||
-                      r.client?.toLowerCase().includes(targetSearch.toLowerCase()) ||
-                      r.notes?.toLowerCase().includes(targetSearch.toLowerCase()) ||
-                      r.review?.toLowerCase().includes(targetSearch.toLowerCase())
-                    )
-                  ).map((row: any, idx: number) => {
+                  {displayedTargetRows.map((row: any, idx: number) => {
                     const isEditing = editingTargetRowId === "ALL" || editingTargetRowId === row.id;
                     const isReviewNeeded = row.review?.toLowerCase().includes("needs review");
 

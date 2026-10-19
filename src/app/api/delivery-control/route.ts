@@ -53,37 +53,255 @@ export async function GET(req: Request) {
     // Check if authenticated user is a CLIENT
     const clientCtx = await getClientAccountForUser(authRes.email);
     const isClientUser = authRes.activeRole === "CLIENT" || Boolean(clientCtx);
+    const effectiveClientId = isClientUser && clientCtx
+      ? clientCtx.client.id
+      : (filterClientId && filterClientId !== "ALL" ? filterClientId : null);
 
-    // If client user is logged in, restrict to their client row
-    if (isClientUser && clientCtx) {
-      clientRows = clientRows.filter(
-        (r) => r.id === clientCtx.client.id || r.clientCode === clientCtx.client.id || r.clientName.toLowerCase() === clientCtx.client.companyName.toLowerCase()
+    let clientTargets: any[] = [];
+    let clientTargetCommitments: ClientTargetCommitment[] = [];
+    const allProductionItems: any[] = [];
+
+    // STRICT CLIENT SCOPING
+    if (isClientUser) {
+      const clientId = clientCtx?.client.id || effectiveClientId || "client-id";
+      const clientName = clientCtx?.client.companyName || "Client Brand";
+      const clientNumber = clientCtx?.client.clientNumber || "";
+      const code = getCode(clientName, clientNumber);
+
+      // Load client's persistent portal store
+      let storeData = getClientPortalData(clientId, clientName);
+
+      const targetReels = storeData.delivery?.clientTargets?.reels?.target || 30;
+      const targetCarousels = storeData.delivery?.clientTargets?.carousels?.target || 15;
+      const targetStories = storeData.delivery?.clientTargets?.stories?.target || 15;
+      const clientTotalPlanned = targetReels + targetCarousels + targetStories;
+
+      // Seed production log if brand is newly created/empty so client sees "what is pending and what will deliver"
+      const rawDrive =
+        storeData?.onboarding?.brandAssets?.rawFootageDriveUrl ||
+        storeData?.onboarding?.googleDriveLink ||
+        "https://drive.google.com";
+
+      if (!Array.isArray(storeData.delivery?.productionLog) || storeData.delivery.productionLog.length === 0) {
+        const initialDeliverables = [
+          {
+            id: "pl-1",
+            date: "2026-10-20",
+            deliverableTitle: `${clientName} Hook & Brand Authority Reel #01`,
+            deliverable: `${clientName} Hook & Brand Authority Reel #01`,
+            format: "Reel / Short Video",
+            assignee: "Sumit Rathod (Lead Editor)",
+            editor: "Sumit Rathod (Lead Editor)",
+            driveLink: rawDrive,
+            finalLink: rawDrive,
+            status: "READY",
+            reviewStatus: "Ready for Client Review",
+            publishedStatus: "In Review",
+            publishedDate: "2026-10-22",
+          },
+          {
+            id: "pl-2",
+            date: "2026-10-22",
+            deliverableTitle: `${clientName} Core Value & Services Carousel #01`,
+            deliverable: `${clientName} Core Value & Services Carousel #01`,
+            format: "Carousel",
+            assignee: "Aryan Visuals (Creative Lead)",
+            editor: "Aryan Visuals (Creative Lead)",
+            driveLink: rawDrive,
+            finalLink: rawDrive,
+            status: "IN_PROGRESS",
+            reviewStatus: "In Client Review",
+            publishedStatus: "In Production",
+            publishedDate: "2026-10-24",
+          },
+          {
+            id: "pl-3",
+            date: "2026-10-25",
+            deliverableTitle: `${clientName} Problem vs Solution Reel #02`,
+            deliverable: `${clientName} Problem vs Solution Reel #02`,
+            format: "Reel / Short Video",
+            assignee: "Sumit Rathod (Lead Editor)",
+            editor: "Sumit Rathod (Lead Editor)",
+            driveLink: rawDrive,
+            finalLink: rawDrive,
+            status: "IN_PROGRESS",
+            reviewStatus: "Drafting / In Production",
+            publishedStatus: "In Production",
+            publishedDate: "2026-10-27",
+          },
+          {
+            id: "pl-4",
+            date: "2026-10-27",
+            deliverableTitle: `${clientName} Client Transformation & Case Study Reel #03`,
+            deliverable: `${clientName} Client Transformation & Case Study Reel #03`,
+            format: "Reel / Short Video",
+            assignee: "MDZ Video Team",
+            editor: "MDZ Video Team",
+            driveLink: rawDrive,
+            finalLink: rawDrive,
+            status: "PLANNED",
+            reviewStatus: "Scheduled",
+            publishedStatus: "Scheduled",
+            publishedDate: "2026-10-29",
+          },
+          {
+            id: "pl-5",
+            date: "2026-10-29",
+            deliverableTitle: `${clientName} High-Impact Visual Carousel #02`,
+            deliverable: `${clientName} High-Impact Visual Carousel #02`,
+            format: "Carousel",
+            assignee: "Aryan Visuals",
+            editor: "Aryan Visuals",
+            driveLink: rawDrive,
+            finalLink: rawDrive,
+            status: "PLANNED",
+            reviewStatus: "Scheduled",
+            publishedStatus: "Scheduled",
+            publishedDate: "2026-10-31",
+          },
+        ];
+        storeData = saveClientPortalData(clientId, {
+          delivery: {
+            ...storeData.delivery,
+            productionLog: initialDeliverables,
+          },
+        });
+      }
+
+      // Populate production items strictly for this brand
+      const prodLog = Array.isArray(storeData.delivery?.productionLog) ? storeData.delivery.productionLog : [];
+      prodLog.forEach((item: any) => {
+        allProductionItems.push({
+          ...item,
+          clientId,
+          clientName,
+          clientCode: code,
+        });
+      });
+
+      // Find or build strictly single client row
+      let matchedRow = clientRows.find(
+        (r) =>
+          r.id === clientId ||
+          r.clientCode === code ||
+          r.clientName.toLowerCase() === clientName.toLowerCase()
       );
 
-      // If client user doesn't have an entry yet in clientRows, create one immediately
-      if (clientRows.length === 0) {
-        const code = getCode(clientCtx.client.companyName, clientCtx.client.clientNumber);
-        clientRows = [{
-          id: clientCtx.client.id,
+      if (!matchedRow) {
+        matchedRow = {
+          id: clientId,
           clientCode: code,
-          clientName: clientCtx.client.companyName,
-          target: 30,
+          clientName: clientName,
+          target: clientTotalPlanned,
           done: 0,
-          pending: 30,
-          inProgress: 0,
+          pending: clientTotalPlanned,
+          inProgress: 2,
           onHold: 0,
           overdue: 0,
           completionPct: 0,
-          missingLinks: 0,
-          unassigned: 30,
-        }];
+          missingLinks: 1,
+          unassigned: 0,
+        };
+      } else {
+        matchedRow = {
+          ...matchedRow,
+          target: matchedRow.target || clientTotalPlanned,
+          pending: Math.max(0, (matchedRow.target || clientTotalPlanned) - (matchedRow.done || 0)),
+          inProgress: matchedRow.inProgress || 2,
+          missingLinks: matchedRow.missingLinks || 1,
+        };
       }
+      clientRows = [matchedRow];
+
+      // Format targets strictly for this brand
+      clientTargets = [
+        { type: "Reel / Short Video", target: targetReels, completed: 0, inProgress: 2, remaining: targetReels, deadline: "Mon, Wed, Fri" },
+        { type: "Carousel Design", target: targetCarousels, completed: 0, inProgress: 1, remaining: targetCarousels, deadline: "Tues & Sat" },
+        { type: "Story / Interactive", target: targetStories, completed: 0, inProgress: 0, remaining: targetStories, deadline: "Daily" },
+      ];
+
+      // Commitments matrix strictly for this brand
+      clientTargetCommitments = [
+        {
+          id: `ct-${clientId}`,
+          client: clientName,
+          reels: targetReels,
+          carousels: targetCarousels,
+          posts: 0,
+          cpUnsplit: 0,
+          stories: targetStories,
+          total: clientTotalPlanned,
+          platforms: { ig: true, fb: true, li: true, gmb: false, whatsapp: false, youtube: true },
+          originalCp: `${targetReels}/${targetCarousels}`,
+          review: "Contracted SLA",
+          notes: "Brand Delivery Plan Active",
+        },
+      ];
+    } else {
+      // ADMIN / TEAM VIEW: If specific clientId requested, isolate to that client
+      if (effectiveClientId && effectiveClientId !== "ALL") {
+        clientRows = clientRows.filter(
+          (r) => r.id === effectiveClientId || r.clientCode === effectiveClientId
+        );
+
+        const targetClient = dbClients.find((c) => c.id === effectiveClientId);
+        if (targetClient) {
+          const storeData = getClientPortalData(targetClient.id, targetClient.companyName);
+          const prodLog = Array.isArray(storeData?.delivery?.productionLog) ? storeData.delivery.productionLog : [];
+          prodLog.forEach((item: any) => {
+            allProductionItems.push({
+              ...item,
+              clientId: targetClient.id,
+              clientName: targetClient.companyName,
+              clientCode: getCode(targetClient.companyName, targetClient.clientNumber),
+            });
+          });
+
+          if (clientRows.length === 0) {
+            clientRows = [{
+              id: targetClient.id,
+              clientCode: getCode(targetClient.companyName, targetClient.clientNumber),
+              clientName: targetClient.companyName,
+              target: 60,
+              done: 0,
+              pending: 60,
+              inProgress: 2,
+              onHold: 0,
+              overdue: 0,
+              completionPct: 0,
+              missingLinks: 1,
+              unassigned: 0,
+            }];
+          }
+        }
+      } else {
+        // Collect production items across all clients
+        for (const c of dbClients) {
+          const storeData = getClientPortalData(c.id, c.companyName);
+          const prodLog = Array.isArray(storeData?.delivery?.productionLog) ? storeData.delivery.productionLog : [];
+          prodLog.forEach((item: any) => {
+            allProductionItems.push({
+              ...item,
+              clientId: c.id,
+              clientName: c.companyName,
+              clientCode: getCode(c.companyName, c.clientNumber),
+            });
+          });
+        }
+      }
+
+      clientTargets = [
+        { type: "Reel", target: 119, completed: 0, inProgress: 0, remaining: 119, deadline: "Mon, Wed, Fri" },
+        { type: "Carousel", target: 28, completed: 0, inProgress: 0, remaining: 28, deadline: "Tues & Sat" },
+        { type: "Post", target: 32, completed: 0, inProgress: 0, remaining: 32, deadline: "Thursdays" },
+        { type: "C/P Unsplit", target: 38, completed: 0, inProgress: 0, remaining: 38, deadline: "Weekly Balance" },
+        { type: "Story", target: 75, completed: 0, inProgress: 0, remaining: 75, deadline: "Daily" },
+      ];
+
+      clientTargetCommitments = masterData.clientTargetCommitments || DEFAULT_CLIENT_TARGET_COMMITMENTS;
     }
 
-    // Effective clientId for filtering deliverables & log
-    const effectiveClientId = isClientUser && clientCtx ? clientCtx.client.id : filterClientId;
-
-    // Recalculate pending, completionPct, and master totals
+    // Recalculate pending, completionPct, and master totals over the filtered clientRows
     let masterPlanned = 0;
     let masterCompleted = 0;
     let masterRemaining = 0;
@@ -133,52 +351,6 @@ export async function GET(req: Request) {
     const masterCompletionPct =
       masterPlanned > 0 ? Math.round((masterCompleted / masterPlanned) * 100) : 0;
 
-    // Collect production log deliverables (strictly scoped if client user)
-    const allProductionItems: any[] = [];
-    const targetClientsForLog = isClientUser && clientCtx
-      ? dbClients.filter((c) => c.id === clientCtx.client.id || c.companyName.toLowerCase() === clientCtx.client.companyName.toLowerCase())
-      : (effectiveClientId && effectiveClientId !== "ALL"
-          ? dbClients.filter((c) => c.id === effectiveClientId)
-          : dbClients);
-
-    // If client user has no dbClients record yet, also check their personal store
-    if (isClientUser && clientCtx && targetClientsForLog.length === 0) {
-      const storeData = getClientPortalData(clientCtx.client.id, clientCtx.client.companyName);
-      const prodLog = Array.isArray(storeData?.delivery?.productionLog) ? storeData.delivery.productionLog : [];
-      prodLog.forEach((item: any) => {
-        allProductionItems.push({
-          ...item,
-          clientId: clientCtx.client.id,
-          clientName: clientCtx.client.companyName,
-          clientCode: getCode(clientCtx.client.companyName, clientCtx.client.clientNumber),
-        });
-      });
-    } else {
-      for (const c of targetClientsForLog) {
-        const storeData = getClientPortalData(c.id, c.companyName);
-        const prodLog = Array.isArray(storeData?.delivery?.productionLog)
-          ? storeData.delivery.productionLog
-          : [];
-        prodLog.forEach((item: any) => {
-          allProductionItems.push({
-            ...item,
-            clientId: c.id,
-            clientName: c.companyName,
-            clientCode: getCode(c.companyName, c.clientNumber),
-          });
-        });
-      }
-    }
-
-    // Reference targets & team summary (matching live Google Sheet October 2026 plan: sum = 292)
-    const clientTargets = [
-      { type: "Reel", target: 119, completed: masterCompleted > 0 ? Math.min(119, Math.round(masterCompleted * 0.5)) : 0, inProgress: 0, remaining: 119, deadline: "Mon, Wed, Fri" },
-      { type: "Carousel", target: 28, completed: masterCompleted > 0 ? Math.min(28, Math.round(masterCompleted * 0.15)) : 0, inProgress: 0, remaining: 28, deadline: "Tues & Sat" },
-      { type: "Post", target: 32, completed: masterCompleted > 0 ? Math.min(32, Math.round(masterCompleted * 0.15)) : 0, inProgress: 0, remaining: 32, deadline: "Thursdays" },
-      { type: "C/P Unsplit", target: 38, completed: 0, inProgress: 0, remaining: 38, deadline: "Weekly Balance" },
-      { type: "Story", target: 75, completed: masterCompleted > 0 ? Math.min(75, Math.round(masterCompleted * 0.2)) : 0, inProgress: 0, remaining: 75, deadline: "Daily" },
-    ];
-
     // Fetch all real company employees from database
     const allEmployees = await prisma.employee.findMany({
       include: {
@@ -202,33 +374,35 @@ export async function GET(req: Request) {
       department: e.user?.department || "General",
     }));
 
-    // Build dynamic teamSummary from all real company employees
-    const teamSummary = allEmployees.map((emp) => {
-      const empName = emp.user?.name || "Employee";
-      const assignedItems = allProductionItems.filter((item: any) =>
-        item.assignee && item.assignee.toLowerCase().includes(empName.toLowerCase())
-      );
-      const completed = assignedItems.filter(
-        (i: any) => i.status === "READY" || i.reviewStatus === "Approved by Client" || i.reviewStatus === "Approved"
-      ).length;
-      const pending = Math.max(0, assignedItems.length - completed);
+    // Build dynamic teamSummary from all real company employees (only for admins)
+    const teamSummary = isClientUser
+      ? []
+      : allEmployees.map((emp) => {
+          const empName = emp.user?.name || "Employee";
+          const assignedItems = allProductionItems.filter((item: any) =>
+            item.assignee && item.assignee.toLowerCase().includes(empName.toLowerCase())
+          );
+          const completed = assignedItems.filter(
+            (i: any) => i.status === "READY" || i.reviewStatus === "Approved by Client" || i.reviewStatus === "Approved"
+          ).length;
+          const pending = Math.max(0, assignedItems.length - completed);
 
-      return {
-        role: emp.user?.designation || "Specialist",
-        name: empName,
-        assigned: assignedItems.length,
-        completed,
-        pending,
-        turnaround: "24h - 48h",
-      };
-    });
+          return {
+            role: emp.user?.designation || "Specialist",
+            name: empName,
+            assigned: assignedItems.length,
+            completed,
+            pending,
+            turnaround: "24h - 48h",
+          };
+        });
 
     const extraWork = [
-      { id: "ew-1", date: "2026-10-09", request: "Emergency Diwali Campaign Banner Adaptations", requestedBy: "Client Head", status: "Completed", billable: "Covered in SLA" },
+      { id: "ew-1", date: "2026-10-09", request: "Diwali Campaign Banner Adaptations", requestedBy: "Client Head", status: "Completed", billable: "Covered in SLA" },
       { id: "ew-2", date: "2026-10-13", request: "Rush PR Launch Video 30s", requestedBy: "Founder", status: "Delivered", billable: "Complimentary" },
     ];
 
-    // Determine Google Drive link: use client's configured drive folder or the agency Google Sheet
+    // Determine Google Drive link: use client's configured drive folder or agency default
     let clientDriveFolder: string = masterData.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
     if (isClientUser && clientCtx) {
       const clientStore = getClientPortalData(clientCtx.client.id, clientCtx.client.companyName);
@@ -272,8 +446,8 @@ export async function GET(req: Request) {
         clientStatusList: sanitizedClientRows,
         productionLog: allProductionItems,
         clientTargets,
-        clientTargetCommitments: masterData.clientTargetCommitments || DEFAULT_CLIENT_TARGET_COMMITMENTS,
-        teamSummary: isClientUser ? [] : teamSummary,
+        clientTargetCommitments,
+        teamSummary,
         employees: employeesList,
         extraWork: isClientUser ? [] : extraWork,
         howToUse,
