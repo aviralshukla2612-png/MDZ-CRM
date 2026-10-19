@@ -205,6 +205,98 @@ export function MillionaireDeliverySpreadsheet({
     }
   }, [data]);
 
+  // Client Target Commitments (Matching 16-column matrix in Google Sheet gid=1126021745)
+  const [targetRows, setTargetRows] = useState<any[]>([]);
+  const [hasUnsavedTargetChanges, setHasUnsavedTargetChanges] = useState(false);
+  const [savingTargets, setSavingTargets] = useState(false);
+  const [targetSearch, setTargetSearch] = useState("");
+  const [editingTargetRowId, setEditingTargetRowId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (data && Array.isArray(data.clientTargetCommitments)) {
+      setTargetRows(data.clientTargetCommitments);
+      setHasUnsavedTargetChanges(false);
+    }
+  }, [data]);
+
+  const targetTotals = useMemo(() => {
+    const list = targetRows.length > 0 ? targetRows : (data?.clientTargetCommitments || []);
+    return list.reduce(
+      (acc: any, row: any) => {
+        acc.reels += Number(row.reels) || 0;
+        acc.carousels += Number(row.carousels) || 0;
+        acc.posts += Number(row.posts) || 0;
+        acc.cpUnsplit += Number(row.cpUnsplit) || 0;
+        acc.stories += Number(row.stories) || 0;
+        acc.total += Number(row.total) || 0;
+        return acc;
+      },
+      { reels: 0, carousels: 0, posts: 0, cpUnsplit: 0, stories: 0, total: 0 }
+    );
+  }, [targetRows, data?.clientTargetCommitments]);
+
+  const handleUpdateTargetField = (rowId: string, field: string, value: any) => {
+    setTargetRows((prev) =>
+      prev.map((r) => {
+        if (r.id === rowId) {
+          const updated = { ...r, [field]: value };
+          if (["reels", "carousels", "posts", "cpUnsplit", "stories"].includes(field)) {
+            const reels = field === "reels" ? Number(value) || 0 : Number(updated.reels) || 0;
+            const carousels = field === "carousels" ? Number(value) || 0 : Number(updated.carousels) || 0;
+            const posts = field === "posts" ? Number(value) || 0 : Number(updated.posts) || 0;
+            const cpUnsplit = field === "cpUnsplit" ? Number(value) || 0 : Number(updated.cpUnsplit) || 0;
+            const stories = field === "stories" ? Number(value) || 0 : Number(updated.stories) || 0;
+            updated.total = reels + carousels + posts + cpUnsplit + stories;
+          }
+          return updated;
+        }
+        return r;
+      })
+    );
+    setHasUnsavedTargetChanges(true);
+  };
+
+  const handleToggleTargetPlatform = (rowId: string, platformKey: string) => {
+    setTargetRows((prev) =>
+      prev.map((r) => {
+        if (r.id === rowId) {
+          const platforms = { ...r.platforms, [platformKey]: !r.platforms?.[platformKey] };
+          return { ...r, platforms };
+        }
+        return r;
+      })
+    );
+    setHasUnsavedTargetChanges(true);
+  };
+
+  const handleSaveAllTargetChanges = async () => {
+    try {
+      setSavingTargets(true);
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_ALL_TARGET_COMMITMENTS",
+          commitments: targetRows,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Client target commitments saved successfully", "success");
+        setHasUnsavedTargetChanges(false);
+        setEditingTargetRowId(null);
+        await fetchLiveDeliveryData();
+      } else {
+        showToast(json.error || "Failed to save client targets", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error saving client targets", "error");
+    } finally {
+      setSavingTargets(false);
+    }
+  };
+
   // Dynamic live KPIs computed directly from clientRows and production log
   const liveKpis = useMemo(() => {
     // If activeClientId is chosen, calculate for that active client
@@ -1337,48 +1429,444 @@ export function MillionaireDeliverySpreadsheet({
           </div>
         )}
 
-        {/* ================= TAB: CLIENT TARGETS ================= */}
+        {/* ================= TAB: CLIENT TARGETS (MATCHING GOOGLE SHEET GID=1126021745) ================= */}
         {activeTab === "targets" && (
-          <div className="p-4 space-y-3 min-w-[960px]">
-            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-              Client Quota Targets & Delivery Schedule
-            </h3>
-            <table className="w-full text-left text-xs border border-slate-300 dark:border-slate-800 border-collapse">
-              <thead>
-                <tr className="bg-[#13381B] text-white font-mono text-[11px]">
-                  <th className="py-2 px-3 border-r border-[#0f2e16]">Format Type</th>
-                  <th className="py-2 px-3 text-center border-r border-[#0f2e16]">Target</th>
-                  <th className="py-2 px-3 text-center border-r border-[#0f2e16]">Completed</th>
-                  <th className="py-2 px-3 text-center border-r border-[#0f2e16]">In Progress</th>
-                  <th className="py-2 px-3 text-center border-r border-[#0f2e16]">Remaining</th>
-                  <th className="py-2 px-3 border-r border-[#0f2e16]">Delivery Cadence</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-mono">
-                {(data?.clientTargets || []).map((t: any, idx: number) => (
-                  <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800">
-                    <td className="py-2.5 px-3 font-sans font-bold border-r border-slate-300 dark:border-slate-800">
-                      {t.type}
+          <div className="space-y-4 min-w-[1100px] p-2 sm:p-4">
+            {/* Top Sheet Banner */}
+            <div className="bg-[#13381B] text-white px-4 py-3 font-mono text-sm font-bold flex flex-wrap items-center justify-between gap-3 shadow-sm rounded-t-sm border border-[#0f2e16]">
+              <div className="flex items-center gap-2.5">
+                <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                <span className="tracking-wider uppercase text-sm sm:text-base font-bold">
+                  CLIENT TARGETS | MONTHLY CONTENT COMMITMENTS
+                </span>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {hasUnsavedTargetChanges && isAdmin && (
+                  <button
+                    onClick={handleSaveAllTargetChanges}
+                    disabled={savingTargets}
+                    className="px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{savingTargets ? "Saving..." : "Save All Edits"}</span>
+                  </button>
+                )}
+                {isAdmin && (
+                  <button
+                    onClick={() => setEditingTargetRowId(editingTargetRowId ? null : "ALL")}
+                    className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border ${
+                      editingTargetRowId
+                        ? "bg-amber-400 text-slate-950 border-amber-500 font-bold"
+                        : "bg-[#0f2e16] hover:bg-[#184a24] text-emerald-200 border-[#1b4e26]"
+                    }`}
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{editingTargetRowId ? "Exit Edit Mode" : "Inline Edit"}</span>
+                  </button>
+                )}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-emerald-300/60 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search client..."
+                    value={targetSearch}
+                    onChange={(e) => setTargetSearch(e.target.value)}
+                    className="pl-8 pr-3 py-1 text-xs rounded bg-[#0f2e16] border border-[#1b4e26] text-white placeholder-emerald-200/50 focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                  />
+                </div>
+                <button
+                  onClick={handleSyncFromGoogleSheet}
+                  disabled={syncingSheet}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-sm cursor-pointer"
+                  title="Pull live numbers from Google Sheet"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncingSheet ? "animate-spin" : ""}`} />
+                  <span>{syncingSheet ? "Syncing..." : "Sync Sheet"}</span>
+                </button>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1j3wK1YdRaqG9Xi3P4ynXdrV1RrlTw86C/edit?gid=1126021745#gid=1126021745"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[#0f2e16] hover:bg-[#184a24] text-emerald-300 border border-[#1b4e26] text-xs font-semibold transition-colors"
+                  title="Open Google Sheet Tab Client Targets"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Google Sheet</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Sub-header text matching Row 3 of Google Sheet */}
+            <div className="bg-[#f8fafc] dark:bg-slate-900/80 px-4 py-2 border-x border-b border-slate-200 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 font-mono italic flex flex-wrap items-center justify-between gap-2">
+              <span>
+                Source: handwritten client plan 12 Oct 2026 • slash values provisionally split Carousel/Post • single C/P totals remain UNSPLIT
+              </span>
+              <span className="not-italic font-sans text-slate-500 font-semibold text-[11px]">
+                Showing {((targetRows.length > 0 ? targetRows : (data?.clientTargetCommitments || [])).filter((r: any) =>
+                  !targetSearch || r.client?.toLowerCase().includes(targetSearch.toLowerCase())
+                )).length} of 16 Clients
+              </span>
+            </div>
+
+            {/* 16-Column Master Grid Table */}
+            <div className="overflow-x-auto border border-slate-300 dark:border-slate-800 rounded-b-sm bg-white dark:bg-slate-900 shadow-2xs">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-[#13381B] text-white font-mono text-[11px]">
+                    <th className="py-2.5 px-3 border-r border-[#0f2e16] min-w-[120px] font-bold">Client</th>
+                    <th className="py-2.5 px-3 text-center border-r border-[#0f2e16] min-w-[65px] font-bold">Reels</th>
+                    <th className="py-2.5 px-3 text-center border-r border-[#0f2e16] min-w-[70px] font-bold">Carousels</th>
+                    <th className="py-2.5 px-3 text-center border-r border-[#0f2e16] min-w-[65px] font-bold">Posts</th>
+                    <th className="py-2.5 px-3 text-center border-r border-[#0f2e16] min-w-[90px] font-bold bg-[#0e2a14] text-amber-200">
+                      C/P Unsplit
+                    </th>
+                    <th className="py-2.5 px-3 text-center border-r border-[#0f2e16] min-w-[65px] font-bold">Stories</th>
+                    <th className="py-2.5 px-3 text-center border-r border-[#0f2e16] min-w-[75px] font-bold bg-[#0e2a14] text-emerald-200">
+                      TOTAL
+                    </th>
+                    <th className="py-2.5 px-1.5 text-center border-r border-[#0f2e16] w-[45px]">IG</th>
+                    <th className="py-2.5 px-1.5 text-center border-r border-[#0f2e16] w-[45px]">FB</th>
+                    <th className="py-2.5 px-1.5 text-center border-r border-[#0f2e16] w-[45px]">LI</th>
+                    <th className="py-2.5 px-1.5 text-center border-r border-[#0f2e16] w-[45px]">GMB</th>
+                    <th className="py-2.5 px-1.5 text-center border-r border-[#0f2e16] w-[70px]">WhatsApp</th>
+                    <th className="py-2.5 px-1.5 text-center border-r border-[#0f2e16] w-[65px]">YouTube</th>
+                    <th className="py-2.5 px-3 text-center border-r border-[#0f2e16] min-w-[85px]">Original C/P</th>
+                    <th className="py-2.5 px-3 border-r border-[#0f2e16] min-w-[100px]">Review</th>
+                    <th className="py-2.5 px-3 min-w-[220px]">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-mono text-xs">
+                  {((targetRows.length > 0 ? targetRows : (data?.clientTargetCommitments || []))
+                    .filter((r: any) =>
+                      !targetSearch ||
+                      r.client?.toLowerCase().includes(targetSearch.toLowerCase()) ||
+                      r.notes?.toLowerCase().includes(targetSearch.toLowerCase()) ||
+                      r.review?.toLowerCase().includes(targetSearch.toLowerCase())
+                    )
+                  ).map((row: any, idx: number) => {
+                    const isEditing = editingTargetRowId === "ALL" || editingTargetRowId === row.id;
+                    const isReviewNeeded = row.review?.toLowerCase().includes("needs review");
+
+                    return (
+                      <tr
+                        key={row.id || idx}
+                        className={`transition-colors ${
+                          idx % 2 === 0
+                            ? "bg-white dark:bg-slate-900"
+                            : "bg-[#fafafa] dark:bg-slate-900/40"
+                        } hover:bg-slate-100/70 dark:hover:bg-slate-800/60`}
+                      >
+                        {/* Client Code */}
+                        <td className="py-2.5 px-3 font-sans font-bold text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <span>{row.client}</span>
+                            {isReviewNeeded && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" title="Review Flagged" />
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Reels */}
+                        <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-800">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.reels ?? 0}
+                              onChange={(e) => handleUpdateTargetField(row.id, "reels", e.target.value)}
+                              className="w-12 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold"
+                            />
+                          ) : (
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{row.reels}</span>
+                          )}
+                        </td>
+
+                        {/* Carousels */}
+                        <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-800">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.carousels ?? 0}
+                              onChange={(e) => handleUpdateTargetField(row.id, "carousels", e.target.value)}
+                              className="w-12 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono"
+                            />
+                          ) : (
+                            <span className="text-slate-700 dark:text-slate-300">{row.carousels}</span>
+                          )}
+                        </td>
+
+                        {/* Posts */}
+                        <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-800">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.posts ?? 0}
+                              onChange={(e) => handleUpdateTargetField(row.id, "posts", e.target.value)}
+                              className="w-12 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono"
+                            />
+                          ) : (
+                            <span className="text-slate-700 dark:text-slate-300">{row.posts}</span>
+                          )}
+                        </td>
+
+                        {/* C/P Unsplit (Styled in light-amber background matching Google Sheet) */}
+                        <td className="py-2 px-2 text-center border-r border-amber-200/80 dark:border-amber-950/60 bg-[#FEF3C7]/70 dark:bg-amber-950/30">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.cpUnsplit ?? 0}
+                              onChange={(e) => handleUpdateTargetField(row.id, "cpUnsplit", e.target.value)}
+                              className="w-12 text-center py-0.5 rounded border border-amber-400 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-amber-950 dark:text-amber-200"
+                            />
+                          ) : (
+                            <span className="font-bold text-amber-950 dark:text-amber-200">{row.cpUnsplit}</span>
+                          )}
+                        </td>
+
+                        {/* Stories */}
+                        <td className="py-2 px-2 text-center border-r border-slate-200 dark:border-slate-800">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min="0"
+                              value={row.stories ?? 0}
+                              onChange={(e) => handleUpdateTargetField(row.id, "stories", e.target.value)}
+                              className="w-12 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono"
+                            />
+                          ) : (
+                            <span className="text-slate-700 dark:text-slate-300">{row.stories}</span>
+                          )}
+                        </td>
+
+                        {/* TOTAL (Styled in soft emerald green background matching Google Sheet) */}
+                        <td className="py-2 px-2 text-center border-r border-emerald-200/80 dark:border-emerald-950/60 bg-[#DCFCE7]/70 dark:bg-emerald-950/40">
+                          <span className="font-extrabold text-emerald-950 dark:text-emerald-300 text-xs sm:text-[13px]">
+                            {row.total}
+                          </span>
+                        </td>
+
+                        {/* Platform: IG */}
+                        <td
+                          onClick={() => isEditing && handleToggleTargetPlatform(row.id, "ig")}
+                          className={`py-2 px-1 text-center border-r border-slate-200 dark:border-slate-800 ${
+                            isEditing ? "cursor-pointer hover:bg-emerald-50 dark:hover:bg-slate-800" : ""
+                          }`}
+                        >
+                          {row.platforms?.ig ? (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm leading-none">✓</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 text-[10px]">-</span>
+                          )}
+                        </td>
+
+                        {/* Platform: FB */}
+                        <td
+                          onClick={() => isEditing && handleToggleTargetPlatform(row.id, "fb")}
+                          className={`py-2 px-1 text-center border-r border-slate-200 dark:border-slate-800 ${
+                            isEditing ? "cursor-pointer hover:bg-emerald-50 dark:hover:bg-slate-800" : ""
+                          }`}
+                        >
+                          {row.platforms?.fb ? (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm leading-none">✓</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 text-[10px]">-</span>
+                          )}
+                        </td>
+
+                        {/* Platform: LI */}
+                        <td
+                          onClick={() => isEditing && handleToggleTargetPlatform(row.id, "li")}
+                          className={`py-2 px-1 text-center border-r border-slate-200 dark:border-slate-800 ${
+                            isEditing ? "cursor-pointer hover:bg-emerald-50 dark:hover:bg-slate-800" : ""
+                          }`}
+                        >
+                          {row.platforms?.li ? (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm leading-none">✓</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 text-[10px]">-</span>
+                          )}
+                        </td>
+
+                        {/* Platform: GMB */}
+                        <td
+                          onClick={() => isEditing && handleToggleTargetPlatform(row.id, "gmb")}
+                          className={`py-2 px-1 text-center border-r border-slate-200 dark:border-slate-800 ${
+                            isEditing ? "cursor-pointer hover:bg-emerald-50 dark:hover:bg-slate-800" : ""
+                          }`}
+                        >
+                          {row.platforms?.gmb ? (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm leading-none">✓</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 text-[10px]">-</span>
+                          )}
+                        </td>
+
+                        {/* Platform: WhatsApp */}
+                        <td
+                          onClick={() => isEditing && handleToggleTargetPlatform(row.id, "whatsapp")}
+                          className={`py-2 px-1 text-center border-r border-slate-200 dark:border-slate-800 ${
+                            isEditing ? "cursor-pointer hover:bg-emerald-50 dark:hover:bg-slate-800" : ""
+                          }`}
+                        >
+                          {row.platforms?.whatsapp ? (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm leading-none">✓</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 text-[10px]">-</span>
+                          )}
+                        </td>
+
+                        {/* Platform: YouTube */}
+                        <td
+                          onClick={() => isEditing && handleToggleTargetPlatform(row.id, "youtube")}
+                          className={`py-2 px-1 text-center border-r border-slate-200 dark:border-slate-800 ${
+                            isEditing ? "cursor-pointer hover:bg-emerald-50 dark:hover:bg-slate-800" : ""
+                          }`}
+                        >
+                          {row.platforms?.youtube ? (
+                            <span className="text-emerald-700 dark:text-emerald-400 font-extrabold text-sm leading-none">✓</span>
+                          ) : (
+                            <span className="text-slate-300 dark:text-slate-700 text-[10px]">-</span>
+                          )}
+                        </td>
+
+                        {/* Original C/P */}
+                        <td className="py-2 px-3 text-center border-r border-slate-200 dark:border-slate-800 font-mono text-[11px] text-slate-700 dark:text-slate-300">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={row.originalCp || ""}
+                              onChange={(e) => handleUpdateTargetField(row.id, "originalCp", e.target.value)}
+                              className="w-16 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono"
+                            />
+                          ) : (
+                            row.originalCp || "-"
+                          )}
+                        </td>
+
+                        {/* Review Status */}
+                        <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800 font-sans whitespace-nowrap">
+                          {isEditing ? (
+                            <select
+                              value={row.review || "As noted"}
+                              onChange={(e) => handleUpdateTargetField(row.id, "review", e.target.value)}
+                              className="py-0.5 px-1.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs"
+                            >
+                              <option value="As noted">As noted</option>
+                              <option value="Needs review">Needs review</option>
+                            </select>
+                          ) : isReviewNeeded ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                              Needs review
+                            </span>
+                          ) : (
+                            <span className="text-slate-700 dark:text-slate-300 text-[11px]">As noted</span>
+                          )}
+                        </td>
+
+                        {/* Notes */}
+                        <td className="py-2 px-3 font-sans text-[11px] text-slate-600 dark:text-slate-400">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={row.notes || ""}
+                              onChange={(e) => handleUpdateTargetField(row.id, "notes", e.target.value)}
+                              className="w-full py-0.5 px-2 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-sans"
+                            />
+                          ) : (
+                            row.notes || <span className="text-slate-300 dark:text-slate-700 italic">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  {/* TOTAL ROW MATCHING SCREENSHOT 1 */}
+                  <tr className="bg-slate-100 dark:bg-slate-800 font-mono font-bold text-xs border-t-2 border-slate-300 dark:border-slate-700">
+                    <td className="py-2.5 px-3 font-sans font-bold text-slate-900 dark:text-white border-r border-slate-300 dark:border-slate-700">
+                      TOTAL
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 font-bold">
-                      {t.target}
+                    <td className="py-2.5 px-2 text-center border-r border-slate-300 dark:border-slate-700 font-bold text-slate-900 dark:text-white">
+                      {targetTotals.reels}
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-emerald-700 font-bold">
-                      {t.completed}
+                    <td className="py-2.5 px-2 text-center border-r border-slate-300 dark:border-slate-700 font-bold text-slate-900 dark:text-white">
+                      {targetTotals.carousels}
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-700">
-                      {t.inProgress}
+                    <td className="py-2.5 px-2 text-center border-r border-slate-300 dark:border-slate-700 font-bold text-slate-900 dark:text-white">
+                      {targetTotals.posts}
                     </td>
-                    <td className="py-2.5 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-600">
-                      {t.remaining}
+                    <td className="py-2.5 px-2 text-center border-r border-amber-300 dark:border-amber-900 bg-[#FEF3C7] dark:bg-amber-950/50 text-amber-950 dark:text-amber-200 font-extrabold">
+                      {targetTotals.cpUnsplit}
                     </td>
-                    <td className="py-2.5 px-3 font-sans border-r border-slate-300 dark:border-slate-800 text-slate-600">
-                      {t.deadline}
+                    <td className="py-2.5 px-2 text-center border-r border-slate-300 dark:border-slate-700 font-bold text-slate-900 dark:text-white">
+                      {targetTotals.stories}
+                    </td>
+                    <td className="py-2.5 px-2 text-center border-r border-emerald-300 dark:border-emerald-900 bg-[#DCFCE7] dark:bg-emerald-950/70 text-emerald-950 dark:text-emerald-200 font-extrabold text-sm">
+                      {targetTotals.total}
+                    </td>
+                    <td colSpan={9} className="py-2.5 px-4 text-slate-500 dark:text-slate-400 font-sans font-medium text-[11px] text-right">
+                      Total commitments across 16 clients: <span className="font-bold text-slate-900 dark:text-white">{targetTotals.total} deliverables</span>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Supplementary: Content Quota Cadence Reference */}
+            <div className="pt-2">
+              <details className="group border border-slate-200 dark:border-slate-800 rounded-lg p-3 bg-slate-50/60 dark:bg-slate-900/40">
+                <summary className="font-bold text-xs text-slate-800 dark:text-slate-200 cursor-pointer flex items-center justify-between list-none">
+                  <span className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-emerald-600" />
+                    <span>View Format Quota & Delivery Cadence Schedule Breakdown</span>
+                  </span>
+                  <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-mono group-open:rotate-180 transition-transform">
+                    ▼
+                  </span>
+                </summary>
+                <div className="mt-3 overflow-x-auto">
+                  <table className="w-full text-left text-xs border border-slate-300 dark:border-slate-800 border-collapse">
+                    <thead>
+                      <tr className="bg-[#13381B] text-white font-mono text-[11px]">
+                        <th className="py-2 px-3 border-r border-[#0f2e16]">Format Type</th>
+                        <th className="py-2 px-3 text-center border-r border-[#0f2e16]">Target</th>
+                        <th className="py-2 px-3 text-center border-r border-[#0f2e16]">Completed</th>
+                        <th className="py-2 px-3 text-center border-r border-[#0f2e16]">In Progress</th>
+                        <th className="py-2 px-3 text-center border-r border-[#0f2e16]">Remaining</th>
+                        <th className="py-2 px-3 border-r border-[#0f2e16]">Delivery Cadence</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-mono">
+                      {(data?.clientTargets || []).map((t: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800">
+                          <td className="py-2 px-3 font-sans font-bold border-r border-slate-300 dark:border-slate-800">
+                            {t.type}
+                          </td>
+                          <td className="py-2 px-3 text-center border-r border-slate-300 dark:border-slate-800 font-bold">
+                            {t.target}
+                          </td>
+                          <td className="py-2 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-emerald-700 font-bold">
+                            {t.completed}
+                          </td>
+                          <td className="py-2 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-700">
+                            {t.inProgress}
+                          </td>
+                          <td className="py-2 px-3 text-center border-r border-slate-300 dark:border-slate-800 text-slate-600">
+                            {t.remaining}
+                          </td>
+                          <td className="py-2 px-3 font-sans border-r border-slate-300 dark:border-slate-800 text-slate-600">
+                            {t.deadline}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            </div>
           </div>
         )}
 

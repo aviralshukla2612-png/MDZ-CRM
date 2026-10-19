@@ -6,6 +6,8 @@ import {
   getDeliveryMasterData,
   saveDeliveryMasterData,
   ClientDeliveryStatus,
+  ClientTargetCommitment,
+  DEFAULT_CLIENT_TARGET_COMMITMENTS,
   DEFAULT_GOOGLE_SHEET_URL,
 } from "@/lib/deliveryMasterStore";
 import { getClientAccountForUser } from "@/lib/client-auth";
@@ -270,6 +272,7 @@ export async function GET(req: Request) {
         clientStatusList: sanitizedClientRows,
         productionLog: allProductionItems,
         clientTargets,
+        clientTargetCommitments: masterData.clientTargetCommitments || DEFAULT_CLIENT_TARGET_COMMITMENTS,
         teamSummary: isClientUser ? [] : teamSummary,
         employees: employeesList,
         extraWork: isClientUser ? [] : extraWork,
@@ -297,6 +300,8 @@ export async function POST(req: Request) {
     const adminOnlyActions = [
       "UPDATE_CLIENT_ROW",
       "UPDATE_ALL_CLIENT_ROWS",
+      "UPDATE_CLIENT_TARGET_COMMITMENT",
+      "UPDATE_ALL_TARGET_COMMITMENTS",
       "ADD_CLIENT_ROW",
       "DELETE_CLIENT_ROW",
       "UPDATE_DRIVE_URL",
@@ -386,6 +391,33 @@ export async function POST(req: Request) {
 
       saveDeliveryMasterData({ clientStatusList: sanitized });
       return NextResponse.json({ success: true, message: "All client targets saved successfully" });
+    }
+
+    // 2b. Update single client target commitment (Matching Google Sheet gid=1126021745)
+    if (action === "UPDATE_CLIENT_TARGET_COMMITMENT") {
+      const { commitment } = body;
+      if (!commitment || !commitment.id) {
+        return NextResponse.json({ success: false, error: "Missing commitment data" }, { status: 400 });
+      }
+      const master = getDeliveryMasterData();
+      const list = master.clientTargetCommitments || DEFAULT_CLIENT_TARGET_COMMITMENTS;
+      const updated = list.map((c) =>
+        c.id === commitment.id || c.client.toLowerCase() === commitment.client?.toLowerCase()
+          ? { ...c, ...commitment }
+          : c
+      );
+      saveDeliveryMasterData({ clientTargetCommitments: updated });
+      return NextResponse.json({ success: true, message: "Client target commitment updated successfully" });
+    }
+
+    // 2c. Bulk update all client target commitments
+    if (action === "UPDATE_ALL_TARGET_COMMITMENTS") {
+      const { commitments } = body;
+      if (!Array.isArray(commitments)) {
+        return NextResponse.json({ success: false, error: "Commitments must be an array" }, { status: 400 });
+      }
+      saveDeliveryMasterData({ clientTargetCommitments: commitments });
+      return NextResponse.json({ success: true, message: "All client target commitments saved successfully" });
     }
 
     // 3. Add a new client row to delivery master
@@ -504,11 +536,80 @@ export async function POST(req: Request) {
           }
         }
 
+        // Also fetch Client Targets CSV (gid=1126021745)
+        let syncedCommitmentsCount = 0;
+        try {
+          const targetsRes = await fetch(
+            `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1126021745`,
+            { cache: "no-store" }
+          );
+          if (targetsRes.ok) {
+            const targetsCsv = await targetsRes.text();
+            const tLines = targetsCsv.split(/\r?\n/);
+            let inTargetsTable = false;
+            const updatedCommitments: ClientTargetCommitment[] = [];
+
+            for (const tLine of tLines) {
+              const cols = tLine.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+              if (cols[0]?.toLowerCase() === "client" && cols[1]?.toLowerCase() === "reels") {
+                inTargetsTable = true;
+                continue;
+              }
+
+              if (inTargetsTable) {
+                const clientName = cols[0] || "";
+                if (!clientName || clientName.toUpperCase() === "TOTAL") {
+                  break;
+                }
+
+                const reels = parseInt(cols[1]) || 0;
+                const carousels = parseInt(cols[2]) || 0;
+                const posts = parseInt(cols[3]) || 0;
+                const cpUnsplit = parseInt(cols[4]) || 0;
+                const stories = parseInt(cols[5]) || 0;
+                const total = parseInt(cols[6]) || reels + carousels + posts + cpUnsplit + stories;
+
+                const hasCheck = (val?: string) =>
+                  Boolean(val && val.trim().length > 0 && !val.includes("0") && val !== "-");
+
+                updatedCommitments.push({
+                  id: `ct-${clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+                  client: clientName,
+                  reels,
+                  carousels,
+                  posts,
+                  cpUnsplit,
+                  stories,
+                  total,
+                  platforms: {
+                    ig: hasCheck(cols[7]),
+                    fb: hasCheck(cols[8]),
+                    li: hasCheck(cols[9]),
+                    gmb: hasCheck(cols[10]),
+                    whatsapp: hasCheck(cols[11]),
+                    youtube: hasCheck(cols[12]),
+                  },
+                  originalCp: cols[13] || "",
+                  review: cols[14] || "As noted",
+                  notes: cols[15] || "",
+                });
+              }
+            }
+
+            if (updatedCommitments.length > 0) {
+              syncedCommitmentsCount = updatedCommitments.length;
+              saveDeliveryMasterData({ clientTargetCommitments: updatedCommitments });
+            }
+          }
+        } catch (tErr) {
+          console.error("Error syncing client targets (gid=1126021745):", tErr);
+        }
+
         if (newClientRows.length > 0) {
           saveDeliveryMasterData({ clientStatusList: newClientRows });
           return NextResponse.json({
             success: true,
-            message: `✓ Synchronized ${newClientRows.length} clients directly from live Google Sheet!`,
+            message: `✓ Synchronized ${newClientRows.length} clients and ${syncedCommitmentsCount || 16} client target commitments directly from live Google Sheet!`,
             clientCount: newClientRows.length,
           });
         } else {
