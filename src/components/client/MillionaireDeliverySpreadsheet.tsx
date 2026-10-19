@@ -57,7 +57,7 @@ export function MillionaireDeliverySpreadsheet({
   const [newRow, setNewRow] = useState({
     deliverable: "",
     format: "Reel / Short Video",
-    editor: "Sumit (Lead Editor)",
+    editor: "",
     rawLink: "",
     finalLink: "",
     reviewStatus: "Drafting",
@@ -67,6 +67,27 @@ export function MillionaireDeliverySpreadsheet({
   // Admin Client Filter State
   const [clientsList, setClientsList] = useState<Array<{ id: string; companyName: string; clientCode?: string }>>([]);
   const [activeClientId, setActiveClientId] = useState<string>(clientId || "");
+  const [employeesList, setEmployeesList] = useState<Array<{ id: string; name: string; designation?: string }>>([]);
+
+  const fetchEmployeesList = async () => {
+    try {
+      const res = await fetch("/mdz-crm/api/employees");
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const list = json.data.map((emp: any) => ({
+          id: emp.id,
+          name: emp.name || emp.user?.name || "Employee",
+          designation: emp.designation || emp.user?.designation || "",
+        }));
+        setEmployeesList(list);
+        if (list.length > 0 && (!newRow.editor || newRow.editor === "Sumit (Lead Editor)")) {
+          setNewRow((prev) => ({ ...prev, editor: list[0].name }));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load employees for delivery spreadsheet:", e);
+    }
+  };
 
   // Fetch live dynamic data from backend API
   const fetchLiveDeliveryData = async (targetId?: string) => {
@@ -80,6 +101,9 @@ export function MillionaireDeliverySpreadsheet({
       const json = await res.json();
       if (json.success && json.data) {
         setData(json.data);
+        if (Array.isArray(json.data.employees) && json.data.employees.length > 0) {
+          setEmployeesList(json.data.employees);
+        }
       }
     } catch (e) {
       console.error("Failed to load delivery control", e);
@@ -104,6 +128,7 @@ export function MillionaireDeliverySpreadsheet({
       }
       loadClients();
     }
+    fetchEmployeesList();
   }, [isAdmin]);
 
   useEffect(() => {
@@ -339,7 +364,7 @@ export function MillionaireDeliverySpreadsheet({
         setNewRow({
           deliverable: "",
           format: "Reel / Short Video",
-          editor: "Sumit (Lead Editor)",
+          editor: employeesList.length > 0 ? employeesList[0].name : "",
           rawLink: "",
           finalLink: "",
           reviewStatus: "Drafting",
@@ -1417,10 +1442,20 @@ export function MillionaireDeliverySpreadsheet({
                     onChange={(e) => setNewRow({ ...newRow, editor: e.target.value })}
                     className="w-full px-3 py-2 rounded bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-sans"
                   >
-                    <option value="Sumit (Lead Editor)">Sumit (Video Editor)</option>
-                    <option value="Aryan (Design Lead)">Aryan (Graphic Lead)</option>
-                    <option value="Pooja (Motion Design)">Pooja (Motion)</option>
-                    <option value="Neha (Copywriter)">Neha (Copy)</option>
+                    {employeesList.length > 0 ? (
+                      employeesList.map((emp) => (
+                        <option key={emp.id} value={emp.name}>
+                          {emp.name} {emp.designation ? `(${emp.designation})` : ""}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Sumit (Lead Editor)">Sumit (Video Editor)</option>
+                        <option value="Aryan (Design Lead)">Aryan (Graphic Lead)</option>
+                        <option value="Pooja (Motion Design)">Pooja (Motion)</option>
+                        <option value="Neha (Copywriter)">Neha (Copy)</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -1512,10 +1547,20 @@ export function MillionaireDeliverySpreadsheet({
                     onChange={(e) => setEditingItem({ ...editingItem, editor: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-semibold"
                   >
-                    <option value="Sumit (Lead Editor)">Sumit (Lead Editor)</option>
-                    <option value="Aryan (Design Lead)">Aryan (Graphic Lead)</option>
-                    <option value="Pooja (Motion Design)">Pooja (Motion Design)</option>
-                    <option value="Neha (Copywriter)">Neha (Copywriter)</option>
+                    {employeesList.length > 0 ? (
+                      employeesList.map((emp) => (
+                        <option key={emp.id} value={emp.name}>
+                          {emp.name} {emp.designation ? `(${emp.designation})` : ""}
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Sumit (Lead Editor)">Sumit (Lead Editor)</option>
+                        <option value="Aryan (Design Lead)">Aryan (Graphic Lead)</option>
+                        <option value="Pooja (Motion Design)">Pooja (Motion Design)</option>
+                        <option value="Neha (Copywriter)">Neha (Copywriter)</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>

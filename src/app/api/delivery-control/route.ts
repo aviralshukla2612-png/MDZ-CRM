@@ -196,12 +196,49 @@ export async function GET(req: Request) {
       { type: "Performance Ad Creatives (Meta & Google)", target: 8, completed: 5, inProgress: 2, remaining: 1, deadline: "Bi-Monthly Refresh" },
     ];
 
-    const teamSummary = [
-      { role: "Creative Lead & Strategist", name: "Rahul Sharma", assigned: 25, completed: 18, pending: 7, turnaround: "24h" },
-      { role: "Senior Video Editor", name: "Sumit Rathod", assigned: 30, completed: 21, pending: 9, turnaround: "48h" },
-      { role: "Motion & Graphic Designer", name: "Aryan Visuals", assigned: 25, completed: 17, pending: 8, turnaround: "24h" },
-      { role: "Copywriter & SMM", name: "Neha Roy", assigned: 45, completed: 32, pending: 13, turnaround: "12h" },
-    ];
+    // Fetch all real company employees from database
+    const allEmployees = await prisma.employee.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            designation: true,
+            department: true,
+          },
+        },
+      },
+      orderBy: { employeeIdCode: "asc" },
+    });
+
+    const employeesList = allEmployees.map((e) => ({
+      id: e.id,
+      userId: e.userId,
+      name: e.user?.name || "Employee",
+      designation: e.user?.designation || "Team Member",
+      department: e.user?.department || "General",
+    }));
+
+    // Build dynamic teamSummary from all real company employees
+    const teamSummary = allEmployees.map((emp) => {
+      const empName = emp.user?.name || "Employee";
+      const assignedItems = allProductionItems.filter((item: any) =>
+        item.assignee && item.assignee.toLowerCase().includes(empName.toLowerCase())
+      );
+      const completed = assignedItems.filter(
+        (i: any) => i.status === "READY" || i.reviewStatus === "Approved by Client" || i.reviewStatus === "Approved"
+      ).length;
+      const pending = Math.max(0, assignedItems.length - completed);
+
+      return {
+        role: emp.user?.designation || "Specialist",
+        name: empName,
+        assigned: assignedItems.length,
+        completed,
+        pending,
+        turnaround: "24h - 48h",
+      };
+    });
 
     const extraWork = [
       { id: "ew-1", date: "2026-10-09", request: "Emergency Diwali Campaign Banner Adaptations", requestedBy: "Client Head", status: "Completed", billable: "Covered in SLA" },
@@ -253,6 +290,7 @@ export async function GET(req: Request) {
         productionLog: allProductionItems,
         clientTargets,
         teamSummary: isClientUser ? [] : teamSummary,
+        employees: employeesList,
         extraWork: isClientUser ? [] : extraWork,
         howToUse,
       },
