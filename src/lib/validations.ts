@@ -77,9 +77,14 @@ export const publicInquirySchema = z.object({
   durationType: z.string().default("QUARTER"),
   durationMonths: z.number().int().positive().default(3),
 
-  // Step 6: Additional Details
+  // Step 6: Additional Details & Client Brief
   targetAudience: z.string().trim().max(1000).optional().default(""),
   competitors: z.string().trim().max(1000).optional().default(""),
+  productsServices: z.string().trim().max(1000).optional().default(""),
+  usp: z.string().trim().max(1000).optional().default(""),
+  socialHandles: z.string().trim().max(500).optional().default(""),
+  googleDriveLink: z.string().trim().max(1000).optional().default(""),
+  preferredLanguage: z.string().trim().max(100).optional().default(""),
   additionalDetails: z.string().trim().max(3000).optional().default(""),
 
   // Step 7: Confirmation & Anti-Spam

@@ -81,6 +81,11 @@ export async function POST(req: NextRequest) {
         payload.durationMonths = Number(formData.get("durationMonths") || 3);
         payload.targetAudience = formData.get("targetAudience") || "";
         payload.competitors = formData.get("competitors") || "";
+        payload.productsServices = formData.get("productsServices") || "";
+        payload.usp = formData.get("usp") || "";
+        payload.socialHandles = formData.get("socialHandles") || "";
+        payload.googleDriveLink = formData.get("googleDriveLink") || "";
+        payload.preferredLanguage = formData.get("preferredLanguage") || "";
         payload.additionalDetails = formData.get("additionalDetails") || "";
         payload.confirmed = formData.get("confirmed") === "true";
         payload.website_hp = formData.get("website_hp") || "";
@@ -252,7 +257,16 @@ export async function POST(req: NextRequest) {
             durationMonths: validData.durationMonths,
             targetAudience: validData.targetAudience,
             competitors: validData.competitors,
-            additionalDetails: validData.additionalDetails,
+            additionalDetails: (() => {
+              const parts: string[] = [];
+              if (validData.productsServices) parts.push(`[Products / Services]: ${validData.productsServices}`);
+              if (validData.usp) parts.push(`[USP]: ${validData.usp}`);
+              if (validData.socialHandles) parts.push(`[Social Handles]: ${validData.socialHandles}`);
+              if (validData.googleDriveLink) parts.push(`[Google Drive]: ${validData.googleDriveLink}`);
+              if (validData.preferredLanguage) parts.push(`[Preferred Language]: ${validData.preferredLanguage}`);
+              if (validData.additionalDetails) parts.push(`[Project Scope]: ${validData.additionalDetails}`);
+              return parts.join("\n\n") || validData.additionalDetails;
+            })(),
             status: "NEW",
             priority: "MEDIUM",
             createdById: actorId || null,

@@ -22,14 +22,42 @@ import {
   Youtube,
   Linkedin,
   Film,
-  Layers,
   Sparkles,
+  Target,
+  FileText,
+  Check,
+  TrendingUp,
+  Megaphone,
+  Users,
+  MessageSquare,
+  KeyRound,
+  FileCheck2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
+const GOAL_OPTIONS = [
+  "Increase Brand Awareness",
+  "Generate Qualified Leads",
+  "Scale Online Sales / Revenue",
+  "Build Active Engaged Community",
+  "Position as Thought Leader",
+  "Product Launch Support",
+  "Improve Engagement Rate",
+  "Paid Ads Scaling",
+];
+
+const ACCESS_ITEMS = [
+  { id: "Instagram (Professional Account Invite)", label: "Instagram Account Access / Professional Invite", icon: Instagram },
+  { id: "Facebook Page & Meta Business Suite", label: "Facebook Page & Meta Business Suite Portfolio Access", icon: Globe },
+  { id: "Meta Ads Manager & Pixel Dataset", label: "Meta Ads Manager & Pixel / Dataset Access", icon: Target },
+  { id: "Google Business Profile Access", label: "Google Business Profile (Manager / Review Rights)", icon: Building2 },
+  { id: "Google Drive Assets Folder Access", label: "Central Google Drive Assets Folder Access", icon: FolderOpen },
+  { id: "Canva Team Workspace Invite", label: "Canva Team Invite / Brand Kit Access", icon: Sparkles },
+];
+
 export default function ClientRegisterPage() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   const [formData, setFormData] = useState({
     // Step 1: Company & Credentials
@@ -44,7 +72,15 @@ export default function ClientRegisterPage() {
     gstNumber: "",
     registeredAddress: "",
 
-    // Step 2: Brand Assets & Social Profiles
+    // Step 2: Client Strategic Brief & Objectives (from Client Brief Sheet)
+    productsServices: "",
+    goals: ["Increase Brand Awareness", "Generate Qualified Leads"] as string[],
+    targetAudience: "",
+    usp: "",
+    competitors: "",
+    currentChallenges: "",
+
+    // Step 3: Brand Assets & Creative Identity (from Brand Voice & Onboarding Sheet)
     websiteUrl: "",
     brandGuideUrl: "",
     rawFootageDriveUrl: "",
@@ -53,11 +89,22 @@ export default function ClientRegisterPage() {
     youtubeHandle: "",
     facebookUrl: "",
     linkedinUrl: "",
+    brandVoiceTone: "Luxury, aesthetic, high-authority",
+    preferredLanguage: "English & Hinglish",
 
-    // Step 3: Monthly Deliverable Quotas & Terms
+    // Step 4: Social Media Access Checklist (from Access Checklist Sheet)
+    accessChecklist: [
+      "Instagram (Professional Account Invite)",
+      "Facebook Page & Meta Business Suite",
+      "Google Drive Assets Folder Access",
+    ] as string[],
+
+    // Step 5: Monthly Deliverables Quota & Scope (from Scope Document)
     reelsQuota: 30,
     carouselsQuota: 15,
     storiesQuota: 15,
+    approvalSlaAcknowledged: true,
+    revisionPolicyAcknowledged: true,
     termsAccepted: true,
   });
 
@@ -115,14 +162,14 @@ export default function ClientRegisterPage() {
     let err: string | null = null;
     if (fieldName === "phone") err = validatePhone(formData.phone);
     if (fieldName === "email") err = validateEmail(formData.email);
-    if (fieldName === "contactName") err = validateName(formData.contactName, "Client contact name");
+    if (fieldName === "contactName") err = validateName(formData.contactName, "Contact full name");
     if (fieldName === "companyName") err = validateName(formData.companyName, "Company legal name");
     if (fieldName === "password") err = validatePassword(formData.password);
 
     setFieldErrors((prev) => ({ ...prev, [fieldName]: err || "" }));
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     let cleanVal: any = value;
 
@@ -140,12 +187,42 @@ export default function ClientRegisterPage() {
     }));
   };
 
+  const toggleGoal = (goal: string) => {
+    setFormData((prev) => {
+      const exists = prev.goals.includes(goal);
+      return {
+        ...prev,
+        goals: exists ? prev.goals.filter((g) => g !== goal) : [...prev.goals, goal],
+      };
+    });
+  };
+
+  const toggleAccessItem = (item: string) => {
+    setFormData((prev) => {
+      const exists = prev.accessChecklist.includes(item);
+      return {
+        ...prev,
+        accessChecklist: exists
+          ? prev.accessChecklist.filter((a) => a !== item)
+          : [...prev.accessChecklist, item],
+      };
+    });
+  };
+
   const validateStep1 = () => {
-    const nameErr = validateName(formData.contactName, "Full name");
-    const compErr = validateName(formData.companyName, "Company name");
+    const nameErr = validateName(formData.contactName, "Contact full name");
+    const compErr = validateName(formData.companyName, "Company legal name");
     const phoneErr = validatePhone(formData.phone);
     const emailErr = validateEmail(formData.email);
     const passErr = validatePassword(formData.password);
+
+    setTouched({
+      contactName: true,
+      companyName: true,
+      phone: true,
+      email: true,
+      password: true,
+    });
 
     setFieldErrors({
       contactName: nameErr || "",
@@ -166,9 +243,9 @@ export default function ClientRegisterPage() {
       }
       setError(null);
       setCurrentStep(2);
-    } else if (currentStep === 2) {
+    } else {
       setError(null);
-      setCurrentStep(3);
+      setCurrentStep((prev) => Math.min(prev + 1, 5) as any);
     }
   };
 
@@ -217,7 +294,7 @@ export default function ClientRegisterPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0D0C0A] text-stone-900 dark:text-stone-100 flex flex-col justify-between p-4 sm:p-6 transition-colors font-sans">
       {/* Top Navbar */}
-      <div className="flex items-center justify-between max-w-2xl mx-auto w-full pt-2">
+      <div className="flex items-center justify-between max-w-3xl mx-auto w-full pt-2">
         <Link href="/login" className="flex items-center gap-2 font-bold text-base text-stone-900 dark:text-stone-100">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-800 text-white font-black flex items-center justify-center text-sm shadow-xs">
             M
@@ -232,68 +309,65 @@ export default function ClientRegisterPage() {
       </div>
 
       {/* Main Registration Card */}
-      <div className="max-w-2xl mx-auto w-full my-6">
+      <div className="max-w-3xl mx-auto w-full my-6">
         <div className="bg-white dark:bg-[#161411] rounded-2xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-xl space-y-6">
           {/* Header & Step Wizard Indicator */}
           <div className="space-y-3 text-left">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800 uppercase tracking-wider">
-                CLIENT PORTAL ONBOARDING
+                CLIENT PORTAL & AGENCY ONBOARDING
               </span>
               <span className="text-xs font-mono font-bold text-stone-400">
-                Step {currentStep} of 3
+                Step {currentStep} of 5
               </span>
             </div>
             <h1 className="text-2xl font-black text-stone-900 dark:text-stone-100 tracking-tight">
-              Register Your Brand Workspace
+              {currentStep === 1 && "Company & Account Credentials"}
+              {currentStep === 2 && "Client Strategic Brief & Objectives"}
+              {currentStep === 3 && "Brand Assets & Creative Identity"}
+              {currentStep === 4 && "Social Media Access Checklist"}
+              {currentStep === 5 && "Retainer Deliverables Scope & SLAs"}
             </h1>
             <p className="text-xs text-stone-500 dark:text-stone-400">
-              Set up your client portal to track live video deliveries, monthly targets, Google Drive assets, and campaign calendars.
+              {currentStep === 1 && "Set up your workspace credentials and point of contact details."}
+              {currentStep === 2 && "Define your products, target audience, USP and goals to align our creative team."}
+              {currentStep === 3 && "Share your Google Drive assets folder, social media handles, and brand voice style."}
+              {currentStep === 4 && "Check off required permissions so our production team can start creating content."}
+              {currentStep === 5 && "Confirm your monthly content quotas and operational turnaround commitments."}
             </p>
 
-            {/* Step Wizard Dots */}
-            <div className="flex items-center gap-2 pt-1">
-              <div
-                className={`h-1.5 flex-1 rounded-full transition-all ${
-                  currentStep >= 1 ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-800"
-                }`}
-              />
-              <div
-                className={`h-1.5 flex-1 rounded-full transition-all ${
-                  currentStep >= 2 ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-800"
-                }`}
-              />
-              <div
-                className={`h-1.5 flex-1 rounded-full transition-all ${
-                  currentStep >= 3 ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-800"
-                }`}
-              />
+            {/* Step Wizard Progress Bar */}
+            <div className="grid grid-cols-5 gap-1.5 pt-1">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <div
+                  key={s}
+                  className={`h-1.5 rounded-full transition-all ${
+                    currentStep >= s ? "bg-emerald-600" : "bg-stone-200 dark:bg-stone-800"
+                  }`}
+                />
+              ))}
             </div>
           </div>
 
-          {/* Success Banner */}
-          {success && (
-            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-3">
-              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
-              <div>
-                <p className="font-bold">Brand account registered successfully!</p>
-                <p className="text-[11px] text-emerald-700 dark:text-emerald-400">
-                  Redirecting to your login portal now...
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Error Banner */}
           {error && (
-            <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 shrink-0" />
+            <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
+          {success && (
+            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-emerald-600" />
+              <div>
+                <p className="font-bold">Workspace Onboarding Successful!</p>
+                <p className="opacity-90">Redirecting to sign-in portal...</p>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* ================= STEP 1: BUSINESS & CONTACT DETAILS ================= */}
+            {/* ================= STEP 1: COMPANY & CREDENTIALS ================= */}
             {currentStep === 1 && (
               <div className="space-y-4 animate-fade-in">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -309,7 +383,7 @@ export default function ClientRegisterPage() {
                       value={formData.companyName}
                       onChange={handleChange}
                       onBlur={() => handleBlur("companyName")}
-                      placeholder="e.g. CarCrew Studios LLP"
+                      placeholder="e.g. Acme Lifestyle Pvt Ltd"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                     {fieldErrors.companyName && (
@@ -328,7 +402,7 @@ export default function ClientRegisterPage() {
                       name="brandName"
                       value={formData.brandName}
                       onChange={handleChange}
-                      placeholder="e.g. CarCrew.Studio"
+                      placeholder="e.g. Acme Brand"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                   </div>
@@ -339,7 +413,7 @@ export default function ClientRegisterPage() {
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Primary Contact Name *</span>
+                      <span>Primary Contact Full Name *</span>
                     </label>
                     <input
                       type="text"
@@ -347,7 +421,7 @@ export default function ClientRegisterPage() {
                       value={formData.contactName}
                       onChange={handleChange}
                       onBlur={() => handleBlur("contactName")}
-                      placeholder="e.g. Varun Patel"
+                      placeholder="e.g. Rajesh Sharma"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                     {fieldErrors.contactName && (
@@ -370,7 +444,7 @@ export default function ClientRegisterPage() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Email (User Login) */}
+                  {/* Email */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                       <Mail className="w-3.5 h-3.5 text-emerald-600" />
@@ -382,7 +456,7 @@ export default function ClientRegisterPage() {
                       value={formData.email}
                       onChange={handleChange}
                       onBlur={() => handleBlur("email")}
-                      placeholder="e.g. contact@carcrew.studio"
+                      placeholder="e.g. contact@acme.com"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                     />
                     {fieldErrors.email && (
@@ -409,7 +483,7 @@ export default function ClientRegisterPage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600"
+                        className="absolute right-3 top-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -441,7 +515,7 @@ export default function ClientRegisterPage() {
                     )}
                   </div>
 
-                  {/* GSTIN (Optional) */}
+                  {/* GSTIN */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-stone-700 dark:text-stone-300">GSTIN (Tax ID - Optional)</label>
                     <input
@@ -449,70 +523,171 @@ export default function ClientRegisterPage() {
                       name="gstNumber"
                       value={formData.gstNumber}
                       onChange={handleChange}
-                      placeholder="e.g. 24AAAAA0000A1Z5"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                      placeholder="e.g. 27AAAAA0000A1Z5"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none uppercase font-mono"
                     />
                   </div>
                 </div>
 
-                {/* Registered Address */}
+                {/* Address */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">Registered Business Address</label>
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">Registered Office Address (Optional)</label>
                   <input
                     type="text"
                     name="registeredAddress"
                     value={formData.registeredAddress}
                     onChange={handleChange}
-                    placeholder="e.g. Suite 402, Signature Tower, Mumbai, Maharashtra"
+                    placeholder="e.g. Suite 402, Signature Towers, Mumbai"
                     className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                   />
                 </div>
               </div>
             )}
 
-            {/* ================= STEP 2: CREATIVE ASSETS & SOCIAL HANDLES ================= */}
+            {/* ================= STEP 2: CLIENT BRIEF & STRATEGY ================= */}
             {currentStep === 2 && (
               <div className="space-y-4 animate-fade-in">
                 <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs space-y-1">
                   <p className="font-bold flex items-center gap-1.5">
-                    <FolderOpen className="w-4 h-4 text-emerald-600" />
-                    <span>Creative Drive Folders & Digital Assets</span>
+                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <span>Client Strategic Brief (Initial Discovery)</span>
                   </p>
                   <p className="text-[11px] opacity-80">
-                    Paste your Google Drive folders below so the agency editors can pull raw camera footage and deliver final 4K videos directly to you.
+                    This brief helps our strategy and content teams engineer the right reels, hooks, and messaging for your brand.
                   </p>
                 </div>
 
-                {/* Google Drive Raw Footage Folder */}
+                {/* Main Products / Services */}
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                    <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Raw Footage & Video Content Drive Folder Link</span>
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Main Products or Services Offered
+                  </label>
+                  <input
+                    type="text"
+                    name="productsServices"
+                    value={formData.productsServices}
+                    onChange={handleChange}
+                    placeholder="e.g. Luxury Handcrafted Jewellery, D2C Wellness Supplements, Real Estate Advisory"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+
+                {/* Business & Social Goals */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Primary Business & Social Media Goals
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {GOAL_OPTIONS.map((goal) => {
+                      const isSelected = formData.goals.includes(goal);
+                      return (
+                        <button
+                          key={goal}
+                          type="button"
+                          onClick={() => toggleGoal(goal)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                              : "bg-stone-50 dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
+                          }`}
+                        >
+                          {isSelected ? <Check className="w-3 h-3" /> : <Target className="w-3 h-3 opacity-50" />}
+                          <span>{goal}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Target Audience */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Target Audience & Demographics
+                    </label>
+                    <input
+                      type="text"
+                      name="targetAudience"
+                      value={formData.targetAudience}
+                      onChange={handleChange}
+                      placeholder="e.g. Age 24-45, HNI luxury buyers, Tier-1 Metro cities"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  {/* USP */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Unique Selling Proposition (USP)
+                    </label>
+                    <input
+                      type="text"
+                      name="usp"
+                      value={formData.usp}
+                      onChange={handleChange}
+                      placeholder="What sets your brand apart? (e.g. 100% Handcrafted, 24h dispatch)"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Top Competitors */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Main Competitors (Names or Social Handles)
+                    </label>
+                    <input
+                      type="text"
+                      name="competitors"
+                      value={formData.competitors}
+                      onChange={handleChange}
+                      placeholder="e.g. Brand Alpha, @competitor_insta"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  {/* Current Challenges */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Current Content / Marketing Roadblocks
+                    </label>
+                    <input
+                      type="text"
+                      name="currentChallenges"
+                      value={formData.currentChallenges}
+                      onChange={handleChange}
+                      placeholder="e.g. Inconsistent posting, low reach, creative fatigue"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ================= STEP 3: BRAND ASSETS & CREATIVE IDENTITY ================= */}
+            {currentStep === 3 && (
+              <div className="space-y-4 animate-fade-in">
+                {/* Google Drive Raw Footage & Assets Folder */}
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Google Drive Folder (Raw Footage & Brand Assets)</span>
+                    </span>
+                    <span className="text-[10px] text-stone-400 font-mono">Recommended</span>
                   </label>
                   <input
                     type="url"
                     name="rawFootageDriveUrl"
                     value={formData.rawFootageDriveUrl}
                     onChange={handleChange}
-                    placeholder="https://drive.google.com/drive/folders/your-raw-footage"
+                    placeholder="https://drive.google.com/drive/folders/..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
                   />
-                </div>
-
-                {/* Google Drive Brand Assets / Guidelines Folder */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                    <FolderOpen className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Brand Guidelines & Logo Assets Drive Link</span>
-                  </label>
-                  <input
-                    type="url"
-                    name="brandGuideUrl"
-                    value={formData.brandGuideUrl}
-                    onChange={handleChange}
-                    placeholder="https://drive.google.com/drive/folders/your-brand-logos"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
-                  />
+                  <p className="text-[10px] text-stone-400">
+                    Your editors will directly fetch camera footage and upload final 4K deliverables to this Google Drive link.
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -532,7 +707,7 @@ export default function ClientRegisterPage() {
                     />
                   </div>
 
-                  {/* Instagram Handle */}
+                  {/* Instagram */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
                       <Instagram className="w-3.5 h-3.5 text-pink-600" />
@@ -582,11 +757,107 @@ export default function ClientRegisterPage() {
                     />
                   </div>
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Brand Voice / Tone */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Brand Voice & Persona Style
+                    </label>
+                    <select
+                      name="brandVoiceTone"
+                      value={formData.brandVoiceTone}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    >
+                      <option value="Luxury, aesthetic, high-authority, polished">Luxury, Aesthetic & High-Authority</option>
+                      <option value="Bold, energetic, inspirational, modern">Bold, Energetic & Modern</option>
+                      <option value="Professional, trustworthy, expert, corporate">Professional, Trustworthy & Corporate</option>
+                      <option value="Relatable, friendly, humorous, community-first">Relatable, Friendly & Community-first</option>
+                      <option value="Educational, structured, value-driven">Educational, Structured & Value-driven</option>
+                    </select>
+                  </div>
+
+                  {/* Content Language */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Preferred Content Language
+                    </label>
+                    <select
+                      name="preferredLanguage"
+                      value={formData.preferredLanguage}
+                      onChange={handleChange}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    >
+                      <option value="English & Hinglish">English & Hinglish (Recommended)</option>
+                      <option value="English Only">English Only (Global / Corporate)</option>
+                      <option value="Hindi Only">Hindi Only (Regional Reach)</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* ================= STEP 3: MONTHLY DELIVERABLES & CONFIRMATION ================= */}
-            {currentStep === 3 && (
+            {/* ================= STEP 4: ACCESS CHECKLIST ================= */}
+            {currentStep === 4 && (
+              <div className="space-y-4 animate-fade-in">
+                <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <KeyRound className="w-4 h-4 text-blue-600" />
+                    <span>Social Media Access & Tools Checklist</span>
+                  </p>
+                  <p className="text-[11px] opacity-80">
+                    Select the platforms you are ready to grant access to or invite Millionaire Dizital as a partner/admin.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {ACCESS_ITEMS.map((item) => {
+                    const Icon = item.icon;
+                    const isChecked = formData.accessChecklist.includes(item.id);
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => toggleAccessItem(item.id)}
+                        className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                          isChecked
+                            ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/50 shadow-xs"
+                            : "bg-stone-50 dark:bg-[#1f1c18] border-stone-200 dark:border-stone-700 hover:border-stone-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${
+                              isChecked ? "bg-emerald-600 text-white" : "bg-stone-200 dark:bg-stone-800 text-stone-500"
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="text-xs font-semibold text-stone-800 dark:text-stone-200">
+                            {item.label}
+                          </span>
+                        </div>
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center border ${
+                            isChecked
+                              ? "bg-emerald-600 border-emerald-600 text-white"
+                              : "border-stone-300 dark:border-stone-600"
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3.5 h-3.5" />}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-stone-400 italic">
+                  * Note: Our account managers can assist you during your onboarding call if you need help delegating partner rights in Meta Business Suite.
+                </p>
+              </div>
+            )}
+
+            {/* ================= STEP 5: MONTHLY SCOPE & SLAS ================= */}
+            {currentStep === 5 && (
               <div className="space-y-4 animate-fade-in">
                 <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-xs space-y-1">
                   <p className="font-bold flex items-center gap-1.5">
@@ -669,6 +940,19 @@ export default function ClientRegisterPage() {
                   </span>
                 </div>
 
+                {/* Operational SLA Policies */}
+                <div className="space-y-2 p-3.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs">
+                  <div className="flex items-center gap-2 font-bold text-stone-800 dark:text-stone-200">
+                    <FileCheck2 className="w-4 h-4 text-emerald-600" />
+                    <span>Operational Governance & Commitments</span>
+                  </div>
+                  <ul className="list-disc pl-5 space-y-1 text-stone-600 dark:text-stone-400 text-[11px]">
+                    <li><strong>Review SLA:</strong> Client reviews drafts within 24-48 hours via portal or drive.</li>
+                    <li><strong>Revision Policy:</strong> 2 rounds of creative revisions included per content deliverable.</li>
+                    <li><strong>IP Ownership:</strong> Full commercial content ownership transfers to client upon final invoice settlement.</li>
+                  </ul>
+                </div>
+
                 {/* Terms Acceptance */}
                 <div className="pt-2">
                   <label className="flex items-start gap-2.5 text-xs text-stone-600 dark:text-stone-400 cursor-pointer select-none">
@@ -684,7 +968,7 @@ export default function ClientRegisterPage() {
                       <Link href="/terms-and-conditions" target="_blank" className="text-emerald-600 underline font-bold">
                         Client Master Services Agreement (v1.0)
                       </Link>{" "}
-                      and understand deliverable turnarounds operate on 24-48h production SLAs.
+                      and confirm the onboarding details provided.
                     </span>
                   </label>
                 </div>
@@ -711,7 +995,7 @@ export default function ClientRegisterPage() {
                 </Link>
               )}
 
-              {currentStep < 3 ? (
+              {currentStep < 5 ? (
                 <button
                   type="button"
                   onClick={handleNext}

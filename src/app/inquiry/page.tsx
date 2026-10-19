@@ -212,9 +212,14 @@ export default function PublicInquiryPage() {
     // Step 5
     durationType: "QUARTER",
     durationMonths: 3,
-    // Step 6
+    // Step 6: Client Brief & Assets
     targetAudience: "",
     competitors: "",
+    productsServices: "",
+    usp: "",
+    socialHandles: "",
+    googleDriveLink: "",
+    preferredLanguage: "English & Hinglish",
     additionalDetails: "",
     // Step 7
     confirmed: false,
@@ -550,6 +555,11 @@ export default function PublicInquiryPage() {
                     durationMonths: 3,
                     targetAudience: "",
                     competitors: "",
+                    productsServices: "",
+                    usp: "",
+                    socialHandles: "",
+                    googleDriveLink: "",
+                    preferredLanguage: "English & Hinglish",
                     additionalDetails: "",
                     confirmed: false,
                     website_hp: "",
@@ -1131,6 +1141,20 @@ export default function PublicInquiryPage() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Products & Services */}
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Main Products or Services Offered
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Luxury Handcrafted Jewellery, D2C Wellness Supplements, B2B SaaS"
+                        value={formData.productsServices}
+                        onChange={(e) => setFormData({ ...formData, productsServices: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                      />
+                    </div>
+
                     {/* Target Audience */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -1145,17 +1169,60 @@ export default function PublicInquiryPage() {
                       />
                     </div>
 
-                    {/* Competitors */}
+                    {/* Unique Selling Proposition (USP) */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Top Competitors (Names or Links)
+                        Unique Selling Proposition (USP)
                       </label>
                       <input
                         type="text"
-                        placeholder="e.g. Brand A, Competitor B, www.example.com"
+                        placeholder="What makes your brand different? (e.g. 100% Organic, 24hr delivery)"
+                        value={formData.usp}
+                        onChange={(e) => setFormData({ ...formData, usp: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                      />
+                    </div>
+
+                    {/* Competitors */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Top Competitors (Names or Handles)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Brand A, Competitor B, @competitor_handle"
                         value={formData.competitors}
                         onChange={(e) => setFormData({ ...formData, competitors: e.target.value })}
                         className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                      />
+                    </div>
+
+                    {/* Social Media Handles */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        Current Social Media Handles / Links
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Instagram: @mybrand, YouTube: @mychannel"
+                        value={formData.socialHandles}
+                        onChange={(e) => setFormData({ ...formData, socialHandles: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                      />
+                    </div>
+
+                    {/* Google Drive Link for Brand Assets */}
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                        <span>Google Drive Link (Raw Footage / Brand Guidelines / Product Shoots)</span>
+                        <span className="text-[10px] text-slate-400 font-mono">Optional</span>
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/drive/folders/..."
+                        value={formData.googleDriveLink}
+                        onChange={(e) => setFormData({ ...formData, googleDriveLink: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-mono text-xs"
                       />
                     </div>
 

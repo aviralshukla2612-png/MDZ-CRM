@@ -31,6 +31,21 @@ export async function POST(request: Request) {
       carouselsQuota,
       storiesQuota,
       termsAccepted,
+      // Client Brief & Strategy
+      productsServices,
+      goals,
+      targetAudience,
+      usp,
+      competitors,
+      currentChallenges,
+      // Brand Voice & Language
+      brandVoiceTone,
+      preferredLanguage,
+      // Access Checklist
+      accessChecklist,
+      // Scope Acknowledgements
+      approvalSlaAcknowledged,
+      revisionPolicyAcknowledged,
     } = body;
 
     if (!companyName || typeof companyName !== "string" || companyName.trim().length < 2) {
@@ -230,6 +245,14 @@ export async function POST(request: Request) {
       saveClientPortalData(newClient.id, {
         ...initialPortalData,
         onboarding: {
+          clientDetails: {
+            clientName: companyName.trim(),
+            brandName: (brandName || companyName).trim(),
+            contactNumber: phone ? phone.trim() : "",
+            email: normalizedEmail,
+            website: websiteUrl ? websiteUrl.trim() : "",
+            businessLocation: registeredAddress ? registeredAddress.trim() : "India",
+          },
           businessInfo: {
             legalName: companyName.trim(),
             brandName: (brandName || companyName).trim(),
@@ -260,15 +283,115 @@ export async function POST(request: Request) {
             pinterest: "",
             other: "",
           },
-          serviceAgreement: {
-            packageTier: "Enterprise Growth Retainer",
-            monthlyFee: "₹1,50,000",
-            reelsQuota: targetReels,
-            carouselsQuota: targetCarousels,
-            storiesQuota: targetStories,
-            slaApprovalWindow: "24-48 Hours",
-            status: "ACTIVE",
+          servicesRequired: Array.isArray(goals) && goals.length > 0 ? goals : [
+            "Social Media Management",
+            "Content Creation",
+            "Reels / Video Editing",
+            "Graphic Design",
+          ],
+          packageSelected: {
+            name: "Enterprise Digital Growth Retainer",
+            startDate: new Date().toISOString().split("T")[0],
+            duration: "Monthly Retainer",
           },
+          deliverables: {
+            postsPerWeek: `${Math.round(targetCarousels / 4) || 2} Posts per Week`,
+            reelsPerWeek: `${Math.round(targetReels / 4) || 4} Reels per Week`,
+            storiesPerWeek: `${Math.round(targetStories / 4) || 3} Stories per Week`,
+            contentCalendar: "Provided on 1st of every month",
+            hashtagResearch: "Included & refreshed bi-weekly",
+            captionWriting: "Included with Hook-Value-CTA structure",
+            graphicDesign: "Full brand visual identity & carousels",
+            videoEditing: "4K cinematic color-graded reels",
+            monthlyReport: "Executive delivery and KPI growth report",
+          },
+          contentRequirements: {
+            styleTone: brandVoiceTone || "Luxury, aesthetic, high-authority, polished",
+            language: preferredLanguage || "English & Hinglish",
+            references: "High-performing visual references and case studies",
+            specialRequirements: currentChallenges ? `Focus: ${currentChallenges}` : "Festive campaigns & seasonal launches",
+          },
+          productInfo: productsServices || "Commercial brand and product service offerings",
+          googleDriveLink: rawFootageDriveUrl || brandGuideUrl || "https://drive.google.com",
+          accessPermissions: Array.isArray(accessChecklist) && accessChecklist.length > 0
+            ? accessChecklist
+            : [
+                "Instagram (Professional Invite / Manager)",
+                "Facebook Page & Meta Business Suite",
+                "Google Drive (Assets Folder)",
+              ],
+          pointOfContact: {
+            name: contactName.trim(),
+            designation: designation ? designation.trim() : "Primary Contact",
+            phone: phone ? phone.trim() : "",
+            email: normalizedEmail,
+          },
+          preferredCommunication: ["WhatsApp Business Group", "Google Meet", "Email"],
+          importantNotes: `Review SLA: 24-48 Hours. USP: ${usp || "N/A"}.`,
+        },
+        brief: {
+          businessInfo: {
+            name: (brandName || companyName).trim(),
+            industry: "Commercial Brand & Digital Commerce",
+            description: productsServices || "Brand operating in digital and consumer space",
+          },
+          productsServices: {
+            mainOfferings: productsServices || "Signature brand products and consulting services",
+            heroProducts: "Primary Brand Lineup",
+          },
+          businessGoals: Array.isArray(goals) && goals.length > 0 ? goals.join(", ") : "Grow brand authority and qualified inbound leads",
+          targetAudience: {
+            details: targetAudience || "High-intent consumers, professionals, and targeted buyers",
+          },
+          usp: usp || "Premium quality, fast turnarounds, and bespoke creative execution",
+          competitors: competitors || "Industry peers and active market competitors",
+          currentChallenges: currentChallenges || "Consistent creative delivery, scaling engagement and reach",
+          importantLinks: {
+            website: websiteUrl ? websiteUrl.trim() : "",
+            instagram: instagramHandle ? instagramHandle.trim() : "",
+            drive: rawFootageDriveUrl || brandGuideUrl || "https://drive.google.com",
+          },
+          contactDetails: {
+            primaryName: contactName.trim(),
+            designation: designation ? designation.trim() : "Primary Contact",
+            phone: phone ? phone.trim() : "",
+            email: normalizedEmail,
+          },
+        },
+        brandVoice: {
+          tone: brandVoiceTone || "Professional, bold, aesthetic, direct",
+          preferredLanguage: preferredLanguage || "English & Hinglish",
+          communicationStyle: "Hook-driven, value-first, polished and aesthetic",
+        },
+        scope: {
+          clientInfo: {
+            clientName: companyName.trim(),
+            brandName: (brandName || companyName).trim(),
+            startDate: new Date().toISOString().split("T")[0],
+            duration: "Monthly Retainer",
+            primaryContact: contactName.trim(),
+            email: normalizedEmail,
+            phone: phone ? phone.trim() : "",
+          },
+          scopeOfWork: "Strategic content production, video editing, social media distribution, and analytics.",
+          servicesIncluded: [
+            "Monthly content calendar formulation & ideation",
+            "Video editing for short-form reels (4K color grade, motion graphics, sound sync)",
+            "High-converting carousel and static graphic design",
+            "Caption copywriting with SEO keywords and hashtags",
+            "Monthly performance analytics and delivery review sync",
+          ],
+          servicesNotIncluded: [
+            "In-person physical video shoots (unless separately contracted)",
+            "Direct advertising budget spend (paid directly to Meta/Google)",
+          ],
+          monthlyDeliverables: [
+            { type: "Reels / Short Videos", quantity: targetReels },
+            { type: "High-Value Carousels", quantity: targetCarousels },
+            { type: "Interactive Stories & Statics", quantity: targetStories },
+          ],
+          approvalTimeline: "24-48 Hours",
+          revisionPolicy: "2 rounds included per deliverable",
         },
         delivery: {
           monthYear: "October 2026",
@@ -309,28 +432,6 @@ export async function POST(request: Request) {
           },
         },
       }, normalizedEmail);
-
-      // Also register in delivery master store
-      const { getDeliveryMasterData, saveDeliveryMasterData } = await import("@/lib/deliveryMasterStore");
-      const master = getDeliveryMasterData();
-      const code = (companyName.trim().slice(0, 3)).toUpperCase();
-      const newStatusRow = {
-        id: newClient.id,
-        clientCode: code,
-        clientName: companyName.trim(),
-        target: totalPlanned,
-        done: 0,
-        pending: totalPlanned,
-        inProgress: 0,
-        onHold: 0,
-        overdue: 0,
-        completionPct: 0,
-        missingLinks: 0,
-        unassigned: totalPlanned,
-      };
-      saveDeliveryMasterData({
-        clientStatusList: [...master.clientStatusList.filter((c: any) => c.id !== newClient.id), newStatusRow],
-      });
     } catch (e) {
       console.error("Store pre-seed error:", e);
     }
