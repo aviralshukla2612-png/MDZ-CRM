@@ -19,6 +19,7 @@ export interface ClientDeliveryStatus {
 export interface DeliveryMasterData {
   monthYear: string;
   subtitle: string;
+  driveUrl?: string;
   clientStatusList: ClientDeliveryStatus[];
   updatedAt?: string;
 }

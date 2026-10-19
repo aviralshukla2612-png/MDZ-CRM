@@ -163,7 +163,7 @@ export async function GET(req: Request) {
     ];
 
     const howToUse = {
-      driveFolder: "https://drive.google.com/drive/folders/mdz-agency-client-master",
+      driveFolder: masterData.driveUrl || "https://drive.google.com",
       rules: [
         "Raw Footage Upload: Drop high-resolution camera assets in Google Drive '01_Raw_Footage' 72 hours before target release.",
         "Client Review SLA: Review drafts within 24-48 hours. Mark comments directly in the Drive preview or approve with one click.",
@@ -322,6 +322,13 @@ export async function POST(req: Request) {
       const filtered = master.clientStatusList.filter((item) => item.id !== id);
       saveDeliveryMasterData({ clientStatusList: filtered });
       return NextResponse.json({ success: true, message: "Client row removed successfully" });
+    }
+
+    // 5. Update Master Drive Folder or Sheet URL
+    if (action === "UPDATE_DRIVE_URL") {
+      const { driveUrl } = body;
+      saveDeliveryMasterData({ driveUrl: driveUrl || "https://drive.google.com" });
+      return NextResponse.json({ success: true, message: "Google Drive URL updated successfully" });
     }
 
     // Production log deliverable actions

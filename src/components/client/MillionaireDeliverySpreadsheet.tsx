@@ -121,6 +121,30 @@ export function MillionaireDeliverySpreadsheet({
   const [savingClients, setSavingClients] = useState(false);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [newClient, setNewClient] = useState({ clientCode: "", clientName: "", target: 30 });
+  const [showDriveModal, setShowDriveModal] = useState(false);
+  const [driveModalUrl, setDriveModalUrl] = useState("");
+
+  const handleSaveDriveUrl = async () => {
+    try {
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_DRIVE_URL",
+          driveUrl: driveModalUrl.trim() || "https://drive.google.com",
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Google Drive link saved successfully", "success");
+        setShowDriveModal(false);
+        await fetchLiveDeliveryData();
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error saving Drive link", "error");
+    }
+  };
 
   // Sync clientRows whenever data loads
   useEffect(() => {
@@ -491,16 +515,30 @@ export function MillionaireDeliverySpreadsheet({
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
-          <a
-            href={data?.howToUse?.driveFolder || "https://drive.google.com"}
-            target="_blank"
-            rel="noreferrer"
-            className="px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-sans text-[11px] font-semibold flex items-center gap-1 border border-slate-300 dark:border-slate-700"
-          >
-            <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Open Drive</span>
-            <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-          </a>
+          <div className="flex items-center">
+            <a
+              href={data?.howToUse?.driveFolder || "https://drive.google.com"}
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1 rounded-l bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-sans text-[11px] font-semibold flex items-center gap-1 border border-slate-300 dark:border-slate-700"
+            >
+              <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Open Drive</span>
+              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+            </a>
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  setDriveModalUrl(data?.howToUse?.driveFolder || "https://drive.google.com");
+                  setShowDriveModal(true);
+                }}
+                className="px-1.5 py-1 rounded-r bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 border-y border-r border-slate-300 dark:border-slate-700 cursor-pointer"
+                title="Edit Google Drive / Sheet URL"
+              >
+                <Edit3 className="w-3 h-3 text-slate-500 hover:text-emerald-600" />
+              </button>
+            )}
+          </div>
           {isAdmin && (
             <button
               onClick={() => setShowAddModal(true)}
@@ -1419,6 +1457,62 @@ export function MillionaireDeliverySpreadsheet({
                 className="px-4 py-1.5 rounded-xl bg-[#13381B] hover:bg-[#1a4a24] text-white font-bold text-xs shadow-xs cursor-pointer"
               >
                 {savingClients ? "Adding..." : "Add Client"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 6. EDIT DRIVE LINK MODAL */}
+      {showDriveModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl font-sans">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                <FolderOpen className="w-4 h-4 text-emerald-600" />
+                <span>Configure Google Drive / Sheet Link</span>
+              </h3>
+              <button
+                onClick={() => setShowDriveModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-500 dark:text-slate-400">
+                Paste your active Google Drive folder or Google Spreadsheet link (e.g. <code>Millionaire_Dizital_Complete_Production_Tracking_System.XLSM</code>). Clicking "Open Drive" will directly open this link.
+              </p>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Google Drive / Google Sheet URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://drive.google.com/drive/folders/... or https://docs.google.com/spreadsheets/..."
+                  value={driveModalUrl}
+                  onChange={(e) => setDriveModalUrl(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[11px]"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowDriveModal(false)}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDriveUrl}
+                className="px-4 py-1.5 rounded-xl bg-[#13381B] hover:bg-[#1a4a24] text-white font-bold text-xs shadow-xs cursor-pointer"
+              >
+                Save Drive Link
               </button>
             </div>
           </div>
