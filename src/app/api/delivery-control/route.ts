@@ -7,6 +7,7 @@ import {
   saveDeliveryMasterData,
   ClientDeliveryStatus,
 } from "@/lib/deliveryMasterStore";
+import { getClientAccountForUser } from "@/lib/client-auth";
 
 export async function GET(req: Request) {
   const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE", "CLIENT"]);
@@ -68,11 +69,36 @@ export async function GET(req: Request) {
       }
     }
 
-    // Filter if specific clientId requested
-    if (filterClientId && filterClientId !== "" && filterClientId !== "ALL" && filterClientId !== "undefined") {
+    // Check if authenticated user is a CLIENT
+    const clientCtx = await getClientAccountForUser(authRes.email);
+    const isClientUser = authRes.activeRole === "CLIENT" || Boolean(clientCtx);
+
+    // Filter if specific clientId requested or if client user is logged in
+    const effectiveClientId = isClientUser && clientCtx ? clientCtx.client.id : filterClientId;
+
+    if (effectiveClientId && effectiveClientId !== "" && effectiveClientId !== "ALL" && effectiveClientId !== "undefined") {
       clientRows = clientRows.filter(
-        (r) => r.id === filterClientId || r.clientCode === filterClientId
+        (r) => r.id === effectiveClientId || r.clientCode === effectiveClientId || (clientCtx && r.clientName.toLowerCase() === clientCtx.client.companyName.toLowerCase())
       );
+
+      // If client user doesn't have an entry yet in clientRows, create one immediately
+      if (clientRows.length === 0 && clientCtx) {
+        const code = getCode(clientCtx.client.companyName, clientCtx.client.clientNumber);
+        clientRows = [{
+          id: clientCtx.client.id,
+          clientCode: code,
+          clientName: clientCtx.client.companyName,
+          target: 30,
+          done: 0,
+          pending: 30,
+          inProgress: 0,
+          onHold: 0,
+          overdue: 0,
+          completionPct: 0,
+          missingLinks: 0,
+          unassigned: 30,
+        }];
+      }
     }
 
     // Recalculate pending, completionPct, and master totals
@@ -124,21 +150,41 @@ export async function GET(req: Request) {
     const masterCompletionPct =
       masterPlanned > 0 ? Math.round((masterCompleted / masterPlanned) * 100) : 0;
 
-    // Collect production log deliverables
+    // Collect production log deliverables (strictly scoped if client user)
     const allProductionItems: any[] = [];
-    for (const c of dbClients) {
-      const storeData = getClientPortalData(c.id, c.companyName);
-      const prodLog = Array.isArray(storeData?.delivery?.productionLog)
-        ? storeData.delivery.productionLog
-        : [];
+    const targetClientsForLog = isClientUser && clientCtx
+      ? dbClients.filter((c) => c.id === clientCtx.client.id || c.companyName.toLowerCase() === clientCtx.client.companyName.toLowerCase())
+      : (effectiveClientId && effectiveClientId !== "ALL"
+          ? dbClients.filter((c) => c.id === effectiveClientId)
+          : dbClients);
+
+    // If client user has no dbClients record yet, also check their personal store
+    if (isClientUser && clientCtx && targetClientsForLog.length === 0) {
+      const storeData = getClientPortalData(clientCtx.client.id, clientCtx.client.companyName);
+      const prodLog = Array.isArray(storeData?.delivery?.productionLog) ? storeData.delivery.productionLog : [];
       prodLog.forEach((item: any) => {
         allProductionItems.push({
           ...item,
-          clientId: c.id,
-          clientName: c.companyName,
-          clientCode: getCode(c.companyName, c.clientNumber),
+          clientId: clientCtx.client.id,
+          clientName: clientCtx.client.companyName,
+          clientCode: getCode(clientCtx.client.companyName, clientCtx.client.clientNumber),
         });
       });
+    } else {
+      for (const c of targetClientsForLog) {
+        const storeData = getClientPortalData(c.id, c.companyName);
+        const prodLog = Array.isArray(storeData?.delivery?.productionLog)
+          ? storeData.delivery.productionLog
+          : [];
+        prodLog.forEach((item: any) => {
+          allProductionItems.push({
+            ...item,
+            clientId: c.id,
+            clientName: c.companyName,
+            clientCode: getCode(c.companyName, c.clientNumber),
+          });
+        });
+      }
     }
 
     // Reference targets & team summary
@@ -162,8 +208,19 @@ export async function GET(req: Request) {
       { id: "ew-2", date: "2026-10-13", request: "Rush PR Launch Video 30s", requestedBy: "Founder", status: "Delivered", billable: "Complimentary" },
     ];
 
+    // Determine Google Drive link: use client's configured drive folder if available
+    let clientDriveFolder: string = masterData.driveUrl || "https://drive.google.com";
+    if (isClientUser && clientCtx) {
+      const clientStore = getClientPortalData(clientCtx.client.id, clientCtx.client.companyName);
+      if (clientStore?.onboarding?.brandAssets?.rawFootageDriveUrl) {
+        clientDriveFolder = clientStore.onboarding.brandAssets.rawFootageDriveUrl;
+      } else if (clientStore?.onboarding?.brandAssets?.brandGuideUrl) {
+        clientDriveFolder = clientStore.onboarding.brandAssets.brandGuideUrl;
+      }
+    }
+
     const howToUse = {
-      driveFolder: masterData.driveUrl || "https://drive.google.com",
+      driveFolder: clientDriveFolder,
       rules: [
         "Raw Footage Upload: Drop high-resolution camera assets in Google Drive '01_Raw_Footage' 72 hours before target release.",
         "Client Review SLA: Review drafts within 24-48 hours. Mark comments directly in the Drive preview or approve with one click.",
@@ -174,9 +231,12 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       success: true,
+      isClientUser,
       data: {
         monthYear: masterData.monthYear || "October 2026",
-        subtitle: masterData.subtitle || "October 2026 working plan • counts update from Production Log • all task completion times and Google Drive links are manually entered",
+        subtitle: isClientUser && clientCtx
+          ? `${clientCtx.client.companyName} Delivery Plan • Live Production Tracking & Google Drive Assets`
+          : (masterData.subtitle || "October 2026 working plan • counts update from Production Log • all task completion times and Google Drive links are manually entered"),
         kpis: {
           planned: masterPlanned,
           completed: masterCompleted,
@@ -192,8 +252,8 @@ export async function GET(req: Request) {
         clientStatusList: sanitizedClientRows,
         productionLog: allProductionItems,
         clientTargets,
-        teamSummary,
-        extraWork,
+        teamSummary: isClientUser ? [] : teamSummary,
+        extraWork: isClientUser ? [] : extraWork,
         howToUse,
       },
     });
@@ -208,8 +268,27 @@ export async function POST(req: Request) {
   if (authRes instanceof NextResponse) return authRes;
 
   try {
+    const clientCtx = await getClientAccountForUser(authRes.email);
+    const isClientUser = authRes.activeRole === "CLIENT" || Boolean(clientCtx);
+
     const body = await req.json();
     const { action } = body;
+
+    // Disallow admin actions for client users
+    const adminOnlyActions = [
+      "UPDATE_CLIENT_ROW",
+      "UPDATE_ALL_CLIENT_ROWS",
+      "ADD_CLIENT_ROW",
+      "DELETE_CLIENT_ROW",
+      "UPDATE_DRIVE_URL",
+    ];
+
+    if (isClientUser && adminOnlyActions.includes(action)) {
+      return NextResponse.json(
+        { success: false, error: "Access denied. Action requires agency administrator privileges." },
+        { status: 403 }
+      );
+    }
 
     // 1. Update single client row in delivery master
     if (action === "UPDATE_CLIENT_ROW") {
@@ -334,7 +413,11 @@ export async function POST(req: Request) {
     // Production log deliverable actions
     const { clientId, deliverable } = body;
     let targetClientId = clientId;
-    if (!targetClientId) {
+
+    // Enforce targetClientId strictly if caller is a client
+    if (isClientUser && clientCtx) {
+      targetClientId = clientCtx.client.id;
+    } else if (!targetClientId) {
       const firstClient = await prisma.client.findFirst();
       if (!firstClient) {
         return NextResponse.json({ success: false, error: "No client found" }, { status: 404 });

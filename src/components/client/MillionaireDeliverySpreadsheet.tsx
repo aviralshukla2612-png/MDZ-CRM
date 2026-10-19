@@ -480,8 +480,10 @@ export function MillionaireDeliverySpreadsheet({
           </div>
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <span className="italic font-bold text-slate-400">fx</span>
-            <span className="font-semibold text-slate-800 dark:text-slate-200">
-              MILLIONAIRE DIZITAL | MONTHLY DELIVERY CONTROL
+            <span className="font-semibold text-slate-800 dark:text-slate-200 uppercase">
+              {isAdmin
+                ? "MILLIONAIRE DIZITAL | MONTHLY DELIVERY CONTROL"
+                : `${clientName || "MY BRAND"} | MONTHLY DELIVERY & PRODUCTION CONTROL`}
             </span>
           </div>
         </div>
@@ -558,7 +560,11 @@ export function MillionaireDeliverySpreadsheet({
             {/* ROW 1 & 2: Forest Green Header Bar (Exact match to screenshot) */}
             <div className="bg-[#13381B] text-white px-5 py-3 border-b border-[#0f2e16] flex items-center justify-between">
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase font-sans">
-                MILLIONAIRE DIZITAL <span className="font-light opacity-80">|</span> MONTHLY DELIVERY CONTROL
+                {isAdmin ? (
+                  <>MILLIONAIRE DIZITAL <span className="font-light opacity-80">|</span> MONTHLY DELIVERY CONTROL</>
+                ) : (
+                  <>{clientName || "MY BRAND"} <span className="font-light opacity-80">|</span> MONTHLY DELIVERY & PRODUCTION</>
+                )}
               </h1>
               <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 text-emerald-200 border border-emerald-800">
                 Live Dynamic Sync
@@ -631,7 +637,7 @@ export function MillionaireDeliverySpreadsheet({
             {/* ROW 8: Mustard Gold Full-Width Bar with Actions */}
             <div className="bg-[#B58A38] text-white px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider border-b border-[#967129] flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span>CLIENT-WISE DELIVERY STATUS</span>
+                <span>{isAdmin ? "CLIENT-WISE DELIVERY STATUS" : "MY BRAND DELIVERY STATUS & TARGET ALLOCATION"}</span>
                 {isAdmin && (
                   <span className="text-[10px] font-sans font-normal lowercase bg-black/20 px-2 py-0.5 rounded text-amber-100">
                     (click any number to edit like Excel)
@@ -836,6 +842,198 @@ export function MillionaireDeliverySpreadsheet({
                 ))}
               </tbody>
             </table>
+
+            {/* DEDICATED CLIENT VIEW: WHAT IS PENDING & WHAT WILL DELIVER */}
+            {!isAdmin && (
+              <div className="p-5 bg-white dark:bg-slate-900 border-t border-slate-300 dark:border-slate-800 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800">
+                        PRODUCTION RADAR
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">Live Client Deliverables Schedule</span>
+                    </div>
+                    <h2 className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight mt-1 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>What is Pending & What Will Deliver</span>
+                    </h2>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab("production")}
+                      className="px-3 py-1.5 rounded-lg bg-[#13381B] hover:bg-[#1a4a24] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Film className="w-3.5 h-3.5" />
+                      <span>View Production Log Sheet</span>
+                    </button>
+                    <a
+                      href={data?.howToUse?.driveFolder || "https://drive.google.com"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1.5 border border-slate-300 dark:border-slate-700"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Brand Assets Folder</span>
+                      <ExternalLink className="w-3 h-3 opacity-60" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Sub-Panel 1: What Will Deliver Next (In Production / Drafting / Review) */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>What Will Deliver Next (In Production & Active Review)</span>
+                    </h3>
+                    <span className="text-[11px] font-mono text-indigo-600 dark:text-indigo-400 font-bold">
+                      {((data?.productionLog || []).filter((item: any) => item.publishedStatus !== "Published")).length} Active Items
+                    </span>
+                  </div>
+
+                  {((data?.productionLog || []).filter((item: any) => item.publishedStatus !== "Published")).length === 0 ? (
+                    <div className="p-6 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-center space-y-1">
+                      <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
+                      <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                        All active deliverables for this batch have been delivered or published!
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        New deliverables will appear here as soon as raw footage is submitted and editing begins.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="border border-slate-300 dark:border-slate-800 rounded-lg overflow-hidden">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead>
+                          <tr className="bg-[#13381B] text-white font-mono text-[11px]">
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Target Date</th>
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Deliverable Title</th>
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Content Format</th>
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Creator / Editor</th>
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Review Status</th>
+                            <th className="py-2 px-3 text-center">Drive Preview Link</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900 font-sans">
+                          {((data?.productionLog || []).filter((item: any) => item.publishedStatus !== "Published")).map((item: any) => (
+                            <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap border-r border-slate-200 dark:border-slate-800">
+                                {item.date || "Scheduled"}
+                              </td>
+                              <td className="py-2 px-3 font-bold text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">
+                                {item.deliverable || item.deliverableTitle}
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                  {item.format}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 font-mono text-[11px]">
+                                {item.editor || item.assignee}
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                  {item.reviewStatus}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                {item.finalLink || item.driveLink ? (
+                                  <a
+                                    href={item.finalLink || item.driveLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold hover:underline text-[11px]"
+                                  >
+                                    <FolderOpen className="w-3 h-3" />
+                                    <span>Preview Draft</span>
+                                    <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                                  </a>
+                                ) : (
+                                  <span className="text-slate-400 italic text-[11px]">In progress</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sub-Panel 2: What Has Delivered & Published */}
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Delivered & Published Deliverables</span>
+                    </h3>
+                    <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                      {((data?.productionLog || []).filter((item: any) => item.publishedStatus === "Published" || item.reviewStatus === "Approved")).length} Delivered
+                    </span>
+                  </div>
+
+                  {((data?.productionLog || []).filter((item: any) => item.publishedStatus === "Published" || item.reviewStatus === "Approved")).length > 0 ? (
+                    <div className="border border-slate-300 dark:border-slate-800 rounded-lg overflow-hidden">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead>
+                          <tr className="bg-[#13381B] text-white font-mono text-[11px]">
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Delivered Date</th>
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Deliverable Title</th>
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Format</th>
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Editor</th>
+                            <th className="py-2 px-3 border-r border-[#0f2e16]">Status</th>
+                            <th className="py-2 px-3 text-center">Final Asset</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900 font-sans">
+                          {((data?.productionLog || []).filter((item: any) => item.publishedStatus === "Published" || item.reviewStatus === "Approved")).map((item: any) => (
+                            <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <td className="py-2 px-3 font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap border-r border-slate-200 dark:border-slate-800">
+                                {item.publishedDate || item.date}
+                              </td>
+                              <td className="py-2 px-3 font-bold text-slate-900 dark:text-slate-100 border-r border-slate-200 dark:border-slate-800">
+                                {item.deliverable || item.deliverableTitle}
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                  {item.format}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-slate-700 dark:text-slate-300 border-r border-slate-200 dark:border-slate-800 font-mono text-[11px]">
+                                {item.editor || item.assignee}
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-200 dark:border-slate-800">
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300">
+                                  ✓ Delivered
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                <a
+                                  href={item.finalLink || item.driveLink || data?.howToUse?.driveFolder || "https://drive.google.com"}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-2xs"
+                                >
+                                  <FolderOpen className="w-3 h-3" />
+                                  <span>Open File</span>
+                                  <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-800 text-slate-500 text-xs">
+                      No published deliverables yet for this billing cycle.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1117,13 +1315,15 @@ export function MillionaireDeliverySpreadsheet({
       {/* 3. GOOGLE SHEETS BOTTOM SHEET TABS (Exact match to screenshot) */}
       <div className="bg-[#EBF1F5] dark:bg-slate-950 border-t border-slate-300 dark:border-slate-800 px-3 py-1 flex items-center justify-between text-xs overflow-x-auto select-none">
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold transition-colors cursor-pointer"
-            title="Add Deliverable"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 font-bold transition-colors cursor-pointer"
+              title="Add Deliverable"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
           <button
             className="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
             title="All Sheet Tabs"
@@ -1136,8 +1336,12 @@ export function MillionaireDeliverySpreadsheet({
             { id: "dashboard", label: "Dashboard" },
             { id: "targets", label: "Client Targets" },
             { id: "production", label: "Production Log" },
-            { id: "team", label: "Team Summary" },
-            { id: "extra", label: "Extra Work" },
+            ...(isAdmin
+              ? [
+                  { id: "team", label: "Team Summary" },
+                  { id: "extra", label: "Extra Work" },
+                ]
+              : []),
             { id: "guide", label: "How To Use" },
           ].map((tab) => {
             const isActive = activeTab === tab.id;

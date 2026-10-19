@@ -8,7 +8,30 @@ const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { companyName, contactName, email, password, phone, gstNumber, termsAccepted } = body;
+    const {
+      companyName,
+      brandName,
+      contactName,
+      designation,
+      email,
+      password,
+      phone,
+      whatsapp,
+      gstNumber,
+      websiteUrl,
+      registeredAddress,
+      brandGuideUrl,
+      rawFootageDriveUrl,
+      primaryColorHex,
+      instagramHandle,
+      youtubeHandle,
+      facebookUrl,
+      linkedinUrl,
+      reelsQuota,
+      carouselsQuota,
+      storiesQuota,
+      termsAccepted,
+    } = body;
 
     if (!companyName || typeof companyName !== "string" || companyName.trim().length < 2) {
       return NextResponse.json(
@@ -194,10 +217,120 @@ export async function POST(request: Request) {
       },
     }).catch(() => null);
 
-    // 6. Pre-seed persistent JSON store with client's actual company name
+    // 6. Pre-seed persistent JSON store with client's actual details
     try {
-      const { getClientPortalData } = await import("@/lib/clientPortalStore");
-      getClientPortalData(newClient.id, newClient.companyName);
+      const { getClientPortalData, saveClientPortalData } = await import("@/lib/clientPortalStore");
+      const initialPortalData = getClientPortalData(newClient.id, newClient.companyName);
+
+      const targetReels = Number(reelsQuota) || 30;
+      const targetCarousels = Number(carouselsQuota) || 15;
+      const targetStories = Number(storiesQuota) || 15;
+      const totalPlanned = targetReels + targetCarousels + targetStories;
+
+      saveClientPortalData(newClient.id, {
+        ...initialPortalData,
+        onboarding: {
+          businessInfo: {
+            legalName: companyName.trim(),
+            brandName: (brandName || companyName).trim(),
+            gstin: gstNumber ? gstNumber.trim().toUpperCase() : "",
+            websiteUrl: websiteUrl ? websiteUrl.trim() : "",
+            registeredAddress: registeredAddress ? registeredAddress.trim() : "",
+          },
+          primaryContact: {
+            fullName: contactName.trim(),
+            role: designation ? designation.trim() : "Primary Contact",
+            phone: phone ? phone.trim() : "",
+            whatsapp: whatsapp ? whatsapp.trim() : (phone ? phone.trim() : ""),
+            email: normalizedEmail,
+          },
+          brandAssets: {
+            brandGuideUrl: brandGuideUrl ? brandGuideUrl.trim() : "",
+            logoDriveUrl: brandGuideUrl ? brandGuideUrl.trim() : "",
+            rawFootageDriveUrl: rawFootageDriveUrl ? rawFootageDriveUrl.trim() : "",
+            fontFamilies: "Outfit, Inter, Sans-Serif",
+            primaryColorHex: primaryColorHex || "#059669",
+          },
+          socialHandles: {
+            instagram: instagramHandle ? instagramHandle.trim() : "",
+            youtube: youtubeHandle ? youtubeHandle.trim() : "",
+            facebook: facebookUrl ? facebookUrl.trim() : "",
+            linkedin: linkedinUrl ? linkedinUrl.trim() : "",
+            tiktok: "",
+            pinterest: "",
+            other: "",
+          },
+          serviceAgreement: {
+            packageTier: "Enterprise Growth Retainer",
+            monthlyFee: "₹1,50,000",
+            reelsQuota: targetReels,
+            carouselsQuota: targetCarousels,
+            storiesQuota: targetStories,
+            slaApprovalWindow: "24-48 Hours",
+            status: "ACTIVE",
+          },
+        },
+        delivery: {
+          monthYear: "October 2026",
+          subtitle: `${companyName.trim()} Delivery Plan • Live Production Tracking & Google Drive Assets`,
+          kpis: {
+            planned: totalPlanned,
+            completed: 0,
+            remaining: totalPlanned,
+            onHold: 0,
+            overdue: 0,
+            inProgress: 0,
+            published: 0,
+            completionPct: 0,
+            missingLinks: 0,
+            unassigned: totalPlanned,
+          },
+          clientStatusList: [
+            {
+              id: newClient.id,
+              clientCode: clientNumber.slice(-3).toUpperCase(),
+              clientName: companyName.trim(),
+              target: totalPlanned,
+              done: 0,
+              pending: totalPlanned,
+              inProgress: 0,
+              onHold: 0,
+              overdue: 0,
+              completionPct: 0,
+              missingLinks: 0,
+              unassigned: totalPlanned,
+            },
+          ],
+          productionLog: [],
+          clientTargets: {
+            reels: { target: targetReels, completed: 0, remaining: targetReels },
+            carousels: { target: targetCarousels, completed: 0, remaining: targetCarousels },
+            stories: { target: targetStories, completed: 0, remaining: targetStories },
+          },
+        },
+      }, normalizedEmail);
+
+      // Also register in delivery master store
+      const { getDeliveryMasterData, saveDeliveryMasterData } = await import("@/lib/deliveryMasterStore");
+      const master = getDeliveryMasterData();
+      const code = (companyName.trim().slice(0, 3)).toUpperCase();
+      const newStatusRow = {
+        id: newClient.id,
+        clientCode: code,
+        clientName: companyName.trim(),
+        target: totalPlanned,
+        done: 0,
+        pending: totalPlanned,
+        inProgress: 0,
+        onHold: 0,
+        overdue: 0,
+        completionPct: 0,
+        missingLinks: 0,
+        unassigned: totalPlanned,
+      };
+      saveDeliveryMasterData({
+        clientStatusList: [...master.clientStatusList.filter((c: any) => c.id !== newClient.id), newStatusRow],
+      });
     } catch (e) {
       console.error("Store pre-seed error:", e);
     }

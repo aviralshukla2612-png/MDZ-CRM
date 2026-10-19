@@ -54,6 +54,12 @@ export async function GET(req: NextRequest) {
       success: true,
       clientId: targetClientId,
       clientName: targetClientName,
+      client: {
+        id: targetClientId,
+        companyName: targetClientName,
+        email: clientCtx?.client?.email || userOrRes.email,
+        gstNumber: clientCtx?.client?.gstNumber || null,
+      },
       data,
     });
   } catch (error: any) {

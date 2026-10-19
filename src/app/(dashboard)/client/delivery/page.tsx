@@ -23,7 +23,7 @@ export default function DeliveryControlPage() {
       const json = await res.json();
       if (json.success && json.data) {
         setData(json.data.delivery);
-        setClientInfo(json.data.client || null);
+        setClientInfo(json.client || { id: json.clientId, companyName: json.clientName });
       }
     } catch (e) {
       console.error(e);
@@ -68,6 +68,7 @@ export default function DeliveryControlPage() {
       {/* Main Google Sheets Style Monthly Delivery Control */}
       <MillionaireDeliverySpreadsheet
         initialData={data}
+        clientId={clientInfo?.id}
         clientName={clientInfo?.companyName || "My Brand Account"}
         isAdmin={isAdmin}
         onSave={handleSave}
