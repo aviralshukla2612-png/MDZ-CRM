@@ -51,10 +51,10 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const FILE_PATH = path.join(DATA_DIR, "delivery-master.json");
 
 export const DEFAULT_GOOGLE_SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1j3wK1YdRaqG9Xi3P4ynXdrV1RrlTw86C/edit?gid=1693502346#gid=1693502346";
+  "https://docs.google.com/spreadsheets/d/1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat/edit?gid=1693502346#gid=1693502346";
 
 export const DEFAULT_CLIENT_TARGETS_URL =
-  "https://docs.google.com/spreadsheets/d/1j3wK1YdRaqG9Xi3P4ynXdrV1RrlTw86C/edit?gid=1126021745#gid=1126021745";
+  "https://docs.google.com/spreadsheets/d/1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat/edit?gid=1126021745#gid=1126021745";
 
 export const DEFAULT_CLIENT_TARGET_COMMITMENTS: ClientTargetCommitment[] = [
   {
@@ -316,8 +316,12 @@ export function getDeliveryMasterData(): DeliveryMasterData {
       const parsed = JSON.parse(fileContent);
       if (parsed && Array.isArray(parsed.clientStatusList) && parsed.clientStatusList.length > 0) {
         let changed = false;
-        // If driveUrl is missing or default generic drive, set to live Google Sheet
-        if (!parsed.driveUrl || parsed.driveUrl === "https://drive.google.com") {
+        // If driveUrl is missing, default generic drive, or older sheet, set to live Google Sheet
+        if (
+          !parsed.driveUrl ||
+          parsed.driveUrl === "https://drive.google.com" ||
+          parsed.driveUrl.includes("1j3wK1YdRaqG9Xi3P4ynXdrV1RrlTw86C")
+        ) {
           parsed.driveUrl = DEFAULT_GOOGLE_SHEET_URL;
           changed = true;
         }

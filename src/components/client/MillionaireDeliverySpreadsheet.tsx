@@ -150,7 +150,7 @@ export function MillionaireDeliverySpreadsheet({
   const [syncingSheet, setSyncingSheet] = useState(false);
 
   const DEFAULT_GOOGLE_SHEET_URL =
-    "https://docs.google.com/spreadsheets/d/1j3wK1YdRaqG9Xi3P4ynXdrV1RrlTw86C/edit?gid=1693502346#gid=1693502346";
+    "https://docs.google.com/spreadsheets/d/1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat/edit?gid=1693502346#gid=1693502346";
 
   const handleSaveDriveUrl = async () => {
     try {
@@ -1531,7 +1531,7 @@ export function MillionaireDeliverySpreadsheet({
                   <span>{syncingSheet ? "Syncing..." : "Sync Sheet"}</span>
                 </button>
                 <a
-                  href="https://docs.google.com/spreadsheets/d/1j3wK1YdRaqG9Xi3P4ynXdrV1RrlTw86C/edit?gid=1126021745#gid=1126021745"
+                  href="https://docs.google.com/spreadsheets/d/1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat/edit?gid=1126021745#gid=1126021745"
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded bg-[#0f2e16] hover:bg-[#184a24] text-emerald-300 border border-[#1b4e26] text-xs font-semibold transition-colors"
