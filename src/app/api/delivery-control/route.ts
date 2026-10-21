@@ -12,7 +12,7 @@ import {
 } from "@/lib/deliveryMasterStore";
 import { getClientAccountForUser } from "@/lib/client-auth";
 
-export async function pullLatestFromGoogleSheet() {
+async function pullLatestFromGoogleSheet() {
   try {
     const master = getDeliveryMasterData();
     const sheetUrl = master.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
