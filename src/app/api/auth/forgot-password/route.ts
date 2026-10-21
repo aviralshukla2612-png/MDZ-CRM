@@ -3,8 +3,32 @@ import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { sendEmail, generatePasswordResetEmail } from "@/lib/mailer";
 
+async function ensurePasswordResetTable() {
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "PasswordResetToken" (
+        "id" TEXT PRIMARY KEY NOT NULL,
+        "email" TEXT NOT NULL,
+        "token" TEXT NOT NULL UNIQUE,
+        "expiresAt" DATETIME NOT NULL,
+        "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "PasswordResetToken_email_idx" ON "PasswordResetToken"("email")
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "PasswordResetToken_token_idx" ON "PasswordResetToken"("token")
+    `);
+  } catch (e) {
+    console.warn("[PasswordReset] Table verification warning:", e);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
+    await ensurePasswordResetTable();
+
     const body = await req.json();
     const email = (body.email || "").trim().toLowerCase();
 
@@ -66,14 +90,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "If an account with that email exists, reset instructions have been dispatched to your inbox.",
-      // Include direct reset link in development or if SMTP is unconfigured so admins can still recover passwords
-      devResetUrl: process.env.NODE_ENV !== "production" || !process.env.SMTP_HOST ? resetUrl : undefined,
+      message: "If an account with that email exists, reset instructions have been dispatched.",
+      // Include direct reset link if SMTP is unconfigured or failed, or in dev mode
+      devResetUrl: process.env.NODE_ENV !== "production" || !process.env.SMTP_HOST || !emailResult.success ? resetUrl : undefined,
     });
   } catch (error: any) {
     console.error("[Forgot Password Error]:", error);
     return NextResponse.json(
-      { success: false, error: "Internal server error occurred." },
+      { success: false, error: error?.message || "Internal server error occurred." },
       { status: 500 }
     );
   }
