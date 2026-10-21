@@ -12,6 +12,165 @@ import {
 } from "@/lib/deliveryMasterStore";
 import { getClientAccountForUser } from "@/lib/client-auth";
 
+export async function pullLatestFromGoogleSheet() {
+  try {
+    const master = getDeliveryMasterData();
+    const sheetUrl = master.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
+
+    // Extract Google Sheet ID
+    const match = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    const sheetId = match ? match[1] : "1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat";
+
+    // Fetch Dashboard CSV (gid=1693502346)
+    const csvRes = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1693502346`, {
+      cache: "no-store",
+    });
+
+    if (!csvRes.ok) {
+      return { success: false, error: "Unable to download Google Sheet CSV. Please ensure link sharing is public." };
+    }
+
+    const csvText = await csvRes.text();
+    const lines = csvText.split(/\r?\n/);
+
+    let inClientTable = false;
+    const newClientRows: ClientDeliveryStatus[] = [];
+
+    for (const line of lines) {
+      const parts = line.split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
+      const firstCol = parts[0]?.toUpperCase() || "";
+
+      if (firstCol === "CLIENT" && parts[1]?.toUpperCase() === "TARGET") {
+        inClientTable = true;
+        continue;
+      }
+
+      if (inClientTable) {
+        // Stop when reaching empty row or content-type breakdown
+        if (!parts[0] || parts[0].includes("CONTENT-TYPE") || parts[0].includes("ACTION ITEMS")) {
+          break;
+        }
+
+        const clientCodeRaw = parts[0].replace(/\s*\[\?\]/g, "").trim();
+        const target = parseInt(parts[1]) || 0;
+        const done = parseInt(parts[2]) || 0;
+        const pending = parseInt(parts[3]) || Math.max(0, target - done);
+        const inProgress = parseInt(parts[4]) || 0;
+        const onHold = parseInt(parts[5]) || 0;
+        const overdue = parseInt(parts[6]) || 0;
+        const completionPct = target > 0 ? Math.round((done / target) * 100) : 0;
+        const missingLinks = parseInt(parts[8]) || 0;
+        const unassigned = parseInt(parts[9]) || 0;
+
+        const existingRow = master.clientStatusList.find(
+          (r) => r.clientCode.toUpperCase() === clientCodeRaw.toUpperCase()
+        );
+
+        newClientRows.push({
+          id: existingRow?.id || `cl-${clientCodeRaw.toLowerCase()}`,
+          clientCode: clientCodeRaw.toUpperCase(),
+          clientName: existingRow?.clientName || clientCodeRaw,
+          target,
+          done,
+          pending,
+          inProgress,
+          onHold,
+          overdue,
+          completionPct,
+          missingLinks,
+          unassigned,
+        });
+      }
+    }
+
+    // Also fetch Client Targets CSV (gid=1126021745)
+    let syncedCommitmentsCount = 0;
+    try {
+      const targetsRes = await fetch(
+        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1126021745`,
+        { cache: "no-store" }
+      );
+      if (targetsRes.ok) {
+        const targetsCsv = await targetsRes.text();
+        const tLines = targetsCsv.split(/\r?\n/);
+        let inTargetsTable = false;
+        const updatedCommitments: ClientTargetCommitment[] = [];
+
+        for (const tLine of tLines) {
+          const cols = tLine.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+          if (cols[0]?.toLowerCase() === "client" && cols[1]?.toLowerCase() === "reels") {
+            inTargetsTable = true;
+            continue;
+          }
+
+          if (inTargetsTable) {
+            const clientName = cols[0] || "";
+            if (!clientName || clientName.toUpperCase() === "TOTAL") {
+              break;
+            }
+
+            const reels = parseInt(cols[1]) || 0;
+            const carousels = parseInt(cols[2]) || 0;
+            const posts = parseInt(cols[3]) || 0;
+            const cpUnsplit = parseInt(cols[4]) || 0;
+            const stories = parseInt(cols[5]) || 0;
+            const total = parseInt(cols[6]) || reels + carousels + posts + cpUnsplit + stories;
+
+            const hasCheck = (val?: string) =>
+              Boolean(val && val.trim().length > 0 && !val.includes("0") && val !== "-");
+
+            updatedCommitments.push({
+              id: `ct-${clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+              client: clientName,
+              reels,
+              carousels,
+              posts,
+              cpUnsplit,
+              stories,
+              total,
+              platforms: {
+                ig: hasCheck(cols[7]),
+                fb: hasCheck(cols[8]),
+                li: hasCheck(cols[9]),
+                gmb: hasCheck(cols[10]),
+                whatsapp: hasCheck(cols[11]),
+                youtube: hasCheck(cols[12]),
+              },
+              originalCp: cols[13] || "",
+              review: cols[14] || "As noted",
+              notes: cols[15] || "",
+            });
+          }
+        }
+
+        if (updatedCommitments.length > 0) {
+          syncedCommitmentsCount = updatedCommitments.length;
+          saveDeliveryMasterData({ clientTargetCommitments: updatedCommitments });
+        }
+      }
+    } catch (tErr) {
+      console.error("Error syncing client targets (gid=1126021745):", tErr);
+    }
+
+    if (newClientRows.length > 0) {
+      saveDeliveryMasterData({
+        clientStatusList: newClientRows,
+        lastGoogleSheetSync: new Date().toISOString(),
+      });
+      return {
+        success: true,
+        message: `✓ Synchronized ${newClientRows.length} clients and ${syncedCommitmentsCount || 16} client target commitments directly from live Google Sheet!`,
+        clientCount: newClientRows.length,
+      };
+    } else {
+      return { success: false, error: "Could not locate client table in Google Sheet" };
+    }
+  } catch (err: any) {
+    console.error("Error syncing Google Sheet:", err);
+    return { success: false, error: err?.message || "Error syncing from Google Sheet" };
+  }
+}
+
 export async function GET(req: Request) {
   const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE", "CLIENT"]);
   if (authRes instanceof NextResponse) return authRes;
@@ -19,8 +178,18 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const filterClientId = searchParams.get("clientId");
+    const forceSync = searchParams.get("sync") === "true" || searchParams.get("refresh") === "true";
 
-    // 1. Load persistent Master Delivery Data (seeded with 16 clients matching Excel sheet)
+    // Auto-sync from Google Sheets on page load if older than 20 seconds or requested
+    const currentMaster = getDeliveryMasterData();
+    const lastSyncTime = currentMaster.lastGoogleSheetSync
+      ? new Date(currentMaster.lastGoogleSheetSync).getTime()
+      : 0;
+    if (forceSync || Date.now() - lastSyncTime > 20000) {
+      await pullLatestFromGoogleSheet();
+    }
+
+    // 1. Load persistent Master Delivery Data (refreshed from Google Sheet)
     const masterData = getDeliveryMasterData();
     let clientRows: ClientDeliveryStatus[] = [...masterData.clientStatusList];
 
@@ -637,162 +806,8 @@ export async function POST(req: Request) {
 
     // 6. Live 1-Click Sync from Google Spreadsheet
     if (action === "SYNC_FROM_GOOGLE_SHEET") {
-      try {
-        const master = getDeliveryMasterData();
-        const sheetUrl = master.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
-
-        // Extract Google Sheet ID
-        const match = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-        const sheetId = match ? match[1] : "1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat";
-
-        // Fetch Dashboard CSV (gid=1693502346)
-        const csvRes = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1693502346`, {
-          cache: "no-store",
-        });
-
-        if (!csvRes.ok) {
-          return NextResponse.json(
-            { success: false, error: "Unable to download Google Sheet CSV. Please make sure link sharing is turned on ('Anyone with link can view')." },
-            { status: 400 }
-          );
-        }
-
-        const csvText = await csvRes.text();
-        const lines = csvText.split(/\r?\n/);
-
-        let inClientTable = false;
-        const newClientRows: ClientDeliveryStatus[] = [];
-
-        for (const line of lines) {
-          const parts = line.split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
-          const firstCol = parts[0]?.toUpperCase() || "";
-
-          if (firstCol === "CLIENT" && parts[1]?.toUpperCase() === "TARGET") {
-            inClientTable = true;
-            continue;
-          }
-
-          if (inClientTable) {
-            // Stop when reaching empty row or content-type breakdown
-            if (!parts[0] || parts[0].includes("CONTENT-TYPE") || parts[0].includes("ACTION ITEMS")) {
-              break;
-            }
-
-            const clientCodeRaw = parts[0].replace(/\s*\[\?\]/g, "").trim();
-            const target = parseInt(parts[1]) || 0;
-            const done = parseInt(parts[2]) || 0;
-            const pending = parseInt(parts[3]) || Math.max(0, target - done);
-            const inProgress = parseInt(parts[4]) || 0;
-            const onHold = parseInt(parts[5]) || 0;
-            const overdue = parseInt(parts[6]) || 0;
-            const completionPct = target > 0 ? Math.round((done / target) * 100) : 0;
-            const missingLinks = parseInt(parts[8]) || 0;
-            const unassigned = parseInt(parts[9]) || 0;
-
-            const existingRow = master.clientStatusList.find(
-              (r) => r.clientCode.toUpperCase() === clientCodeRaw.toUpperCase()
-            );
-
-            newClientRows.push({
-              id: existingRow?.id || `cl-${clientCodeRaw.toLowerCase()}`,
-              clientCode: clientCodeRaw.toUpperCase(),
-              clientName: existingRow?.clientName || clientCodeRaw,
-              target,
-              done,
-              pending,
-              inProgress,
-              onHold,
-              overdue,
-              completionPct,
-              missingLinks,
-              unassigned,
-            });
-          }
-        }
-
-        // Also fetch Client Targets CSV (gid=1126021745)
-        let syncedCommitmentsCount = 0;
-        try {
-          const targetsRes = await fetch(
-            `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1126021745`,
-            { cache: "no-store" }
-          );
-          if (targetsRes.ok) {
-            const targetsCsv = await targetsRes.text();
-            const tLines = targetsCsv.split(/\r?\n/);
-            let inTargetsTable = false;
-            const updatedCommitments: ClientTargetCommitment[] = [];
-
-            for (const tLine of tLines) {
-              const cols = tLine.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-              if (cols[0]?.toLowerCase() === "client" && cols[1]?.toLowerCase() === "reels") {
-                inTargetsTable = true;
-                continue;
-              }
-
-              if (inTargetsTable) {
-                const clientName = cols[0] || "";
-                if (!clientName || clientName.toUpperCase() === "TOTAL") {
-                  break;
-                }
-
-                const reels = parseInt(cols[1]) || 0;
-                const carousels = parseInt(cols[2]) || 0;
-                const posts = parseInt(cols[3]) || 0;
-                const cpUnsplit = parseInt(cols[4]) || 0;
-                const stories = parseInt(cols[5]) || 0;
-                const total = parseInt(cols[6]) || reels + carousels + posts + cpUnsplit + stories;
-
-                const hasCheck = (val?: string) =>
-                  Boolean(val && val.trim().length > 0 && !val.includes("0") && val !== "-");
-
-                updatedCommitments.push({
-                  id: `ct-${clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
-                  client: clientName,
-                  reels,
-                  carousels,
-                  posts,
-                  cpUnsplit,
-                  stories,
-                  total,
-                  platforms: {
-                    ig: hasCheck(cols[7]),
-                    fb: hasCheck(cols[8]),
-                    li: hasCheck(cols[9]),
-                    gmb: hasCheck(cols[10]),
-                    whatsapp: hasCheck(cols[11]),
-                    youtube: hasCheck(cols[12]),
-                  },
-                  originalCp: cols[13] || "",
-                  review: cols[14] || "As noted",
-                  notes: cols[15] || "",
-                });
-              }
-            }
-
-            if (updatedCommitments.length > 0) {
-              syncedCommitmentsCount = updatedCommitments.length;
-              saveDeliveryMasterData({ clientTargetCommitments: updatedCommitments });
-            }
-          }
-        } catch (tErr) {
-          console.error("Error syncing client targets (gid=1126021745):", tErr);
-        }
-
-        if (newClientRows.length > 0) {
-          saveDeliveryMasterData({ clientStatusList: newClientRows });
-          return NextResponse.json({
-            success: true,
-            message: `✓ Synchronized ${newClientRows.length} clients and ${syncedCommitmentsCount || 16} client target commitments directly from live Google Sheet!`,
-            clientCount: newClientRows.length,
-          });
-        } else {
-          return NextResponse.json({ success: false, error: "Could not locate client table in Google Sheet" }, { status: 400 });
-        }
-      } catch (err: any) {
-        console.error("Error syncing Google Sheet:", err);
-        return NextResponse.json({ success: false, error: err?.message || "Error syncing from Google Sheet" }, { status: 500 });
-      }
+      const syncRes = await pullLatestFromGoogleSheet();
+      return NextResponse.json(syncRes, { status: syncRes.success ? 200 : 400 });
     }
 
     // Production log deliverable actions

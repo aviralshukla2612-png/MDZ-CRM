@@ -93,13 +93,19 @@ export function MillionaireDeliverySpreadsheet({
   };
 
   // Fetch live dynamic data from backend API
-  const fetchLiveDeliveryData = async (targetId?: string) => {
+  const fetchLiveDeliveryData = async (targetId?: string, forceSync = false) => {
     try {
       setLoading(true);
       const effectiveId = targetId !== undefined ? targetId : (activeClientId || clientId);
-      const url = effectiveId && effectiveId !== "" && effectiveId !== "ALL"
-        ? `/mdz-crm/api/delivery-control?clientId=${effectiveId}`
-        : `/mdz-crm/api/delivery-control`;
+      const params = new URLSearchParams();
+      if (effectiveId && effectiveId !== "" && effectiveId !== "ALL") {
+        params.set("clientId", effectiveId);
+      }
+      if (forceSync) {
+        params.set("sync", "true");
+      }
+      const qs = params.toString();
+      const url = qs ? `/mdz-crm/api/delivery-control?${qs}` : `/mdz-crm/api/delivery-control`;
       const res = await fetch(url);
       const json = await res.json();
       if (json.success && json.data) {
@@ -747,9 +753,9 @@ export function MillionaireDeliverySpreadsheet({
             </div>
           )}
           <button
-            onClick={() => fetchLiveDeliveryData()}
+            onClick={() => fetchLiveDeliveryData(undefined, true)}
             className="p-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors shrink-0 border border-slate-300/60 dark:border-slate-700/60"
-            title="Refresh Live Data"
+            title="Sync & Refresh from Google Sheet"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>

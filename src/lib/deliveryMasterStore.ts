@@ -44,6 +44,7 @@ export interface DeliveryMasterData {
   driveUrl?: string;
   clientStatusList: ClientDeliveryStatus[];
   clientTargetCommitments?: ClientTargetCommitment[];
+  lastGoogleSheetSync?: string;
   updatedAt?: string;
 }
 
