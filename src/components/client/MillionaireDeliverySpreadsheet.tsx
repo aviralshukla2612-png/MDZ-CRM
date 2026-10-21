@@ -16,6 +16,8 @@ import {
   RefreshCw,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Filter,
   Search,
   Edit3,
@@ -347,6 +349,120 @@ export function MillionaireDeliverySpreadsheet({
     }
     return clientRows;
   }, [isAdmin, activeClientId, clientName, clientRows]);
+
+  // Smart Pagination helper for numbered button ranges with ellipsis
+  const getPaginationRange = (currentPage: number, totalPages: number): (number | string)[] => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 3) {
+      return [1, 2, 3, 4, "...", totalPages];
+    }
+    if (currentPage >= totalPages - 2) {
+      return [1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+  };
+
+  // Client Table Pagination
+  const [clientPage, setClientPage] = useState(1);
+  const [clientPageSize, setClientPageSize] = useState<number>(10);
+
+  const totalClientPages = clientPageSize > 0 ? Math.max(1, Math.ceil(displayedClientRows.length / clientPageSize)) : 1;
+  const paginatedClientRows = useMemo(() => {
+    if (clientPageSize <= 0) return displayedClientRows;
+    const start = (clientPage - 1) * clientPageSize;
+    return displayedClientRows.slice(start, start + clientPageSize);
+  }, [displayedClientRows, clientPage, clientPageSize]);
+
+  useEffect(() => {
+    if (clientPage > totalClientPages && totalClientPages > 0) {
+      setClientPage(totalClientPages);
+    }
+  }, [totalClientPages, clientPage]);
+
+  // Production Log Filter & Pagination
+  const [prodSearch, setProdSearch] = useState("");
+  const [prodStatusFilter, setProdStatusFilter] = useState("ALL");
+  const [prodPage, setProdPage] = useState(1);
+  const [prodPageSize, setProdPageSize] = useState<number>(15);
+
+  const filteredProdLog = useMemo(() => {
+    let list = data?.productionLog || [];
+    if (!isAdmin) {
+      if (activeClientId) {
+        list = list.filter((item: any) => item.clientId === activeClientId || item.clientCode === activeClientId);
+      }
+    }
+    if (prodStatusFilter !== "ALL") {
+      list = list.filter((item: any) =>
+        item.publishedStatus?.toLowerCase() === prodStatusFilter.toLowerCase() ||
+        item.reviewStatus?.toLowerCase() === prodStatusFilter.toLowerCase()
+      );
+    }
+    if (prodSearch.trim()) {
+      const q = prodSearch.toLowerCase();
+      list = list.filter((item: any) =>
+        (item.deliverable || item.deliverableTitle || "").toLowerCase().includes(q) ||
+        (item.clientCode || "").toLowerCase().includes(q) ||
+        (item.editor || item.assignee || "").toLowerCase().includes(q) ||
+        (item.format || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [data?.productionLog, isAdmin, activeClientId, prodStatusFilter, prodSearch]);
+
+  const totalProdPages = prodPageSize > 0 ? Math.max(1, Math.ceil(filteredProdLog.length / prodPageSize)) : 1;
+  const paginatedProdLog = useMemo(() => {
+    if (prodPageSize <= 0) return filteredProdLog;
+    const start = (prodPage - 1) * prodPageSize;
+    return filteredProdLog.slice(start, start + prodPageSize);
+  }, [filteredProdLog, prodPage, prodPageSize]);
+
+  useEffect(() => {
+    if (prodPage > totalProdPages && totalProdPages > 0) {
+      setProdPage(totalProdPages);
+    }
+  }, [totalProdPages, prodPage]);
+
+  // Client Targets Pagination
+  const [targetPage, setTargetPage] = useState(1);
+  const [targetPageSize, setTargetPageSize] = useState<number>(15);
+
+  const totalTargetPages = targetPageSize > 0 ? Math.max(1, Math.ceil(displayedTargetRows.length / targetPageSize)) : 1;
+  const paginatedTargetRows = useMemo(() => {
+    if (targetPageSize <= 0) return displayedTargetRows;
+    const start = (targetPage - 1) * targetPageSize;
+    return displayedTargetRows.slice(start, start + targetPageSize);
+  }, [displayedTargetRows, targetPage, targetPageSize]);
+
+  useEffect(() => {
+    if (targetPage > totalTargetPages && totalTargetPages > 0) {
+      setTargetPage(totalTargetPages);
+    }
+  }, [totalTargetPages, targetPage]);
+
+  // Delivered & Published Deliverables Pagination (Overview Sub-panel)
+  const [deliveredPage, setDeliveredPage] = useState(1);
+  const [deliveredPageSize, setDeliveredPageSize] = useState<number>(8);
+
+  const deliveredList = useMemo(() => {
+    const list = data?.productionLog || [];
+    return list.filter((item: any) => item.publishedStatus === "Published" || item.reviewStatus === "Approved");
+  }, [data?.productionLog]);
+
+  const totalDeliveredPages = deliveredPageSize > 0 ? Math.max(1, Math.ceil(deliveredList.length / deliveredPageSize)) : 1;
+  const paginatedDeliveredList = useMemo(() => {
+    if (deliveredPageSize <= 0) return deliveredList;
+    const start = (deliveredPage - 1) * deliveredPageSize;
+    return deliveredList.slice(start, start + deliveredPageSize);
+  }, [deliveredList, deliveredPage, deliveredPageSize]);
+
+  useEffect(() => {
+    if (deliveredPage > totalDeliveredPages && totalDeliveredPages > 0) {
+      setDeliveredPage(totalDeliveredPages);
+    }
+  }, [totalDeliveredPages, deliveredPage]);
 
   // Dynamic live KPIs computed directly from clientRows and production log
   const liveKpis = useMemo(() => {
@@ -983,7 +1099,7 @@ export function MillionaireDeliverySpreadsheet({
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
-                {displayedClientRows.map((row: any, idx: number) => {
+                {paginatedClientRows.map((row: any, idx: number) => {
                   const isRowActive = activeClientId && (row.id === activeClientId || row.clientCode === activeClientId);
                   return (
                   <tr
@@ -1165,6 +1281,101 @@ export function MillionaireDeliverySpreadsheet({
                 )}
               </tbody>
             </table>
+
+            {/* Client Table Pagination Controls */}
+            {displayedClientRows.length > 0 && (
+              <div className="bg-slate-50 dark:bg-slate-900/80 px-4 py-2.5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-mono">
+                  <span>Showing</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {clientPageSize <= 0
+                      ? `1–${displayedClientRows.length}`
+                      : `${Math.min((clientPage - 1) * clientPageSize + 1, displayedClientRows.length)}–${Math.min(clientPage * clientPageSize, displayedClientRows.length)}`}
+                  </span>
+                  <span>of</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{displayedClientRows.length}</span>
+                  <span>clients</span>
+                  <span className="mx-2 text-slate-300 dark:text-slate-700">|</span>
+                  <label className="flex items-center gap-1.5 text-slate-500">
+                    <span>Rows per page:</span>
+                    <select
+                      value={clientPageSize}
+                      onChange={(e) => {
+                        setClientPageSize(Number(e.target.value));
+                        setClientPage(1);
+                      }}
+                      className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold outline-none cursor-pointer"
+                    >
+                      <option value={10}>10</option>
+                      <option value={15}>15</option>
+                      <option value={25}>25</option>
+                      <option value={0}>All ({displayedClientRows.length})</option>
+                    </select>
+                  </label>
+                </div>
+
+                {clientPageSize > 0 && totalClientPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setClientPage(1)}
+                      disabled={clientPage <= 1}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="First Page"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClientPage((p) => Math.max(1, p - 1))}
+                      disabled={clientPage <= 1}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {getPaginationRange(clientPage, totalClientPages).map((pageNum, idx) =>
+                      pageNum === "..." ? (
+                        <span key={`c-ellipsis-${idx}`} className="px-1 text-slate-400 font-mono">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setClientPage(Number(pageNum))}
+                          className={`min-w-[28px] h-7 px-1.5 rounded font-mono font-bold text-xs transition-colors cursor-pointer ${
+                            clientPage === pageNum
+                              ? "bg-emerald-600 text-white shadow-xs"
+                              : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      )
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setClientPage((p) => Math.min(totalClientPages, p + 1))}
+                      disabled={clientPage >= totalClientPages}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Next Page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setClientPage(totalClientPages)}
+                      disabled={clientPage >= totalClientPages}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Last Page"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* DEDICATED CLIENT VIEW: WHAT IS PENDING & WHAT WILL DELIVER */}
             {!isAdmin && (
@@ -1363,13 +1574,60 @@ export function MillionaireDeliverySpreadsheet({
         {/* ================= TAB: PRODUCTION LOG ================= */}
         {activeTab === "production" && (
           <div className="p-4 space-y-3 min-w-[960px]">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <span>Production Log Sheet</span>
-                <span className="text-[11px] font-mono text-slate-400">
-                  ({(data?.productionLog || []).length} Deliverables Tracked in Database)
-                </span>
-              </h3>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <span>Production Log Sheet</span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    ({filteredProdLog.length} {filteredProdLog.length === (data?.productionLog || []).length ? "Deliverables" : `of ${(data?.productionLog || []).length} Deliverables`})
+                  </span>
+                </h3>
+
+                {/* Production Log Search */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search deliverable, editor, client..."
+                    value={prodSearch}
+                    onChange={(e) => {
+                      setProdSearch(e.target.value);
+                      setProdPage(1);
+                    }}
+                    className="pl-8 pr-7 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-56 sm:w-64"
+                  />
+                  {prodSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProdSearch("");
+                        setProdPage(1);
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Filter */}
+                <select
+                  value={prodStatusFilter}
+                  onChange={(e) => {
+                    setProdStatusFilter(e.target.value);
+                    setProdPage(1);
+                  }}
+                  className="px-2.5 py-1 text-xs rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-medium outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="Published">Published</option>
+                  <option value="Approved">Approved</option>
+                  <option value="In Production">In Production</option>
+                  <option value="In Review">In Review</option>
+                  <option value="Drafting">Drafting</option>
+                </select>
+              </div>
+
               {isAdmin && (
                 <button
                   onClick={() => setShowAddModal(true)}
@@ -1396,7 +1654,7 @@ export function MillionaireDeliverySpreadsheet({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-slate-900 font-mono">
-                {(data?.productionLog || []).map((item: any) => (
+                {paginatedProdLog.map((item: any) => (
                   <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800">
                     <td className="py-2 px-3 text-slate-500 whitespace-nowrap border-r border-slate-300 dark:border-slate-800">
                       {item.date}
@@ -1479,6 +1737,102 @@ export function MillionaireDeliverySpreadsheet({
                 ))}
               </tbody>
             </table>
+
+            {/* Production Log Pagination Controls */}
+            {filteredProdLog.length > 0 && (
+              <div className="bg-slate-50 dark:bg-slate-900/80 px-4 py-2.5 border border-slate-300 dark:border-slate-800 rounded-b-lg flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-mono">
+                  <span>Showing</span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {prodPageSize <= 0
+                      ? `1–${filteredProdLog.length}`
+                      : `${Math.min((prodPage - 1) * prodPageSize + 1, filteredProdLog.length)}–${Math.min(prodPage * prodPageSize, filteredProdLog.length)}`}
+                  </span>
+                  <span>of</span>
+                  <span className="font-bold text-slate-900 dark:text-white">{filteredProdLog.length}</span>
+                  <span>deliverables</span>
+                  <span className="mx-2 text-slate-300 dark:text-slate-700">|</span>
+                  <label className="flex items-center gap-1.5 text-slate-500">
+                    <span>Rows per page:</span>
+                    <select
+                      value={prodPageSize}
+                      onChange={(e) => {
+                        setProdPageSize(Number(e.target.value));
+                        setProdPage(1);
+                      }}
+                      className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold outline-none cursor-pointer"
+                    >
+                      <option value={15}>15</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={0}>All ({filteredProdLog.length})</option>
+                    </select>
+                  </label>
+                </div>
+
+                {prodPageSize > 0 && totalProdPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setProdPage(1)}
+                      disabled={prodPage <= 1}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="First Page"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProdPage((p) => Math.max(1, p - 1))}
+                      disabled={prodPage <= 1}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {getPaginationRange(prodPage, totalProdPages).map((pageNum, idx) =>
+                      pageNum === "..." ? (
+                        <span key={`p-ellipsis-${idx}`} className="px-1 text-slate-400 font-mono">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setProdPage(Number(pageNum))}
+                          className={`min-w-[28px] h-7 px-1.5 rounded font-mono font-bold text-xs transition-colors cursor-pointer ${
+                            prodPage === pageNum
+                              ? "bg-emerald-600 text-white shadow-xs"
+                              : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      )
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setProdPage((p) => Math.min(totalProdPages, p + 1))}
+                      disabled={prodPage >= totalProdPages}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Next Page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProdPage(totalProdPages)}
+                      disabled={prodPage >= totalProdPages}
+                      className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                      title="Last Page"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1587,7 +1941,7 @@ export function MillionaireDeliverySpreadsheet({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800 font-mono text-xs">
-                  {displayedTargetRows.map((row: any, idx: number) => {
+                  {paginatedTargetRows.map((row: any, idx: number) => {
                     const isEditing = editingTargetRowId === "ALL" || editingTargetRowId === row.id;
                     const isReviewNeeded = row.review?.toLowerCase().includes("needs review");
 
@@ -1857,6 +2211,101 @@ export function MillionaireDeliverySpreadsheet({
                   </tr>
                 </tfoot>
               </table>
+
+              {/* Client Targets Pagination Controls */}
+              {displayedTargetRows.length > 0 && (
+                <div className="bg-slate-50 dark:bg-slate-900/80 px-4 py-2.5 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                  <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 font-mono">
+                    <span>Showing</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {targetPageSize <= 0
+                        ? `1–${displayedTargetRows.length}`
+                        : `${Math.min((targetPage - 1) * targetPageSize + 1, displayedTargetRows.length)}–${Math.min(targetPage * targetPageSize, displayedTargetRows.length)}`}
+                    </span>
+                    <span>of</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{displayedTargetRows.length}</span>
+                    <span>client targets</span>
+                    <span className="mx-2 text-slate-300 dark:text-slate-700">|</span>
+                    <label className="flex items-center gap-1.5 text-slate-500">
+                      <span>Rows per page:</span>
+                      <select
+                        value={targetPageSize}
+                        onChange={(e) => {
+                          setTargetPageSize(Number(e.target.value));
+                          setTargetPage(1);
+                        }}
+                        className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-bold outline-none cursor-pointer"
+                      >
+                        <option value={10}>10</option>
+                        <option value={15}>15</option>
+                        <option value={25}>25</option>
+                        <option value={0}>All ({displayedTargetRows.length})</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {targetPageSize > 0 && totalTargetPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setTargetPage(1)}
+                        disabled={targetPage <= 1}
+                        className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        title="First Page"
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTargetPage((p) => Math.max(1, p - 1))}
+                        disabled={targetPage <= 1}
+                        className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        title="Previous Page"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      {getPaginationRange(targetPage, totalTargetPages).map((pageNum, idx) =>
+                        pageNum === "..." ? (
+                          <span key={`t-ellipsis-${idx}`} className="px-1 text-slate-400 font-mono">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setTargetPage(Number(pageNum))}
+                            className={`min-w-[28px] h-7 px-1.5 rounded font-mono font-bold text-xs transition-colors cursor-pointer ${
+                              targetPage === pageNum
+                                ? "bg-emerald-600 text-white shadow-xs"
+                                : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        )
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setTargetPage((p) => Math.min(totalTargetPages, p + 1))}
+                        disabled={targetPage >= totalTargetPages}
+                        className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        title="Next Page"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTargetPage(totalTargetPages)}
+                        disabled={targetPage >= totalTargetPages}
+                        className="p-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                        title="Last Page"
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Supplementary: Content Quota Cadence Reference */}
