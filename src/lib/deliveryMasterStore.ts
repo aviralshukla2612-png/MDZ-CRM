@@ -325,15 +325,11 @@ export function getDeliveryMasterData(): DeliveryMasterData {
           parsed.driveUrl = DEFAULT_GOOGLE_SHEET_URL;
           changed = true;
         }
-        // If clientStatusList contains old placeholder codes or was inflated by older auto-injection (e.g. 832 total planned), reset to official 16 clients (292)
+        // If clientStatusList contains old placeholder codes, reset to official 16 clients (292)
         const hasLegacyCodes = parsed.clientStatusList.some((r: any) =>
           ["RK", "DM", "VK", "AK", "SM"].includes(r.clientCode)
         );
-        const totalPlanned = parsed.clientStatusList.reduce(
-          (acc: number, r: any) => acc + (Number(r.target) || 0),
-          0
-        );
-        if (hasLegacyCodes || totalPlanned > 350) {
+        if (hasLegacyCodes) {
           parsed.clientStatusList = DEFAULT_16_CLIENTS;
           changed = true;
         }
