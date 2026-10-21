@@ -106,7 +106,7 @@ export function MillionaireDeliverySpreadsheet({
       }
       const qs = params.toString();
       const url = qs ? `/mdz-crm/api/delivery-control?${qs}` : `/mdz-crm/api/delivery-control`;
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: "no-store" });
       const json = await res.json();
       if (json.success && json.data) {
         setData(json.data);

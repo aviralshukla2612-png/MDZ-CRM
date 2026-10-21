@@ -12,6 +12,9 @@ import {
 } from "@/lib/deliveryMasterStore";
 import { getClientAccountForUser } from "@/lib/client-auth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function pullLatestFromGoogleSheet() {
   try {
     const master = getDeliveryMasterData();
@@ -621,6 +624,12 @@ export async function GET(req: Request) {
         extraWork: isClientUser ? [] : extraWork,
         howToUse,
       },
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      }
     });
   } catch (error) {
     console.error("Delivery control fetch error:", error);
