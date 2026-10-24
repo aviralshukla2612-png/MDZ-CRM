@@ -42,9 +42,16 @@ export interface DeliveryMasterData {
   monthYear: string;
   subtitle: string;
   driveUrl?: string;
+  appsScriptUrl?: string;
+  webhookSecret?: string;
   clientStatusList: ClientDeliveryStatus[];
   clientTargetCommitments?: ClientTargetCommitment[];
+  productionLog?: any[];
+  teamSummary?: any[];
+  extraWork?: any[];
   lastGoogleSheetSync?: string;
+  lastSyncStatus?: "SUCCESS" | "ERROR" | "IDLE";
+  lastSyncMessage?: string;
   updatedAt?: string;
 }
 

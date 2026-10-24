@@ -28,6 +28,11 @@ import {
   Share2,
   FileSpreadsheet,
   CloudDownload,
+  Copy,
+  Zap,
+  CheckCheck,
+  Activity,
+  ShieldCheck,
 } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -155,6 +160,11 @@ export function MillionaireDeliverySpreadsheet({
   const [newClient, setNewClient] = useState({ clientCode: "", clientName: "", target: 30 });
   const [showDriveModal, setShowDriveModal] = useState(false);
   const [driveModalUrl, setDriveModalUrl] = useState("");
+  const [appsScriptModalUrl, setAppsScriptModalUrl] = useState("");
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [testResults, setTestResults] = useState<any>(null);
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [syncModalTab, setSyncModalTab] = useState<"status" | "setup" | "code">("status");
   const [syncingSheet, setSyncingSheet] = useState(false);
 
   const DEFAULT_GOOGLE_SHEET_URL =
@@ -166,19 +176,49 @@ export function MillionaireDeliverySpreadsheet({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "UPDATE_DRIVE_URL",
+          action: "UPDATE_SYNC_CONFIG",
           driveUrl: driveModalUrl.trim() || DEFAULT_GOOGLE_SHEET_URL,
+          appsScriptUrl: appsScriptModalUrl.trim(),
         }),
       });
       const json = await res.json();
       if (json.success) {
-        showToast("✓ Google Drive / Sheet link saved successfully", "success");
+        showToast("✓ Two-way Google Sheet configuration saved successfully", "success");
         setShowDriveModal(false);
         await fetchLiveDeliveryData();
+      } else {
+        showToast(json.error || "Failed to save configuration", "error");
       }
     } catch (e) {
       console.error(e);
-      showToast("Error saving Drive link", "error");
+      showToast("Error saving sync configuration", "error");
+    }
+  };
+
+  const handleTestConnection = async () => {
+    try {
+      setTestingConnection(true);
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "TEST_SYNC_CONNECTION" }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setTestResults(json.data);
+        if (json.data.writeSuccess) {
+          showToast(`✓ Two-Way Connection Verified! (${json.data.latencyMs}ms)`, "success");
+        } else if (json.data.readSuccess) {
+          showToast("✓ Live Read functional! Follow Setup to enable 2-Way Writeback.", "info");
+        } else {
+          showToast("Read failed: ensure Google Sheet link sharing is public.", "error");
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      showToast("Error testing connection", "error");
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -204,6 +244,14 @@ export function MillionaireDeliverySpreadsheet({
       setSyncingSheet(false);
     }
   };
+
+  useEffect(() => {
+    // Background polling every 25 seconds for real-time live sync with Google Sheet
+    const interval = setInterval(() => {
+      fetchLiveDeliveryData(undefined, false);
+    }, 25000);
+    return () => clearInterval(interval);
+  }, [activeClientId]);
 
   // Sync clientRows whenever data loads
   useEffect(() => {
@@ -312,7 +360,7 @@ export function MillionaireDeliverySpreadsheet({
       });
       const json = await res.json();
       if (json.success) {
-        showToast("✓ Client target commitments saved successfully", "success");
+        showToast(json.message || "✓ Client target commitments saved and synced to Google Sheet", "success");
         setHasUnsavedTargetChanges(false);
         setEditingTargetRowId(null);
         await fetchLiveDeliveryData();
@@ -585,7 +633,7 @@ export function MillionaireDeliverySpreadsheet({
       });
       const json = await res.json();
       if (json.success) {
-        showToast("✓ All client delivery targets & status saved to database", "success");
+        showToast(json.message || "✓ All client delivery targets & status saved and synced to Google Sheet", "success");
         setHasUnsavedClientChanges(false);
       } else {
         showToast(json.error || "Failed to save client targets", "error");
@@ -900,6 +948,24 @@ export function MillionaireDeliverySpreadsheet({
               </button>
             )}
           </div>
+          {isAdmin && (
+            <button
+              onClick={() => {
+                setDriveModalUrl(data?.syncConfig?.sheetUrl || data?.howToUse?.driveFolder || DEFAULT_GOOGLE_SHEET_URL);
+                setAppsScriptModalUrl(data?.syncConfig?.appsScriptUrl || "");
+                setShowDriveModal(true);
+              }}
+              className={`px-2.5 py-1.5 rounded-lg font-sans text-[11px] font-bold flex items-center gap-1.5 border whitespace-nowrap shadow-2xs cursor-pointer shrink-0 transition-all ${
+                data?.syncConfig?.appsScriptUrl
+                  ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700"
+                  : "bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700"
+              }`}
+              title="Two-Way Real-Time Sync Configuration & Webhook"
+            >
+              <Zap className={`w-3.5 h-3.5 ${data?.syncConfig?.appsScriptUrl ? "text-emerald-600" : "text-amber-600 animate-pulse"}`} />
+              <span>{data?.syncConfig?.appsScriptUrl ? "2-Way Live 🟢" : "⚡ Connect 2-Way Sync"}</span>
+            </button>
+          )}
           {isAdmin && (
             <button
               onClick={handleSyncFromGoogleSheet}
@@ -2846,15 +2912,24 @@ export function MillionaireDeliverySpreadsheet({
         </div>
       )}
 
-      {/* 6. EDIT DRIVE LINK MODAL */}
+      {/* 6. GOOGLE SHEET TWO-WAY REAL-TIME SYNC MODAL */}
       {showDriveModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl font-sans">
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
-              <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                <FolderOpen className="w-4 h-4 text-emerald-600" />
-                <span>Configure Google Drive / Sheet Link</span>
-              </h3>
+          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-2xl w-full max-w-2xl p-6 space-y-4 shadow-2xl font-sans max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 flex items-center justify-center text-emerald-700 dark:text-emerald-300">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-slate-100">
+                    Google Sheets Two-Way Synchronization Hub
+                  </h3>
+                  <p className="text-[11px] text-slate-500">
+                    Bidirectional sync: changes in CRM update Sheet, and edits in Sheet update CRM
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowDriveModal(false)}
                 className="text-slate-400 hover:text-slate-600 font-bold p-1 rounded-lg cursor-pointer"
@@ -2863,40 +2938,271 @@ export function MillionaireDeliverySpreadsheet({
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <p className="text-slate-500 dark:text-slate-400">
-                Paste your active Google Drive folder or Google Spreadsheet link (e.g. <code>Millionaire_Dizital_Complete_Production_Tracking_System.XLSM</code>). Clicking "Open Drive" will directly open this link.
-              </p>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  Google Drive / Google Sheet URL
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://drive.google.com/drive/folders/... or https://docs.google.com/spreadsheets/..."
-                  value={driveModalUrl}
-                  onChange={(e) => setDriveModalUrl(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[11px]"
-                />
-              </div>
+            {/* Modal Navigation Tabs */}
+            <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 text-xs font-bold">
+              <button
+                onClick={() => setSyncModalTab("status")}
+                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  syncModalTab === "status"
+                    ? "bg-[#13381B] text-white"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                ⚡ Live Status & Configuration
+              </button>
+              <button
+                onClick={() => setSyncModalTab("setup")}
+                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  syncModalTab === "setup"
+                    ? "bg-[#13381B] text-white"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                📖 60s Setup Guide
+              </button>
+              <button
+                onClick={() => setSyncModalTab("code")}
+                className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                  syncModalTab === "code"
+                    ? "bg-[#13381B] text-white"
+                    : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                }`}
+              >
+                📋 Apps Script Code
+              </button>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+            {syncModalTab === "status" && (
+              <div className="space-y-4 text-xs">
+                {/* Live Connection Badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Sheet → CRM (Read & Webhook)</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">
+                        ACTIVE 🟢
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                      Synchronizes Dashboard (292 deliverables), Targets, Production Log, Team Roster & Extra Work.
+                    </p>
+                  </div>
+
+                  <div className={`p-3 rounded-xl border ${
+                    data?.syncConfig?.appsScriptUrl || appsScriptModalUrl
+                      ? "border-emerald-300 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20"
+                      : "border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20"
+                  }`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>CRM → Sheet (Live Writeback)</span>
+                      </span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        data?.syncConfig?.appsScriptUrl || appsScriptModalUrl
+                          ? "bg-emerald-600 text-white"
+                          : "bg-amber-500 text-white"
+                      }`}>
+                        {data?.syncConfig?.appsScriptUrl || appsScriptModalUrl ? "CONNECTED 🟢" : "SETUP REQUIRED 🟡"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                      {data?.syncConfig?.appsScriptUrl || appsScriptModalUrl
+                        ? "Edits made in CRM automatically update cells in your live Google Sheet."
+                        : "Deploy Google Apps Script (in 60s) to write CRM changes back to your Sheet."}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Form Fields */}
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700 dark:text-slate-300">
+                        1. Google Spreadsheet Link
+                      </label>
+                      <a
+                        href={driveModalUrl || DEFAULT_GOOGLE_SHEET_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-emerald-600 hover:underline flex items-center gap-1"
+                      >
+                        <span>Open in Google Sheets</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                    <input
+                      type="url"
+                      placeholder="https://docs.google.com/spreadsheets/d/..."
+                      value={driveModalUrl}
+                      onChange={(e) => setDriveModalUrl(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[11px]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      2. Google Apps Script Web App URL (for live writeback from CRM to Sheet)
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://script.google.com/macros/s/.../exec"
+                      value={appsScriptModalUrl}
+                      onChange={(e) => setAppsScriptModalUrl(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[11px]"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Generated from Extensions &gt; Apps Script &gt; Deploy as Web App ("Who has access: Anyone").
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      3. CRM Incoming Webhook URL (for real-time Google Sheet onEdit events)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={typeof window !== "undefined" ? `${window.location.origin}/mdz-crm/api/delivery-control/webhook` : "/mdz-crm/api/delivery-control/webhook"}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 font-mono text-[11px] text-slate-600 dark:text-slate-400 select-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = typeof window !== "undefined" ? `${window.location.origin}/mdz-crm/api/delivery-control/webhook` : "/mdz-crm/api/delivery-control/webhook";
+                          navigator.clipboard.writeText(url);
+                          showToast("Copied webhook URL to clipboard", "success");
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 font-bold shrink-0 cursor-pointer"
+                        title="Copy Webhook URL"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Diagnostic Test Output */}
+                {testResults && (
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1 text-[11px]">
+                    <div className="font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                      <span>Connection Test Results ({testResults.latencyMs}ms)</span>
+                      {testResults.sheetTitle && (
+                        <span className="text-emerald-600 font-semibold">{testResults.sheetTitle}</span>
+                      )}
+                    </div>
+                    <div className={testResults.readSuccess ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600"}>
+                      {testResults.readMessage}
+                    </div>
+                    <div className={testResults.writeSuccess ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}>
+                      {testResults.writeMessage}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {syncModalTab === "setup" && (
+              <div className="space-y-3 text-xs text-slate-700 dark:text-slate-300">
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl">
+                  <h4 className="font-bold text-emerald-900 dark:text-emerald-200 mb-1">
+                    Connect Both Directions in 4 Quick Steps:
+                  </h4>
+                  <ol className="list-decimal pl-4 space-y-1.5 text-[11px] text-emerald-800 dark:text-emerald-300">
+                    <li>
+                      Open your Google Sheet: <strong>MILLIONAIRE DIZITAL | MONTHLY DELIVERY CONTROL</strong>.
+                    </li>
+                    <li>
+                      In the top menu bar, click <strong>Extensions &gt; Apps Script</strong>.
+                    </li>
+                    <li>
+                      Go to the <strong>Apps Script Code</strong> tab above, click <strong>Copy Code</strong>, paste it into Apps Script (replace any placeholder code), and click the <strong>Save</strong> (disk) icon.
+                    </li>
+                    <li>
+                      Click <strong>Deploy &gt; New deployment</strong>, select type <strong>Web app</strong>:
+                      <ul className="list-disc pl-4 mt-1 font-semibold">
+                        <li>Execute as: <strong>Me</strong></li>
+                        <li>Who has access: <strong>Anyone</strong> (crucial!)</li>
+                      </ul>
+                      Click <strong>Deploy</strong>, copy the resulting Web App URL, paste it into step 2 in the <strong>Live Status</strong> tab, and click <strong>Save Settings</strong>!
+                    </li>
+                  </ol>
+                </div>
+
+                <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-1 text-[11px]">
+                  <h5 className="font-bold text-slate-800 dark:text-slate-200">How Real-Time Sync Works:</h5>
+                  <p>
+                    • <strong>CRM &rarr; Google Sheet:</strong> Whenever you edit numbers in the delivery table, update quotas, change task status, or add links, CRM immediately sends the change to the Google Apps Script Web App, which writes directly into your Sheet cells.
+                  </p>
+                  <p>
+                    • <strong>Google Sheet &rarr; CRM:</strong> Whenever anyone edits any cell in Google Sheets, the script&apos;s <code>onEdit</code> trigger immediately notifies the CRM Webhook, keeping both in continuous real-time sync.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {syncModalTab === "code" && (
+              <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
+                    Complete Google Apps Script Bridge Code
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const code = data?.syncConfig?.readyAppsScriptCode || "";
+                      navigator.clipboard.writeText(code);
+                      setCopiedScript(true);
+                      showToast("✓ Copied Apps Script code to clipboard!", "success");
+                      setTimeout(() => setCopiedScript(false), 2500);
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    {copiedScript ? <CheckCheck className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedScript ? "Copied!" : "Copy Code"}</span>
+                  </button>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950 text-slate-200 font-mono text-[10px] max-h-64 overflow-y-auto border border-slate-800">
+                  <pre className="whitespace-pre-wrap">
+                    {data?.syncConfig?.readyAppsScriptCode || "// Loading Apps Script bridge code..."}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            {/* Footer Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
               <button
                 type="button"
-                onClick={() => setShowDriveModal(false)}
-                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+                onClick={handleTestConnection}
+                disabled={testingConnection}
+                className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs flex items-center gap-1.5 cursor-pointer border border-slate-300 dark:border-slate-700"
               >
-                Cancel
+                <Activity className={`w-3.5 h-3.5 ${testingConnection ? "animate-spin" : ""}`} />
+                <span>{testingConnection ? "Testing..." : "Test 2-Way Connection"}</span>
               </button>
-              <button
-                type="button"
-                onClick={handleSaveDriveUrl}
-                className="px-4 py-1.5 rounded-xl bg-[#13381B] hover:bg-[#1a4a24] text-white font-bold text-xs shadow-xs cursor-pointer"
-              >
-                Save Drive Link
-              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDriveModal(false)}
+                  className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDriveUrl}
+                  className="px-4 py-1.5 rounded-xl bg-[#13381B] hover:bg-[#1a4a24] text-white font-bold text-xs shadow-xs cursor-pointer"
+                >
+                  Save Settings
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -15,164 +15,12 @@ import { getClientAccountForUser } from "@/lib/client-auth";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function pullLatestFromGoogleSheet() {
-  try {
-    const master = getDeliveryMasterData();
-    const sheetUrl = master.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
-
-    // Extract Google Sheet ID
-    const match = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    const sheetId = match ? match[1] : "1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat";
-
-    // Fetch Dashboard CSV (gid=1693502346)
-    const csvRes = await fetch(`https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1693502346`, {
-      cache: "no-store",
-    });
-
-    if (!csvRes.ok) {
-      return { success: false, error: "Unable to download Google Sheet CSV. Please ensure link sharing is public." };
-    }
-
-    const csvText = await csvRes.text();
-    const lines = csvText.split(/\r?\n/);
-
-    let inClientTable = false;
-    const newClientRows: ClientDeliveryStatus[] = [];
-
-    for (const line of lines) {
-      const parts = line.split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
-      const firstCol = parts[0]?.toUpperCase() || "";
-
-      if (firstCol === "CLIENT" && parts[1]?.toUpperCase() === "TARGET") {
-        inClientTable = true;
-        continue;
-      }
-
-      if (inClientTable) {
-        // Stop when reaching empty row or content-type breakdown
-        if (!parts[0] || parts[0].includes("CONTENT-TYPE") || parts[0].includes("ACTION ITEMS")) {
-          break;
-        }
-
-        const clientCodeRaw = parts[0].replace(/\s*\[\?\]/g, "").trim();
-        const target = parseInt(parts[1]) || 0;
-        const done = parseInt(parts[2]) || 0;
-        const pending = parseInt(parts[3]) || Math.max(0, target - done);
-        const inProgress = parseInt(parts[4]) || 0;
-        const onHold = parseInt(parts[5]) || 0;
-        const overdue = parseInt(parts[6]) || 0;
-        const completionPct = target > 0 ? Math.round((done / target) * 100) : 0;
-        const missingLinks = parseInt(parts[8]) || 0;
-        const unassigned = parseInt(parts[9]) || 0;
-
-        const existingRow = master.clientStatusList.find(
-          (r) => r.clientCode.toUpperCase() === clientCodeRaw.toUpperCase()
-        );
-
-        newClientRows.push({
-          id: existingRow?.id || `cl-${clientCodeRaw.toLowerCase()}`,
-          clientCode: clientCodeRaw.toUpperCase(),
-          clientName: existingRow?.clientName || clientCodeRaw,
-          target,
-          done,
-          pending,
-          inProgress,
-          onHold,
-          overdue,
-          completionPct,
-          missingLinks,
-          unassigned,
-        });
-      }
-    }
-
-    // Also fetch Client Targets CSV (gid=1126021745)
-    let syncedCommitmentsCount = 0;
-    try {
-      const targetsRes = await fetch(
-        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=1126021745`,
-        { cache: "no-store" }
-      );
-      if (targetsRes.ok) {
-        const targetsCsv = await targetsRes.text();
-        const tLines = targetsCsv.split(/\r?\n/);
-        let inTargetsTable = false;
-        const updatedCommitments: ClientTargetCommitment[] = [];
-
-        for (const tLine of tLines) {
-          const cols = tLine.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
-          if (cols[0]?.toLowerCase() === "client" && cols[1]?.toLowerCase() === "reels") {
-            inTargetsTable = true;
-            continue;
-          }
-
-          if (inTargetsTable) {
-            const clientName = cols[0] || "";
-            if (!clientName || clientName.toUpperCase() === "TOTAL") {
-              break;
-            }
-
-            const reels = parseInt(cols[1]) || 0;
-            const carousels = parseInt(cols[2]) || 0;
-            const posts = parseInt(cols[3]) || 0;
-            const cpUnsplit = parseInt(cols[4]) || 0;
-            const stories = parseInt(cols[5]) || 0;
-            const total = parseInt(cols[6]) || reels + carousels + posts + cpUnsplit + stories;
-
-            const hasCheck = (val?: string) =>
-              Boolean(val && val.trim().length > 0 && !val.includes("0") && val !== "-");
-
-            updatedCommitments.push({
-              id: `ct-${clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
-              client: clientName,
-              reels,
-              carousels,
-              posts,
-              cpUnsplit,
-              stories,
-              total,
-              platforms: {
-                ig: hasCheck(cols[7]),
-                fb: hasCheck(cols[8]),
-                li: hasCheck(cols[9]),
-                gmb: hasCheck(cols[10]),
-                whatsapp: hasCheck(cols[11]),
-                youtube: hasCheck(cols[12]),
-              },
-              originalCp: cols[13] || "",
-              review: cols[14] || "As noted",
-              notes: cols[15] || "",
-            });
-          }
-        }
-
-        if (updatedCommitments.length > 0) {
-          syncedCommitmentsCount = updatedCommitments.length;
-          saveDeliveryMasterData({ clientTargetCommitments: updatedCommitments });
-        }
-      }
-    } catch (tErr) {
-      console.error("Error syncing client targets (gid=1126021745):", tErr);
-    }
-
-    if (newClientRows.length > 0) {
-      saveDeliveryMasterData({
-        clientStatusList: newClientRows,
-        lastGoogleSheetSync: new Date().toISOString(),
-      });
-      return {
-        success: true,
-        message: `✓ Synchronized ${newClientRows.length} clients and ${syncedCommitmentsCount || 16} client target commitments directly from live Google Sheet!`,
-        clientCount: newClientRows.length,
-      };
-    } else {
-      return { success: false, error: "Could not locate client table in Google Sheet" };
-    }
-  } catch (err: any) {
-    console.error("Error syncing Google Sheet:", err);
-    return { success: false, error: err?.message || "Error syncing from Google Sheet" };
-  }
-}
+import {
+  pullLatestFromGoogleSheet,
+  pushChangeToGoogleSheet,
+  testSheetConnection,
+  READY_APPS_SCRIPT_CODE,
+} from "@/lib/deliverySheetSync";
 
 export async function GET(req: Request) {
   const authRes = await requireRole(["OWNER", "ADMIN", "SUB_ADMIN", "SALES", "EMPLOYEE", "CLIENT"]);
@@ -447,17 +295,31 @@ export async function GET(req: Request) {
           }
         }
       } else {
-        // Collect production items across all clients
+        // Include tasks synchronized directly from live Google Sheet Production Log
+        const seenItemIds = new Set<string>();
+        if (Array.isArray(masterData.productionLog) && masterData.productionLog.length > 0) {
+          masterData.productionLog.forEach((item: any) => {
+            if (item.id && !seenItemIds.has(item.id)) {
+              seenItemIds.add(item.id);
+              allProductionItems.push(item);
+            }
+          });
+        }
+
+        // Collect production items across database clients
         for (const c of dbClients) {
           const storeData = getClientPortalData(c.id, c.companyName);
           const prodLog = Array.isArray(storeData?.delivery?.productionLog) ? storeData.delivery.productionLog : [];
           prodLog.forEach((item: any) => {
-            allProductionItems.push({
-              ...item,
-              clientId: c.id,
-              clientName: c.companyName,
-              clientCode: getCode(c.companyName, c.clientNumber),
-            });
+            if (item.id && !seenItemIds.has(item.id)) {
+              seenItemIds.add(item.id);
+              allProductionItems.push({
+                ...item,
+                clientId: c.id,
+                clientName: c.companyName,
+                clientCode: getCode(c.companyName, c.clientNumber),
+              });
+            }
           });
         }
       }
@@ -603,6 +465,15 @@ export async function GET(req: Request) {
         subtitle: isClientUser && clientCtx
           ? `${clientCtx.client.companyName} Delivery Plan • Live Production Tracking & Google Drive Assets`
           : (masterData.subtitle || "October 2026 working plan • counts update from Production Log • all task completion times and Google Drive links are manually entered"),
+        syncConfig: {
+          sheetUrl: masterData.driveUrl || DEFAULT_GOOGLE_SHEET_URL,
+          appsScriptUrl: masterData.appsScriptUrl || "",
+          lastSync: masterData.lastGoogleSheetSync || null,
+          lastSyncStatus: masterData.lastSyncStatus || "IDLE",
+          lastSyncMessage: masterData.lastSyncMessage || "",
+          readyAppsScriptCode: READY_APPS_SCRIPT_CODE,
+          webhookUrl: "/mdz-crm/api/delivery-control/webhook",
+        },
         kpis: {
           planned: masterPlanned,
           completed: masterCompleted,
@@ -619,9 +490,15 @@ export async function GET(req: Request) {
         productionLog: allProductionItems,
         clientTargets,
         clientTargetCommitments,
-        teamSummary,
+        teamSummary: (Array.isArray(masterData.teamSummary) && masterData.teamSummary.length > 0 && !isClientUser)
+          ? masterData.teamSummary
+          : teamSummary,
         employees: employeesList,
-        extraWork: isClientUser ? [] : extraWork,
+        extraWork: isClientUser
+          ? []
+          : ((Array.isArray(masterData.extraWork) && masterData.extraWork.length > 0)
+            ? masterData.extraWork
+            : extraWork),
         howToUse,
       },
     }, {
@@ -657,6 +534,8 @@ export async function POST(req: Request) {
       "ADD_CLIENT_ROW",
       "DELETE_CLIENT_ROW",
       "UPDATE_DRIVE_URL",
+      "UPDATE_SYNC_CONFIG",
+      "TEST_SYNC_CONNECTION",
     ];
 
     if (isClientUser && adminOnlyActions.includes(action)) {
@@ -704,7 +583,12 @@ export async function POST(req: Request) {
       });
 
       saveDeliveryMasterData({ clientStatusList: updatedList });
-      return NextResponse.json({ success: true, message: "Client target row updated successfully" });
+      const pushRes = await pushChangeToGoogleSheet("UPDATE_CLIENT_ROW", { row });
+      return NextResponse.json({
+        success: true,
+        message: `Client target row updated.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
+        pushStatus: pushRes,
+      });
     }
 
     // 2. Bulk update all client rows in delivery master
@@ -742,7 +626,12 @@ export async function POST(req: Request) {
       });
 
       saveDeliveryMasterData({ clientStatusList: sanitized });
-      return NextResponse.json({ success: true, message: "All client targets saved successfully" });
+      const pushRes = await pushChangeToGoogleSheet("UPDATE_ALL_CLIENT_ROWS", { rows: sanitized });
+      return NextResponse.json({
+        success: true,
+        message: `All client targets saved.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
+        pushStatus: pushRes,
+      });
     }
 
     // 2b. Update single client target commitment (Matching Google Sheet gid=1126021745)
@@ -759,7 +648,12 @@ export async function POST(req: Request) {
           : c
       );
       saveDeliveryMasterData({ clientTargetCommitments: updated });
-      return NextResponse.json({ success: true, message: "Client target commitment updated successfully" });
+      const pushRes = await pushChangeToGoogleSheet("UPDATE_CLIENT_TARGET_COMMITMENT", { commitment });
+      return NextResponse.json({
+        success: true,
+        message: `Client target commitment updated.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
+        pushStatus: pushRes,
+      });
     }
 
     // 2c. Bulk update all client target commitments
@@ -769,7 +663,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: "Commitments must be an array" }, { status: 400 });
       }
       saveDeliveryMasterData({ clientTargetCommitments: commitments });
-      return NextResponse.json({ success: true, message: "All client target commitments saved successfully" });
+      const pushRes = await pushChangeToGoogleSheet("UPDATE_ALL_TARGET_COMMITMENTS", { commitments });
+      return NextResponse.json({
+        success: true,
+        message: `All client target commitments saved.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
+        pushStatus: pushRes,
+      });
     }
 
     // 3. Add a new client row to delivery master
@@ -811,6 +710,23 @@ export async function POST(req: Request) {
       const { driveUrl } = body;
       saveDeliveryMasterData({ driveUrl: driveUrl || DEFAULT_GOOGLE_SHEET_URL });
       return NextResponse.json({ success: true, message: "Google Drive URL updated successfully" });
+    }
+
+    // 5b. Update Google Sheet Two-Way Sync Configuration (Apps Script Web App URL & Sheet URL)
+    if (action === "UPDATE_SYNC_CONFIG") {
+      const { driveUrl, appsScriptUrl } = body;
+      const current = getDeliveryMasterData();
+      saveDeliveryMasterData({
+        driveUrl: driveUrl !== undefined ? (driveUrl.trim() || DEFAULT_GOOGLE_SHEET_URL) : current.driveUrl,
+        appsScriptUrl: appsScriptUrl !== undefined ? appsScriptUrl.trim() : current.appsScriptUrl,
+      });
+      return NextResponse.json({ success: true, message: "Two-way Google Sheet configuration saved successfully" });
+    }
+
+    // 5c. Live Diagnostic Test for Bidirectional Connection
+    if (action === "TEST_SYNC_CONNECTION") {
+      const testRes = await testSheetConnection();
+      return NextResponse.json({ success: true, data: testRes });
     }
 
     // 6. Live 1-Click Sync from Google Spreadsheet
@@ -863,7 +779,15 @@ export async function POST(req: Request) {
       delivery.productionLog = [newDeliverable, ...productionLog];
       saveClientPortalData(targetClientId, { delivery });
 
-      return NextResponse.json({ success: true, message: "Deliverable added successfully", data: newDeliverable });
+      // Push new deliverable to live Google Sheet
+      const pushRes = await pushChangeToGoogleSheet("ADD_DELIVERABLE", { deliverable: newDeliverable });
+
+      return NextResponse.json({
+        success: true,
+        message: `Deliverable added successfully.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
+        data: newDeliverable,
+        pushStatus: pushRes,
+      });
     }
 
     if (action === "UPDATE_STATUS") {
@@ -881,7 +805,15 @@ export async function POST(req: Request) {
       });
 
       saveClientPortalData(targetClientId, { delivery });
-      return NextResponse.json({ success: true, message: "Status updated successfully" });
+
+      // Push status update to live Google Sheet
+      const pushRes = await pushChangeToGoogleSheet("UPDATE_STATUS", { id, reviewStatus, publishedStatus, status });
+
+      return NextResponse.json({
+        success: true,
+        message: `Status updated successfully.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
+        pushStatus: pushRes,
+      });
     }
 
     if (action === "UPDATE_DRIVE_LINK") {
@@ -898,7 +830,15 @@ export async function POST(req: Request) {
       });
 
       saveClientPortalData(targetClientId, { delivery });
-      return NextResponse.json({ success: true, message: "Drive link updated successfully" });
+
+      // Push Drive link to live Google Sheet
+      const pushRes = await pushChangeToGoogleSheet("UPDATE_DRIVE_LINK", { id, finalLink, driveLink });
+
+      return NextResponse.json({
+        success: true,
+        message: `Drive link updated successfully.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
+        pushStatus: pushRes,
+      });
     }
 
     if (action === "EDIT_DELIVERABLE") {
@@ -916,7 +856,15 @@ export async function POST(req: Request) {
       });
 
       saveClientPortalData(targetClientId, { delivery });
-      return NextResponse.json({ success: true, message: "Deliverable updated successfully" });
+
+      // Push edited deliverable to live Google Sheet
+      const pushRes = await pushChangeToGoogleSheet("UPDATE_DELIVERABLE", { deliverable: deliv });
+
+      return NextResponse.json({
+        success: true,
+        message: `Deliverable updated successfully.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
+        pushStatus: pushRes,
+      });
     }
 
     if (action === "DELETE_DELIVERABLE") {
