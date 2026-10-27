@@ -41,6 +41,13 @@ export async function POST(request: Request) {
       // Brand Voice & Language
       brandVoiceTone,
       preferredLanguage,
+      brandVoiceGuide,
+      campaignPlanner,
+      scopeDocument,
+      onboardingForm,
+      competitorAnalysis,
+      contentPillars,
+      meetingNotes,
       // Access Checklist
       accessChecklist,
       // Scope Acknowledgements
@@ -217,88 +224,98 @@ export async function POST(request: Request) {
         ...initialPortalData,
         onboarding: {
           clientDetails: {
-            clientName: companyName.trim(),
-            brandName: (brandName || companyName).trim(),
-            contactNumber: phone ? phone.trim() : "",
-            email: normalizedEmail,
-            website: websiteUrl ? websiteUrl.trim() : "",
-            businessLocation: registeredAddress ? registeredAddress.trim() : "India",
+            clientName: (onboardingForm?.clientName || companyName).trim(),
+            brandName: (onboardingForm?.businessBrandName || brandName || companyName).trim(),
+            contactNumber: onboardingForm?.contactNumber || (phone ? phone.trim() : ""),
+            email: onboardingForm?.emailAddress || normalizedEmail,
+            website: onboardingForm?.website || (websiteUrl ? websiteUrl.trim() : ""),
+            businessLocation: onboardingForm?.businessLocation || (registeredAddress ? registeredAddress.trim() : "India"),
           },
           businessInfo: {
-            legalName: companyName.trim(),
-            brandName: (brandName || companyName).trim(),
+            legalName: (onboardingForm?.clientName || companyName).trim(),
+            brandName: (onboardingForm?.businessBrandName || brandName || companyName).trim(),
             gstin: gstNumber ? gstNumber.trim().toUpperCase() : "",
-            websiteUrl: websiteUrl ? websiteUrl.trim() : "",
-            registeredAddress: registeredAddress ? registeredAddress.trim() : "",
+            websiteUrl: onboardingForm?.website || (websiteUrl ? websiteUrl.trim() : ""),
+            registeredAddress: onboardingForm?.businessLocation || (registeredAddress ? registeredAddress.trim() : ""),
           },
           primaryContact: {
-            fullName: contactName.trim(),
-            role: designation ? designation.trim() : "Primary Contact",
-            phone: phone ? phone.trim() : "",
+            fullName: (onboardingForm?.pocName || contactName).trim(),
+            role: onboardingForm?.pocDesignation || (designation ? designation.trim() : "Primary Contact"),
+            phone: onboardingForm?.pocContactNumber || (phone ? phone.trim() : ""),
             whatsapp: whatsapp ? whatsapp.trim() : (phone ? phone.trim() : ""),
-            email: normalizedEmail,
+            email: onboardingForm?.pocEmailAddress || normalizedEmail,
           },
           brandAssets: {
             brandGuideUrl: brandGuideUrl ? brandGuideUrl.trim() : "",
-            logoDriveUrl: brandGuideUrl ? brandGuideUrl.trim() : "",
-            rawFootageDriveUrl: rawFootageDriveUrl ? rawFootageDriveUrl.trim() : "",
+            logoDriveUrl: onboardingForm?.brandAssets?.logo?.linkOrLocation || (brandGuideUrl ? brandGuideUrl.trim() : ""),
+            rawFootageDriveUrl: onboardingForm?.googleDriveFolderLink || (rawFootageDriveUrl ? rawFootageDriveUrl.trim() : ""),
             fontFamilies: "Outfit, Inter, Sans-Serif",
             primaryColorHex: primaryColorHex || "#059669",
+            brandAssetsAvailable: onboardingForm?.brandAssets || null,
           },
           socialHandles: {
-            instagram: instagramHandle ? instagramHandle.trim() : "",
-            youtube: youtubeHandle ? youtubeHandle.trim() : "",
-            facebook: facebookUrl ? facebookUrl.trim() : "",
-            linkedin: linkedinUrl ? linkedinUrl.trim() : "",
-            tiktok: "",
-            pinterest: "",
-            other: "",
+            instagram: onboardingForm?.instagramHandle || (instagramHandle ? instagramHandle.trim() : ""),
+            youtube: onboardingForm?.youtubeHandle || (youtubeHandle ? youtubeHandle.trim() : ""),
+            facebook: onboardingForm?.facebookHandle || (facebookUrl ? facebookUrl.trim() : ""),
+            linkedin: onboardingForm?.linkedinHandle || (linkedinUrl ? linkedinUrl.trim() : ""),
+            tiktok: onboardingForm?.tiktokHandle || "",
+            pinterest: onboardingForm?.pinterestHandle || "",
+            other: onboardingForm?.otherSocialHandle || "",
           },
-          servicesRequired: Array.isArray(goals) && goals.length > 0 ? goals : [
-            "Social Media Management",
-            "Content Creation",
-            "Reels / Video Editing",
-            "Graphic Design",
-          ],
+          servicesRequired: Array.isArray(onboardingForm?.servicesRequired) && onboardingForm.servicesRequired.length > 0
+            ? onboardingForm.servicesRequired
+            : (Array.isArray(goals) && goals.length > 0 ? goals : [
+                "Social Media Management",
+                "Content Creation",
+                "Reels / Video Editing",
+                "Graphic Design",
+              ]),
           packageSelected: {
-            name: "Enterprise Digital Growth Retainer",
-            startDate: new Date().toISOString().split("T")[0],
-            duration: "Monthly Retainer",
+            name: onboardingForm?.packageName || "Enterprise Digital Growth Retainer",
+            startDate: onboardingForm?.startDate || new Date().toISOString().split("T")[0],
+            endDate: onboardingForm?.endDate || "",
+            duration: onboardingForm?.contractDuration || "Monthly Retainer",
           },
           deliverables: {
-            postsPerWeek: `${Math.round(targetCarousels / 4) || 2} Posts per Week`,
-            reelsPerWeek: `${Math.round(targetReels / 4) || 4} Reels per Week`,
-            storiesPerWeek: `${Math.round(targetStories / 4) || 3} Stories per Week`,
-            contentCalendar: "Provided on 1st of every month",
-            hashtagResearch: "Included & refreshed bi-weekly",
-            captionWriting: "Included with Hook-Value-CTA structure",
-            graphicDesign: "Full brand visual identity & carousels",
-            videoEditing: "4K cinematic color-graded reels",
-            monthlyReport: "Executive delivery and KPI growth report",
+            postsPerWeek: onboardingForm?.postsPerWeek ? `${onboardingForm.postsPerWeek} Posts per Week` : `${Math.round(targetCarousels / 4) || 2} Posts per Week`,
+            reelsPerWeek: onboardingForm?.reelsPerWeek ? `${onboardingForm.reelsPerWeek} Reels per Week` : `${Math.round(targetReels / 4) || 4} Reels per Week`,
+            storiesPerWeek: onboardingForm?.storiesPerWeek ? `${onboardingForm.storiesPerWeek} Stories per Week` : `${Math.round(targetStories / 4) || 3} Stories per Week`,
+            contentCalendar: onboardingForm?.deliverablesChecklist?.includes("Content Calendar") ? "Included (1st of every month)" : "Provided on 1st of every month",
+            hashtagResearch: onboardingForm?.deliverablesChecklist?.includes("Hashtag Research") ? "Included & refreshed bi-weekly" : "Included",
+            captionWriting: onboardingForm?.deliverablesChecklist?.includes("Caption Writing") ? "Included with Hook-Value-CTA" : "Included",
+            graphicDesign: onboardingForm?.deliverablesChecklist?.includes("Graphic Design") ? "Included" : "Full brand visual identity & carousels",
+            videoEditing: onboardingForm?.deliverablesChecklist?.includes("Video Editing") ? "Included" : "4K cinematic color-graded reels",
+            monthlyReport: onboardingForm?.deliverablesChecklist?.includes("Monthly Report") ? "Included" : "Executive delivery and KPI growth report",
+            otherDeliverables: onboardingForm?.deliverablesChecklistOther || "",
           },
           contentRequirements: {
-            styleTone: brandVoiceTone || "Luxury, aesthetic, high-authority, polished",
-            language: preferredLanguage || "English & Hinglish",
-            references: "High-performing visual references and case studies",
-            specialRequirements: currentChallenges ? `Focus: ${currentChallenges}` : "Festive campaigns & seasonal launches",
+            styleTone: onboardingForm?.contentStyleTone || brandVoiceTone || "Luxury, aesthetic, high-authority, polished",
+            language: onboardingForm?.preferredLanguage || preferredLanguage || "English & Hinglish",
+            references: onboardingForm?.contentReferences || "High-performing visual references and case studies",
+            specialRequirements: onboardingForm?.specialRequirements || (currentChallenges ? `Focus: ${currentChallenges}` : "Festive campaigns & seasonal launches"),
           },
-          productInfo: productsServices || "Commercial brand and product service offerings",
-          googleDriveLink: rawFootageDriveUrl || brandGuideUrl || "https://drive.google.com",
-          accessPermissions: Array.isArray(accessChecklist) && accessChecklist.length > 0
-            ? accessChecklist
-            : [
-                "Instagram (Professional Invite / Manager)",
-                "Facebook Page & Meta Business Suite",
-                "Google Drive (Assets Folder)",
-              ],
+          productInfo: onboardingForm?.productServiceInfo || productsServices || "Commercial brand and product service offerings",
+          googleDriveLink: onboardingForm?.googleDriveFolderLink || rawFootageDriveUrl || brandGuideUrl || "https://drive.google.com",
+          accessPermissions: Array.isArray(onboardingForm?.accountAccess) && onboardingForm.accountAccess.length > 0
+            ? onboardingForm.accountAccess
+            : (Array.isArray(accessChecklist) && accessChecklist.length > 0
+                ? accessChecklist
+                : [
+                    "Instagram (Professional Invite / Manager)",
+                    "Facebook Page & Meta Business Suite",
+                    "Google Drive (Assets Folder)",
+                  ]),
           pointOfContact: {
-            name: contactName.trim(),
-            designation: designation ? designation.trim() : "Primary Contact",
-            phone: phone ? phone.trim() : "",
-            email: normalizedEmail,
+            name: (onboardingForm?.pocName || contactName).trim(),
+            designation: onboardingForm?.pocDesignation || (designation ? designation.trim() : "Primary Contact"),
+            phone: onboardingForm?.pocContactNumber || (phone ? phone.trim() : ""),
+            email: onboardingForm?.pocEmailAddress || normalizedEmail,
           },
-          preferredCommunication: ["WhatsApp Business Group", "Google Meet", "Email"],
-          importantNotes: `Review SLA: 24-48 Hours. USP: ${usp || "N/A"}.`,
+          preferredCommunication: Array.isArray(onboardingForm?.communicationMethods) && onboardingForm.communicationMethods.length > 0
+            ? onboardingForm.communicationMethods
+            : ["WhatsApp Business Group", "Google Meet", "Email"],
+          importantNotes: onboardingForm?.importantClientNotes || `Review SLA: 24-48 Hours. USP: ${usp || "N/A"}.`,
+          rawOnboardingForm: onboardingForm || null,
         },
         brief: {
           businessInfo: {
@@ -315,7 +332,20 @@ export async function POST(request: Request) {
             details: targetAudience || "High-intent consumers, professionals, and targeted buyers",
           },
           usp: usp || "Premium quality, fast turnarounds, and bespoke creative execution",
-          competitors: competitors || "Industry peers and active market competitors",
+          competitors:
+            competitors ||
+            (competitorAnalysis
+              ? [
+                  competitorAnalysis.competitor1?.name,
+                  competitorAnalysis.competitor2?.name,
+                  competitorAnalysis.competitor3?.name,
+                ]
+                  .filter(Boolean)
+                  .join(", ")
+              : "Industry peers and active market competitors"),
+          competitorAnalysis: competitorAnalysis || null,
+          contentPillars: contentPillars || null,
+          meetingNotes: meetingNotes || null,
           currentChallenges: currentChallenges || "Consistent creative delivery, scaling engagement and reach",
           importantLinks: {
             website: websiteUrl ? websiteUrl.trim() : "",
@@ -328,41 +358,130 @@ export async function POST(request: Request) {
             phone: phone ? phone.trim() : "",
             email: normalizedEmail,
           },
+          brandVoiceGuide: brandVoiceGuide || null,
         },
         brandVoice: {
-          tone: brandVoiceTone || "Professional, bold, aesthetic, direct",
-          preferredLanguage: preferredLanguage || "English & Hinglish",
-          communicationStyle: "Hook-driven, value-first, polished and aesthetic",
+          personality:
+            (brandVoiceGuide?.personalityTraits?.length > 0
+              ? brandVoiceGuide.personalityTraits.join(", ")
+              : brandVoiceGuide?.brandPersonality?.length > 0
+              ? brandVoiceGuide.brandPersonality.join(", ")
+              : "Authoritative, Direct, High-Stakes, Data-Backed, Relentlessly Practical"),
+          tone:
+            brandVoiceTone ||
+            (brandVoiceGuide?.toneTypes?.length > 0
+              ? brandVoiceGuide.toneTypes.join(", ")
+              : brandVoiceGuide?.tone?.length > 0
+              ? brandVoiceGuide.tone.join(", ")
+              : "Professional, bold, aesthetic, direct"),
+          dialectRule:
+            preferredLanguage ||
+            (brandVoiceGuide?.preferredLanguages?.length > 0
+              ? brandVoiceGuide.preferredLanguages.join(", ")
+              : "English & Hinglish"),
+          alwaysUseWords: brandVoiceGuide?.wordsToUse
+            ? brandVoiceGuide.wordsToUse
+                .split("\n")
+                .map((w: string) => w.trim())
+                .filter(Boolean)
+            : ["Execution", "Precision", "ROI", "Compounding", "Scalable", "Playbook", "Leverage"],
+          neverUseWords: brandVoiceGuide?.wordsToAvoid
+            ? brandVoiceGuide.wordsToAvoid
+                .split("\n")
+                .map((w: string) => w.trim())
+                .filter(Boolean)
+            : ["Guru", "Hustle 24/7", "Cheap", "Guaranteed overnight riches", "Synergy", "Hack"],
+          communicationStyle:
+            (brandVoiceGuide?.commStyles?.length > 0
+              ? brandVoiceGuide.commStyles.join(", ")
+              : brandVoiceGuide?.communicationStyle?.length > 0
+              ? brandVoiceGuide.communicationStyle.join(", ")
+              : "Hook-driven, value-first, polished and aesthetic"),
+          guide: brandVoiceGuide || null,
         },
         scope: {
           clientInfo: {
             clientName: companyName.trim(),
             brandName: (brandName || companyName).trim(),
-            startDate: new Date().toISOString().split("T")[0],
-            duration: "Monthly Retainer",
+            startDate: scopeDocument?.projectStartDate || new Date().toISOString().split("T")[0],
+            duration: scopeDocument?.projectDuration || "Monthly Retainer",
             primaryContact: contactName.trim(),
             email: normalizedEmail,
             phone: phone ? phone.trim() : "",
           },
-          scopeOfWork: "Strategic content production, video editing, social media distribution, and analytics.",
-          servicesIncluded: [
-            "Monthly content calendar formulation & ideation",
-            "Video editing for short-form reels (4K color grade, motion graphics, sound sync)",
-            "High-converting carousel and static graphic design",
-            "Caption copywriting with SEO keywords and hashtags",
-            "Monthly performance analytics and delivery review sync",
-          ],
-          servicesNotIncluded: [
-            "In-person physical video shoots (unless separately contracted)",
-            "Direct advertising budget spend (paid directly to Meta/Google)",
-          ],
+          scopeOfWork:
+            scopeDocument?.scopeOfWork ||
+            "Strategic content production, video editing, social media distribution, and analytics.",
+          servicesIncluded:
+            scopeDocument?.servicesIncluded?.length > 0
+              ? scopeDocument.servicesIncluded
+              : [
+                  "Monthly content calendar formulation & ideation",
+                  "Video editing for short-form reels (4K color grade, motion graphics, sound sync)",
+                  "High-converting carousel and static graphic design",
+                  "Caption copywriting with SEO keywords and hashtags",
+                  "Monthly performance analytics and delivery review sync",
+                ],
+          servicesNotIncluded:
+            scopeDocument?.servicesNotIncluded?.length > 0
+              ? scopeDocument.servicesNotIncluded
+              : [
+                  "In-person physical video shoots (unless separately contracted)",
+                  "Direct advertising budget spend (paid directly to Meta/Google)",
+                  "Backend website core development",
+                ],
           monthlyDeliverables: [
-            { type: "Reels / Short Videos", quantity: targetReels },
-            { type: "High-Value Carousels", quantity: targetCarousels },
-            { type: "Interactive Stories & Statics", quantity: targetStories },
+            { type: "Reels / Short Videos", quantity: scopeDocument?.deliverablesReels ?? targetReels },
+            { type: "High-Value Carousels", quantity: scopeDocument?.deliverablesCarousels ?? targetCarousels },
+            { type: "Interactive Stories & Statics", quantity: scopeDocument?.deliverablesStories ?? targetStories },
+            ...(scopeDocument?.deliverablesStatics
+              ? [{ type: "Static Graphics", quantity: scopeDocument.deliverablesStatics }]
+              : []),
           ],
-          approvalTimeline: "24-48 Hours",
-          revisionPolicy: "2 rounds included per deliverable",
+          approvalTimeline: scopeDocument?.reviewTimeline || "24-48 Hours",
+          revisionPolicy: scopeDocument?.revisionsIncluded || "2 rounds included per deliverable",
+          postingResponsibility: scopeDocument?.postingResponsibility || "we_post",
+          postingDetails: scopeDocument?.postingDetails || "",
+          clientResponsibilities:
+            scopeDocument?.clientResponsibilities?.length > 0
+              ? scopeDocument.clientResponsibilities
+              : [
+                  "Provide timely content, assets and information",
+                  "Review and approve content within 48 hours",
+                  "Share product/service updates",
+                  "Provide access to required accounts",
+                ],
+          contentSubmission: {
+            format: scopeDocument?.submissionFormat || "Google Drive Assets Folder",
+            frequency: scopeDocument?.submissionFrequency || "Weekly / Monthly Cycle",
+            deadline: scopeDocument?.submissionDeadline || "Every Monday",
+          },
+          paymentTerms: scopeDocument?.paymentTerms || "monthly",
+          additionalWorkCharges: {
+            rate: scopeDocument?.hourlyRateOrTask || "₹2,500/hr",
+            examples: scopeDocument?.additionalWorkExamples || "Extra reels, ad creatives",
+          },
+          adSpendResponsibility: scopeDocument?.adSpendResponsibility || "we_manage_client_pays",
+          communicationChannels:
+            scopeDocument?.communicationChannels?.length > 0
+              ? scopeDocument.communicationChannels
+              : ["WhatsApp", "Email"],
+          responseSla: scopeDocument?.expectedResponseTime || "Within 24 Hours",
+          workingHours: scopeDocument?.workingHours || "Mon-Fri, 10 AM - 6:30 PM",
+          deadlines: {
+            calendarShareDate: scopeDocument?.monthlyCalendarShareDate || "1st of every month",
+            contentSubmission: scopeDocument?.contentSubmissionDeadline || "3 days prior",
+            finalApproval: scopeDocument?.finalApprovalDeadline || "24 hours prior",
+          },
+          cancellationPolicy: {
+            noticePeriod: scopeDocument?.noticePeriod || "30 days written notice",
+            refundPolicy: scopeDocument?.refundPolicy || "No refund for active month",
+            pauseOption: scopeDocument?.pauseOption || "14 days prior notice",
+          },
+          contentOwnership: scopeDocument?.ownershipOption || "transferred_after_payment",
+          rawFilePolicy: scopeDocument?.rawFileOption || "available_on_request",
+          disclaimerAcknowledged: scopeDocument?.disclaimerAcknowledged ?? true,
+          documentData: scopeDocument || null,
         },
         delivery: {
           monthYear: "October 2026",
@@ -481,67 +600,128 @@ export async function POST(request: Request) {
         campaigns: [
           {
             id: `camp-${newClient.id}`,
-            name: `${(brandName || companyName).trim()} Q4 Growth & Launch Campaign`,
-            type: "Organic Social & Paid Growth",
-            theme: brandVoiceTone || "Brand Authority, Cinematic Hooks & Market Positioning",
-            duration: "October 2026 (Monthly Retainer)",
-            startDate: new Date().toISOString().split("T")[0],
-            endDate: "2026-10-31",
+            name:
+              campaignPlanner?.campaignName?.trim() ||
+              `${(brandName || companyName).trim()} Q4 Growth & Launch Campaign`,
+            type: campaignPlanner?.campaignType || "Organic Social & Paid Growth",
+            theme:
+              campaignPlanner?.campaignTheme ||
+              brandVoiceTone ||
+              "Brand Authority, Cinematic Hooks & Market Positioning",
+            duration: campaignPlanner?.campaignDuration || "October 2026 (Monthly Retainer)",
+            startDate: campaignPlanner?.startDate || new Date().toISOString().split("T")[0],
+            endDate: campaignPlanner?.endDate || "2026-11-30",
             objectives:
-              Array.isArray(goals) && goals.length > 0
+              campaignPlanner?.objectives?.length > 0
+                ? campaignPlanner.objectives
+                : Array.isArray(goals) && goals.length > 0
                 ? goals
                 : ["Brand Awareness", "Lead Generation", "Qualified Client Inquiries", "Follower Growth"],
             targetAudience: {
-              ageGroup: "24 - 48 years",
-              gender: "All",
-              location: registeredAddress || "India / Global",
-              interests: productsServices || "Business, Commercial Commerce, High-Value Offerings",
-              painPoints: currentChallenges || "Consistent creative delivery, Scaling engagement",
-              goals: "Establish authority and scale customer inquiries",
+              ageGroup: campaignPlanner?.audienceAgeGroup || "24 - 48 years",
+              gender: campaignPlanner?.audienceGender || "All",
+              location: campaignPlanner?.audienceLocation || registeredAddress || "India / Global",
+              interests:
+                campaignPlanner?.audienceInterests ||
+                productsServices ||
+                "Business, Commercial Commerce, High-Value Offerings",
+              painPoints:
+                campaignPlanner?.audiencePainPoints ||
+                currentChallenges ||
+                "Consistent creative delivery, Scaling engagement",
+              goals: campaignPlanner?.audienceGoals || "Establish authority and scale customer inquiries",
             },
             offerAndMessage: {
-              offer: usp || "Exclusive Premier Retainer Partnership",
-              keyMessage: "High-impact visual presence and continuous creative execution",
-              usp: usp || "Premium aesthetic, 48-hour turnarounds, dedicated creative team",
-              cta: "Schedule Consultation / Review Deliverables",
+              offer: campaignPlanner?.campaignOffer || usp || "Exclusive Premier Retainer Partnership",
+              keyMessage:
+                campaignPlanner?.keyMessage ||
+                "High-impact visual presence and continuous creative execution",
+              usp: campaignPlanner?.usp || usp || "Premium aesthetic, 48-hour turnarounds, dedicated creative team",
+              cta: campaignPlanner?.campaignCta || "Schedule Consultation / Review Deliverables",
             },
-            platforms: ["Instagram", "Facebook", "LinkedIn", "YouTube"],
+            platforms:
+              campaignPlanner?.platforms?.length > 0
+                ? campaignPlanner.platforms
+                : ["Instagram", "Facebook", "LinkedIn", "YouTube"],
+            contentFormats: campaignPlanner?.contentFormats || ["Reels / Short Videos", "Carousels", "Stories"],
             contentRequired: {
-              reelsQty: targetReels,
-              carouselsQty: targetCarousels,
-              storiesQty: targetStories,
-              staticQty: 5,
-              bannersQty: 2,
-              adCreativesQty: 4,
-              otherQty: 0,
+              reelsQty: campaignPlanner?.reelsQty ?? targetReels,
+              carouselsQty: campaignPlanner?.carouselsQty ?? targetCarousels,
+              storiesQty: campaignPlanner?.storiesQty ?? targetStories,
+              staticQty: campaignPlanner?.staticPostsQty ?? 5,
+              bannersQty: campaignPlanner?.bannersQty ?? 2,
+              adCreativesQty: campaignPlanner?.adCreativesQty ?? 4,
+              otherQty: campaignPlanner?.otherContentQty ?? 0,
             },
             creativeCopy: {
-              visualRequirements: "Cinematic grade, modern typography, high contrast, brand colors",
-              copyRequirements: "Hook-first, value-driven captions with relevant hashtags",
+              visualRequirements:
+                campaignPlanner?.creativeRequirements ||
+                "Cinematic grade, modern typography, high contrast, brand colors",
+              copyRequirements:
+                campaignPlanner?.copyRequirements ||
+                "Hook-first, value-driven captions with relevant hashtags",
+            },
+            campaignHashtag: campaignPlanner?.campaignHashtag || "#ScaleWithMillionaire",
+            additionalHashtags: campaignPlanner?.additionalHashtags || "#BrandGrowth #DirectResponse",
+            influencerRequirements: campaignPlanner?.influencerRequirements || "",
+            paidAds: {
+              runPaidAds: campaignPlanner?.runPaidAds ?? true,
+              platforms: campaignPlanner?.adPlatforms || ["Meta Ads (Instagram/Facebook)"],
+              objectives: campaignPlanner?.adObjectives || "Lead Generation",
+              budget: campaignPlanner?.budget || "25000",
+              creativeRequirements: campaignPlanner?.adCreativeRequirements || "",
             },
             launchPlan: {
-              preLaunch: [
-                "Audit existing assets and brand tone",
-                "Define content calendar & hooks pipeline",
-                "Setup Google Drive cloud asset workflow",
-              ],
-              launch: [
-                "Publish hero brand reel across channels",
-                "Launch carousel deep-dive and authority breakdown",
-                "Activate interactive story polls and client engagement",
-              ],
+              preLaunch:
+                campaignPlanner?.preLaunchActivities?.length > 0
+                  ? campaignPlanner.preLaunchActivities
+                  : [
+                      "Audit existing assets and brand tone",
+                      "Define content calendar & hooks pipeline",
+                      "Setup Google Drive cloud asset workflow",
+                    ],
+              launch:
+                campaignPlanner?.launchActivities?.length > 0
+                  ? campaignPlanner.launchActivities
+                  : [
+                      "Publish hero brand reel across channels",
+                      "Launch carousel deep-dive and authority breakdown",
+                      "Activate interactive story polls and client engagement",
+                    ],
             },
-            contentSchedule: [
-              { id: 1, date: "2026-10-20", contentType: "Reel", platform: "Instagram", topicCaption: "Hook: Why Most Brands Struggle with Consistency", status: "Ready" },
-              { id: 2, date: "2026-10-22", contentType: "Carousel", platform: "Instagram / LinkedIn", topicCaption: "5 Core Frameworks to Scale Growth in 2026", status: "In Progress" },
-              { id: 3, date: "2026-10-25", contentType: "Reel", platform: "Instagram / YouTube", topicCaption: "Behind The Scenes: Crafting Bespoke Quality", status: "In Progress" },
-              { id: 4, date: "2026-10-27", contentType: "Reel", platform: "Instagram", topicCaption: "Customer Transformation & Case Study Review", status: "Scheduled" },
-              { id: 5, date: "2026-10-29", contentType: "Carousel", platform: "Instagram", topicCaption: "The Blueprint for Authority & Inbound Leads", status: "Scheduled" },
-            ],
-            teamResponsibilities: [
-              { id: 1, name: "Sumit Rathod", role: "Video Editor", responsibilities: "Reel cuts, color grade, motion graphics", deadline: "2026-10-22" },
-              { id: 2, name: "Aryan Visuals", role: "Graphic Designer", responsibilities: "Carousel graphics, slide layouts", deadline: "2026-10-24" },
-            ],
+            contentSchedule:
+              campaignPlanner?.contentSchedule?.length > 0
+                ? campaignPlanner.contentSchedule
+                : [
+                    { id: 1, date: "2026-10-20", contentType: "Reel", platform: "Instagram", topicCaption: "Hook: Why Most Brands Struggle with Consistency", status: "Ready" },
+                    { id: 2, date: "2026-10-22", contentType: "Carousel", platform: "Instagram / LinkedIn", topicCaption: "5 Core Frameworks to Scale Growth in 2026", status: "In Progress" },
+                    { id: 3, date: "2026-10-25", contentType: "Reel", platform: "Instagram / YouTube", topicCaption: "Behind The Scenes: Crafting Bespoke Quality", status: "In Progress" },
+                    { id: 4, date: "2026-10-27", contentType: "Reel", platform: "Instagram", topicCaption: "Customer Transformation & Case Study Review", status: "Scheduled" },
+                    { id: 5, date: "2026-10-29", contentType: "Carousel", platform: "Instagram", topicCaption: "The Blueprint for Authority & Inbound Leads", status: "Scheduled" },
+                  ],
+            teamResponsibilities:
+              campaignPlanner?.teamResponsibilities?.length > 0
+                ? campaignPlanner.teamResponsibilities
+                : [
+                    { id: 1, name: "Sumit Rathod", role: "Video Editor", responsibilities: "Reel cuts, color grade, motion graphics", deadline: "2026-10-22" },
+                    { id: 2, name: "Aryan Visuals", role: "Graphic Designer", responsibilities: "Carousel graphics, slide layouts", deadline: "2026-10-24" },
+                  ],
+            approvalDeadlines: campaignPlanner?.approvalDeadlines || [],
+            campaignStatus: campaignPlanner?.currentStatus || "Planning",
+            stages: campaignPlanner?.stages || ["Planning", "Content Creation"],
+            performanceMetrics: campaignPlanner?.targetMetrics || {},
+            actualResults: campaignPlanner?.actualResults || {},
+            learnings: {
+              workedWell: campaignPlanner?.learningsWorkedWell || "",
+              didntWork: campaignPlanner?.learningsDidntWork || "",
+              keyLearnings: campaignPlanner?.keyLearnings || "",
+            },
+            nextSteps: {
+              actionsForFuture: campaignPlanner?.actionsForFuture || "",
+              recommendations: campaignPlanner?.recommendations || "",
+              ideasToExplore: campaignPlanner?.ideasToExplore || "",
+            },
+            plannerData: campaignPlanner || null,
           },
         ],
       }, normalizedEmail);

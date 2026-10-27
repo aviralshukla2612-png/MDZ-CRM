@@ -34,6 +34,39 @@ import {
   FileCheck2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import {
+  BrandVoiceGuideForm,
+  BrandVoiceGuideData,
+  DEFAULT_BRAND_VOICE_GUIDE,
+} from "@/components/brand/BrandVoiceGuideForm";
+import {
+  CampaignPlannerForm,
+  DEFAULT_CAMPAIGN_PLANNER,
+} from "@/components/campaign/CampaignPlannerForm";
+import {
+  ClientScopeDocumentForm,
+  DEFAULT_SCOPE_DOCUMENT,
+} from "@/components/scope/ClientScopeDocumentForm";
+import {
+  ClientOnboardingForm,
+  ClientOnboardingData,
+  DEFAULT_ONBOARDING_DATA,
+} from "@/components/onboarding/ClientOnboardingForm";
+import {
+  CompetitorAnalysisForm,
+  CompetitorAnalysisData,
+  DEFAULT_COMPETITOR_ANALYSIS,
+} from "@/components/competitor/CompetitorAnalysisForm";
+import {
+  ContentPillarsForm,
+  ContentPillarsData,
+  DEFAULT_CONTENT_PILLARS,
+} from "@/components/pillars/ContentPillarsForm";
+import {
+  MeetingNotesForm,
+  MeetingNotesData,
+  DEFAULT_MEETING_NOTES,
+} from "@/components/meeting/MeetingNotesForm";
 
 const GOAL_OPTIONS = [
   "Increase Brand Awareness",
@@ -78,6 +111,8 @@ export default function ClientRegisterPage() {
     targetAudience: "",
     usp: "",
     competitors: "",
+    competitorAnalysis: DEFAULT_COMPETITOR_ANALYSIS,
+    contentPillars: DEFAULT_CONTENT_PILLARS,
     currentChallenges: "",
 
     // Step 3: Brand Assets & Creative Identity (from Brand Voice & Onboarding Sheet)
@@ -91,13 +126,16 @@ export default function ClientRegisterPage() {
     linkedinUrl: "",
     brandVoiceTone: "Luxury, aesthetic, high-authority",
     preferredLanguage: "English & Hinglish",
+    brandVoiceGuide: DEFAULT_BRAND_VOICE_GUIDE,
 
-    // Step 4: Social Media Access Checklist (from Access Checklist Sheet)
+    // Step 4: Client Onboarding Form & Access Checklist
     accessChecklist: [
       "Instagram (Professional Account Invite)",
       "Facebook Page & Meta Business Suite",
       "Google Drive Assets Folder Access",
     ] as string[],
+    onboardingForm: DEFAULT_ONBOARDING_DATA,
+    meetingNotes: DEFAULT_MEETING_NOTES,
 
     // Step 5: Monthly Deliverables Quota & Scope (from Scope Document)
     reelsQuota: 30,
@@ -105,6 +143,8 @@ export default function ClientRegisterPage() {
     storiesQuota: 15,
     approvalSlaAcknowledged: true,
     revisionPolicyAcknowledged: true,
+    campaignPlanner: DEFAULT_CAMPAIGN_PLANNER,
+    scopeDocument: DEFAULT_SCOPE_DOCUMENT,
     termsAccepted: true,
   });
 
@@ -325,14 +365,14 @@ export default function ClientRegisterPage() {
               {currentStep === 1 && "Company & Account Credentials"}
               {currentStep === 2 && "Client Strategic Brief & Objectives"}
               {currentStep === 3 && "Brand Assets & Creative Identity"}
-              {currentStep === 4 && "Social Media Access Checklist"}
+              {currentStep === 4 && "Client Onboarding Form & Access Center"}
               {currentStep === 5 && "Retainer Deliverables Scope & SLAs"}
             </h1>
             <p className="text-xs text-stone-500 dark:text-stone-400">
               {currentStep === 1 && "Set up your workspace credentials and point of contact details."}
               {currentStep === 2 && "Define your products, target audience, USP and goals to align our creative team."}
               {currentStep === 3 && "Share your Google Drive assets folder, social media handles, and brand voice style."}
-              {currentStep === 4 && "Check off required permissions so our production team can start creating content."}
+              {currentStep === 4 && "Complete all 13 sections of your onboarding form and grant essential platform permissions."}
               {currentStep === 5 && "Confirm your monthly content quotas and operational turnaround commitments."}
             </p>
 
@@ -662,6 +702,42 @@ export default function ClientRegisterPage() {
                     />
                   </div>
                 </div>
+
+                {/* Competitor Analysis Matrix (28-Metric Comparative Matrix) */}
+                <div className="pt-2">
+                  <CompetitorAnalysisForm
+                    value={formData.competitorAnalysis}
+                    onChange={(analysis) =>
+                      setFormData((prev) => {
+                        const compNames = [
+                          analysis.competitor1?.name,
+                          analysis.competitor2?.name,
+                          analysis.competitor3?.name,
+                        ]
+                          .filter(Boolean)
+                          .join(", ");
+                        return {
+                          ...prev,
+                          competitorAnalysis: analysis,
+                          competitors: compNames || prev.competitors,
+                        };
+                      })
+                    }
+                  />
+                </div>
+
+                {/* Content Pillars Sheet (5-Pillar Strategy Matrix) */}
+                <div className="pt-2">
+                  <ContentPillarsForm
+                    value={formData.contentPillars}
+                    onChange={(pillars) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        contentPillars: pillars,
+                      }))
+                    }
+                  />
+                </div>
               </div>
             )}
 
@@ -795,64 +871,94 @@ export default function ClientRegisterPage() {
                     </select>
                   </div>
                 </div>
+
+                {/* 21-Section Brand Voice & Tone Guide */}
+                <div className="pt-5 border-t border-stone-200 dark:border-stone-800">
+                  <BrandVoiceGuideForm
+                    value={formData.brandVoiceGuide}
+                    onChange={(guide) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        brandVoiceGuide: guide,
+                        brandVoiceTone: guide.toneTypes?.length ? guide.toneTypes.join(", ") : prev.brandVoiceTone,
+                        preferredLanguage: guide.preferredLanguages?.length ? guide.preferredLanguages.join(", ") : prev.preferredLanguage,
+                      }))
+                    }
+                  />
+                </div>
               </div>
             )}
 
-            {/* ================= STEP 4: ACCESS CHECKLIST ================= */}
+            {/* ================= STEP 4: CLIENT ONBOARDING & ACCESS CENTER ================= */}
             {currentStep === 4 && (
-              <div className="space-y-4 animate-fade-in">
-                <div className="p-3.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs space-y-1">
-                  <p className="font-bold flex items-center gap-1.5">
-                    <KeyRound className="w-4 h-4 text-blue-600" />
-                    <span>Social Media Access & Tools Checklist</span>
-                  </p>
-                  <p className="text-[11px] opacity-80">
-                    Select the platforms you are ready to grant access to or invite Millionaire Dizital as a partner/admin.
+              <div className="space-y-6 animate-fade-in">
+                <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-blue-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-200 text-xs space-y-1.5 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span className="font-extrabold text-sm text-stone-900 dark:text-stone-100">
+                      Client Onboarding Form (13-Section Full Sheet)
+                    </span>
+                  </div>
+                  <p className="text-[12px] opacity-90 leading-relaxed text-stone-700 dark:text-stone-300">
+                    Complete all 13 onboarding sections below. Any company details or contact information you entered in previous steps are already pre-filled. Changes made here will update your master workspace profile.
                   </p>
                 </div>
 
-                <div className="space-y-2">
-                  {ACCESS_ITEMS.map((item) => {
-                    const Icon = item.icon;
-                    const isChecked = formData.accessChecklist.includes(item.id);
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => toggleAccessItem(item.id)}
-                        className={`p-3.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                          isChecked
-                            ? "bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/50 shadow-xs"
-                            : "bg-stone-50 dark:bg-[#1f1c18] border-stone-200 dark:border-stone-700 hover:border-stone-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                              isChecked ? "bg-emerald-600 text-white" : "bg-stone-200 dark:bg-stone-800 text-stone-500"
-                            }`}
-                          >
-                            <Icon className="w-3.5 h-3.5" />
-                          </div>
-                          <span className="text-xs font-semibold text-stone-800 dark:text-stone-200">
-                            {item.label}
-                          </span>
-                        </div>
-                        <div
-                          className={`w-5 h-5 rounded-md flex items-center justify-center border ${
-                            isChecked
-                              ? "bg-emerald-600 border-emerald-600 text-white"
-                              : "border-stone-300 dark:border-stone-600"
-                          }`}
-                        >
-                          {isChecked && <Check className="w-3.5 h-3.5" />}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <ClientOnboardingForm
+                  value={{
+                    ...formData.onboardingForm,
+                    clientName: formData.onboardingForm.clientName || formData.companyName,
+                    businessBrandName: formData.onboardingForm.businessBrandName || formData.brandName || formData.companyName,
+                    contactNumber: formData.onboardingForm.contactNumber || formData.phone,
+                    emailAddress: formData.onboardingForm.emailAddress || formData.email,
+                    website: formData.onboardingForm.website || formData.websiteUrl,
+                    instagramHandle: formData.onboardingForm.instagramHandle || formData.instagramHandle,
+                    facebookHandle: formData.onboardingForm.facebookHandle || formData.facebookUrl,
+                    youtubeHandle: formData.onboardingForm.youtubeHandle || formData.youtubeHandle,
+                    linkedinHandle: formData.onboardingForm.linkedinHandle || formData.linkedinUrl,
+                    googleDriveFolderLink: formData.onboardingForm.googleDriveFolderLink || formData.rawFootageDriveUrl,
+                    productServiceInfo: formData.onboardingForm.productServiceInfo || formData.productsServices,
+                    contentStyleTone: formData.onboardingForm.contentStyleTone || formData.brandVoiceTone,
+                    preferredLanguage: formData.onboardingForm.preferredLanguage || formData.preferredLanguage,
+                    pocName: formData.onboardingForm.pocName || formData.contactName,
+                    pocDesignation: formData.onboardingForm.pocDesignation || formData.designation,
+                    pocContactNumber: formData.onboardingForm.pocContactNumber || formData.phone,
+                    pocEmailAddress: formData.onboardingForm.pocEmailAddress || formData.email,
+                  }}
+                  onChange={(updatedOnboarding) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      onboardingForm: updatedOnboarding,
+                      companyName: updatedOnboarding.clientName || prev.companyName,
+                      brandName: updatedOnboarding.businessBrandName || prev.brandName,
+                      phone: updatedOnboarding.contactNumber || prev.phone,
+                      email: updatedOnboarding.emailAddress || prev.email,
+                      websiteUrl: updatedOnboarding.website || prev.websiteUrl,
+                      instagramHandle: updatedOnboarding.instagramHandle || prev.instagramHandle,
+                      facebookUrl: updatedOnboarding.facebookHandle || prev.facebookUrl,
+                      youtubeHandle: updatedOnboarding.youtubeHandle || prev.youtubeHandle,
+                      linkedinUrl: updatedOnboarding.linkedinHandle || prev.linkedinUrl,
+                      rawFootageDriveUrl: updatedOnboarding.googleDriveFolderLink || prev.rawFootageDriveUrl,
+                      productsServices: updatedOnboarding.productServiceInfo || prev.productsServices,
+                      brandVoiceTone: updatedOnboarding.contentStyleTone || prev.brandVoiceTone,
+                      preferredLanguage: updatedOnboarding.preferredLanguage || prev.preferredLanguage,
+                      accessChecklist: updatedOnboarding.accountAccess || prev.accessChecklist,
+                    }));
+                  }}
+                />
+
+                {/* Meeting / Call Notes Sheet (15-Section Intake) */}
+                <div className="pt-2">
+                  <MeetingNotesForm
+                    value={formData.meetingNotes}
+                    onChange={(notes) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        meetingNotes: notes,
+                      }))
+                    }
+                  />
                 </div>
-                <p className="text-[11px] text-stone-400 italic">
-                  * Note: Our account managers can assist you during your onboarding call if you need help delegating partner rights in Meta Business Suite.
-                </p>
               </div>
             )}
 
@@ -938,6 +1044,38 @@ export default function ClientRegisterPage() {
                   <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-emerald-600 text-white">
                     Growth Retainer
                   </span>
+                </div>
+
+                {/* 18-Module Campaign Planner Blueprint */}
+                <div className="pt-2">
+                  <CampaignPlannerForm
+                    value={formData.campaignPlanner}
+                    onChange={(planner) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        campaignPlanner: planner,
+                        reelsQuota: planner.reelsQty ?? prev.reelsQuota,
+                        carouselsQuota: planner.carouselsQty ?? prev.carouselsQuota,
+                        storiesQuota: planner.storiesQty ?? prev.storiesQuota,
+                      }))
+                    }
+                  />
+                </div>
+
+                {/* 22-Section Client Expectations & Scope Document */}
+                <div className="pt-2">
+                  <ClientScopeDocumentForm
+                    value={formData.scopeDocument}
+                    onChange={(scopeDoc) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        scopeDocument: scopeDoc,
+                        reelsQuota: scopeDoc.deliverablesReels || prev.reelsQuota,
+                        carouselsQuota: scopeDoc.deliverablesCarousels || prev.carouselsQuota,
+                        storiesQuota: scopeDoc.deliverablesStories || prev.storiesQuota,
+                      }))
+                    }
+                  />
                 </div>
 
                 {/* Operational SLA Policies */}

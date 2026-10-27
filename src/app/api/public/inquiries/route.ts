@@ -265,6 +265,183 @@ export async function POST(req: NextRequest) {
               if (validData.googleDriveLink) parts.push(`[Google Drive]: ${validData.googleDriveLink}`);
               if (validData.preferredLanguage) parts.push(`[Preferred Language]: ${validData.preferredLanguage}`);
               if (validData.additionalDetails) parts.push(`[Project Scope]: ${validData.additionalDetails}`);
+              
+              if (validData.brandVoiceGuide) {
+                const bvg = validData.brandVoiceGuide;
+                const summaryLines: string[] = [];
+                const bName = bvg.brandName || bvg.brandOverview?.businessName;
+                const bInd = bvg.industryNiche || bvg.brandOverview?.industry;
+                const bMis = bvg.mission || bvg.brandOverview?.mission;
+                const bAud = bvg.targetAudience || bvg.brandOverview?.targetAudience;
+                const bPers = bvg.personalityTraits || bvg.brandPersonality;
+                const bVoice = bvg.voiceTypes || bvg.brandVoice;
+                const bTone = bvg.toneTypes || bvg.tone;
+                const bComm = bvg.commStyles || bvg.communicationStyle;
+                const bCharProf = bvg.characterProfession || bvg.brandCharacter?.profession;
+                const bCharAge = bvg.characterAge || bvg.brandCharacter?.ageRange;
+                const bForm = bvg.formalityLevel || bvg.formality;
+                const bSent = bvg.sentenceStyles || bvg.sentenceStyle;
+                const bCap = bvg.captionStyles || bvg.captionStyle;
+                const bCta = bvg.ctaStyles || bvg.ctaStyle;
+                const bLang = bvg.preferredLanguages;
+
+                if (bName) summaryLines.push(`Brand: ${bName}`);
+                if (bInd) summaryLines.push(`Industry: ${bInd}`);
+                if (bMis) summaryLines.push(`Mission: ${bMis}`);
+                if (bAud) summaryLines.push(`Target Audience: ${bAud}`);
+                if (bPers?.length) summaryLines.push(`Personality: ${bPers.join(", ")}`);
+                if (bVoice?.length) summaryLines.push(`Voice: ${bVoice.join(", ")}`);
+                if (bTone?.length) summaryLines.push(`Tone: ${bTone.join(", ")}`);
+                if (bComm?.length) summaryLines.push(`Communication: ${bComm.join(", ")}`);
+                if (bCharProf) summaryLines.push(`Character: ${bCharProf} (${bCharAge || "Any Age"})`);
+                if (bForm) summaryLines.push(`Formality: ${bForm}`);
+                if (bSent?.length) summaryLines.push(`Sentence Style: ${bSent.join(", ")}`);
+                if (bCap?.length) summaryLines.push(`Caption Style: ${bCap.join(", ")}`);
+                if (bCta?.length) summaryLines.push(`CTA Style: ${bCta.join(", ")}`);
+                if (bvg.wordsToUse) summaryLines.push(`Words to Use: ${bvg.wordsToUse.replace(/\n/g, ", ")}`);
+                if (bvg.wordsToAvoid) summaryLines.push(`Words to Avoid: ${bvg.wordsToAvoid.replace(/\n/g, ", ")}`);
+                if (bLang?.length) summaryLines.push(`Languages: ${bLang.join(", ")}`);
+
+                if (summaryLines.length > 0) {
+                  parts.push(`=== BRAND VOICE & TONE GUIDE ===\n${summaryLines.join("\n")}`);
+                }
+                parts.push(`[BRAND_VOICE_GUIDE_DATA]: ${JSON.stringify(bvg)}`);
+              }
+
+              if (validData.campaignPlanner) {
+                const cp = validData.campaignPlanner;
+                const cpLines: string[] = [];
+                if (cp.campaignName) cpLines.push(`Campaign: ${cp.campaignName}`);
+                if (cp.campaignType) cpLines.push(`Type: ${cp.campaignType}`);
+                if (cp.campaignDuration) cpLines.push(`Duration: ${cp.campaignDuration} (${cp.startDate || "?"} to ${cp.endDate || "?"})`);
+                if (cp.objectives?.length) cpLines.push(`Objectives: ${cp.objectives.join(", ")}`);
+                if (cp.campaignOffer) cpLines.push(`Offer: ${cp.campaignOffer}`);
+                if (cp.keyMessage) cpLines.push(`Key Message: ${cp.keyMessage}`);
+                if (cp.platforms?.length) cpLines.push(`Platforms: ${cp.platforms.join(", ")}`);
+                if (cp.contentFormats?.length) cpLines.push(`Formats: ${cp.contentFormats.join(", ")}`);
+                const deliverables = [];
+                if (cp.reelsQty) deliverables.push(`${cp.reelsQty} Reels`);
+                if (cp.staticPostsQty) deliverables.push(`${cp.staticPostsQty} Statics`);
+                if (cp.carouselsQty) deliverables.push(`${cp.carouselsQty} Carousels`);
+                if (cp.storiesQty) deliverables.push(`${cp.storiesQty} Stories`);
+                if (cp.adCreativesQty) deliverables.push(`${cp.adCreativesQty} Ad Creatives`);
+                if (deliverables.length) cpLines.push(`Content Needed: ${deliverables.join(", ")}`);
+                if (cp.runPaidAds) cpLines.push(`Paid Ads: Yes (Budget: ₹${cp.budget || "N/A"})`);
+                if (cp.campaignHashtag) cpLines.push(`Hashtag: ${cp.campaignHashtag}`);
+
+                if (cpLines.length > 0) {
+                  parts.push(`=== CAMPAIGN PLANNER ===\n${cpLines.join("\n")}`);
+                }
+                parts.push(`[CAMPAIGN_PLANNER_DATA]: ${JSON.stringify(cp)}`);
+              }
+
+              if (validData.scopeDocument) {
+                const sc = validData.scopeDocument;
+                const scLines: string[] = [];
+                if (sc.scopeOfWork) scLines.push(`Scope: ${sc.scopeOfWork}`);
+                if (sc.servicesIncluded?.length) scLines.push(`Included: ${sc.servicesIncluded.join(", ")}`);
+                if (sc.servicesNotIncluded?.length) scLines.push(`Excluded: ${sc.servicesNotIncluded.join(", ")}`);
+                const monthlyDeliv = [];
+                if (sc.deliverablesReels) monthlyDeliv.push(`${sc.deliverablesReels} Reels`);
+                if (sc.deliverablesStatics) monthlyDeliv.push(`${sc.deliverablesStatics} Statics`);
+                if (sc.deliverablesCarousels) monthlyDeliv.push(`${sc.deliverablesCarousels} Carousels`);
+                if (sc.deliverablesStories) monthlyDeliv.push(`${sc.deliverablesStories} Stories`);
+                if (sc.deliverablesOther) monthlyDeliv.push(sc.deliverablesOther);
+                if (monthlyDeliv.length) scLines.push(`Monthly Deliverables: ${monthlyDeliv.join(", ")}`);
+                if (sc.postingResponsibility) scLines.push(`Posting: ${sc.postingResponsibility}`);
+                if (sc.reviewTimeline) scLines.push(`Review SLA: ${sc.reviewTimeline}`);
+                if (sc.revisionsIncluded) scLines.push(`Revisions: ${sc.revisionsIncluded}`);
+                if (sc.paymentTerms) scLines.push(`Payment: ${sc.paymentTerms}`);
+                if (sc.noticePeriod) scLines.push(`Notice Period: ${sc.noticePeriod}`);
+
+                if (scLines.length > 0) {
+                  parts.push(`=== CLIENT EXPECTATIONS & SCOPE DOCUMENT ===\n${scLines.join("\n")}`);
+                }
+                parts.push(`[SCOPE_DOCUMENT_DATA]: ${JSON.stringify(sc)}`);
+              }
+
+              if (validData.onboardingForm) {
+                const ob = validData.onboardingForm;
+                const obLines: string[] = [];
+                if (ob.clientName) obLines.push(`Client: ${ob.clientName}`);
+                if (ob.businessBrandName) obLines.push(`Brand: ${ob.businessBrandName}`);
+                if (ob.servicesRequired?.length) obLines.push(`Services Needed: ${ob.servicesRequired.join(", ")}`);
+                if (ob.packageName) obLines.push(`Package: ${ob.packageName} (${ob.contractDuration || "Retainer"})`);
+                if (ob.contentStyleTone) obLines.push(`Tone: ${ob.contentStyleTone}`);
+                if (ob.googleDriveFolderLink) obLines.push(`Drive: ${ob.googleDriveFolderLink}`);
+                if (ob.accountAccess?.length) obLines.push(`Access: ${ob.accountAccess.join(", ")}`);
+                if (ob.pocName) obLines.push(`POC: ${ob.pocName} (${ob.pocDesignation || "POC"})`);
+                if (ob.communicationMethods?.length) obLines.push(`Comm: ${ob.communicationMethods.join(", ")}`);
+
+                if (obLines.length > 0) {
+                  parts.push(`=== CLIENT ONBOARDING INTAKE ===\n${obLines.join("\n")}`);
+                }
+                parts.push(`[ONBOARDING_FORM_DATA]: ${JSON.stringify(ob)}`);
+              }
+
+              if (validData.competitorAnalysis) {
+                const ca = validData.competitorAnalysis;
+                const caLines: string[] = [];
+                const c1 = ca.competitor1?.name ? `${ca.competitor1.name} (${ca.competitor1.website || "No site"})` : null;
+                const c2 = ca.competitor2?.name ? `${ca.competitor2.name} (${ca.competitor2.website || "No site"})` : null;
+                const c3 = ca.competitor3?.name ? `${ca.competitor3.name} (${ca.competitor3.website || "No site"})` : null;
+                const comps = [c1, c2, c3].filter(Boolean);
+                if (comps.length > 0) caLines.push(`Competitors Analyzed: ${comps.join(" | ")}`);
+                if (ca.keyTakeaways) caLines.push(`Key Takeaways: ${ca.keyTakeaways}`);
+                if (ca.overallOpportunities) caLines.push(`Opportunities: ${ca.overallOpportunities}`);
+                if (ca.strategyIdeas) caLines.push(`Strategy Ideas: ${ca.strategyIdeas}`);
+
+                if (caLines.length > 0) {
+                  parts.push(`=== COMPETITOR ANALYSIS SHEET ===\n${caLines.join("\n")}`);
+                }
+                parts.push(`[COMPETITOR_ANALYSIS_DATA]: ${JSON.stringify(ca)}`);
+              }
+
+              if (validData.contentPillars) {
+                const cp = validData.contentPillars;
+                const cpLines: string[] = [];
+                const pillarsList = [
+                  { label: "Educational", item: cp.educational },
+                  { label: "Promotional", item: cp.promotional },
+                  { label: "Engagement", item: cp.engagement },
+                  { label: "Trust / Authority", item: cp.trustAuthority },
+                  { label: "Entertainment", item: cp.entertainment },
+                ];
+                for (const p of pillarsList) {
+                  if (p.item?.pillarName) {
+                    cpLines.push(`• ${p.label}: ${p.item.pillarName} (${p.item.plannedFrequency || "N/A"}, Priority: ${p.item.priority || "Medium"})`);
+                  }
+                }
+                if (cp.overallNotes) {
+                  cpLines.push(`Overall Notes: ${cp.overallNotes}`);
+                }
+
+                if (cpLines.length > 0) {
+                  parts.push(`=== CONTENT PILLARS SHEET ===\n${cpLines.join("\n")}`);
+                }
+                parts.push(`[CONTENT_PILLARS_DATA]: ${JSON.stringify(cp)}`);
+              }
+
+              if (validData.meetingNotes) {
+                const mn = validData.meetingNotes;
+                const mnLines: string[] = [];
+                if (mn.clientBrandName) mnLines.push(`Brand: ${mn.clientBrandName}`);
+                if (mn.meetingDate || mn.meetingTime) mnLines.push(`Call Time: ${mn.meetingDate || "?"} at ${mn.meetingTime || "?"}`);
+                if (mn.meetingTypes?.length) mnLines.push(`Type: ${mn.meetingTypes.join(", ")}`);
+                if (mn.meetingObjective) mnLines.push(`Objective: ${mn.meetingObjective}`);
+                const activePoints = mn.discussionPoints?.filter(Boolean) || [];
+                if (activePoints.length > 0) mnLines.push(`Discussion Points: ${activePoints.slice(0, 3).join("; ")}`);
+                const activeDecisions = mn.decisionsMade?.filter(Boolean) || [];
+                if (activeDecisions.length > 0) mnLines.push(`Decisions: ${activeDecisions.slice(0, 3).join("; ")}`);
+                if (mn.actionItems?.length > 0) mnLines.push(`Action Items: ${mn.actionItems.length} tasks assigned`);
+                if (mn.nextMeetingDate) mnLines.push(`Next Sync: ${mn.nextMeetingDate} at ${mn.nextMeetingTime || "?"}`);
+
+                if (mnLines.length > 0) {
+                  parts.push(`=== MEETING / CALL NOTES ===\n${mnLines.join("\n")}`);
+                }
+                parts.push(`[MEETING_NOTES_DATA]: ${JSON.stringify(mn)}`);
+              }
+
               return parts.join("\n\n") || validData.additionalDetails;
             })(),
             status: "NEW",

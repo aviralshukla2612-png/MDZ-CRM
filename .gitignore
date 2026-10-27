@@ -14,6 +14,8 @@ prisma/*.db-journal
 *.sqlite
 *.sqlite-journal
 *.db
+prisma/data/
+production-data/
 
 # Environment & Secret Configuration
 .env

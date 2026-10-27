@@ -86,6 +86,13 @@ export const publicInquirySchema = z.object({
   googleDriveLink: z.string().trim().max(1000).optional().default(""),
   preferredLanguage: z.string().trim().max(100).optional().default(""),
   additionalDetails: z.string().trim().max(3000).optional().default(""),
+  brandVoiceGuide: z.any().optional(),
+  campaignPlanner: z.any().optional(),
+  scopeDocument: z.any().optional(),
+  onboardingForm: z.any().optional(),
+  competitorAnalysis: z.any().optional(),
+  contentPillars: z.any().optional(),
+  meetingNotes: z.any().optional(),
 
   // Step 7: Confirmation & Anti-Spam
   confirmed: z.boolean().refine((val) => val === true, {

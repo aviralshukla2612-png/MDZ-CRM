@@ -9,7 +9,7 @@ import {
   DEFAULT_GOOGLE_SHEET_URL,
 } from "./deliveryMasterStore";
 
-export const DEFAULT_SHEET_ID = "1C8FCIE12Gz6cNQVmI-nxP5EmME-BJKFUWLwgIiTXMpU";
+export const DEFAULT_SHEET_ID = "1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat";
 export const DASHBOARD_GID = "1693502346";
 export const CLIENT_TARGETS_GID = "1126021745";
 export const PRODUCTION_LOG_GID = "14317656";
@@ -45,7 +45,7 @@ export function parseCsvLine(text: string): string[] {
 
 export function extractSheetId(url?: string): string {
   if (!url) return DEFAULT_SHEET_ID;
-  const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+  const match = url.match(/\/(?:d|file\/d)\/([a-zA-Z0-9-_]+)/);
   return match ? match[1] : DEFAULT_SHEET_ID;
 }
 
@@ -64,101 +64,28 @@ export async function pullLatestFromGoogleSheet(): Promise<{
     const sheetUrl = master.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
     const sheetId = extractSheetId(sheetUrl);
 
-    // 1. Fetch Dashboard Tab (gid=1693502346)
-    const dashRes = await fetch(
-      `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${DASHBOARD_GID}&_t=${Date.now()}`,
-      { cache: "no-store" }
-    );
+    const cleanCode = (c?: string) => {
+      if (!c) return "";
+      return String(c).replace(/\s*\[\?\]/g, "").replace(/"/g, "").trim().toUpperCase();
+    };
 
-    if (!dashRes.ok) {
-      const err = `Failed to download Google Sheet Dashboard. HTTP status ${dashRes.status}. Ensure link sharing is set to "Anyone with the link can view".`;
-      saveDeliveryMasterData({
-        lastSyncStatus: "ERROR",
-        lastSyncMessage: err,
-      });
-      return { success: false, message: err, error: err };
-    }
+    const normalizeCode = (c?: string) => {
+      const code = cleanCode(c);
+      if (code === "ML") return "HL";
+      if (code === "ALA") return "ALG";
+      if (code === "KMUA") return "KM";
+      return code;
+    };
 
-    const dashText = await dashRes.text();
-    const dashLines = dashText.split(/\r?\n/);
+    const isMatchCode = (c1?: string, c2?: string) => {
+      if (!c1 || !c2) return false;
+      return normalizeCode(c1) === normalizeCode(c2);
+    };
 
-    let inClientTable = false;
-    const newClientRows: ClientDeliveryStatus[] = [];
-    const seenCodes = new Set<string>();
+    const clientMap = new Map<string, ClientDeliveryStatus>();
+    const commitmentsMap = new Map<string, ClientTargetCommitment>();
 
-    for (const line of dashLines) {
-      const parts = parseCsvLine(line);
-      const firstCol = parts[0]?.toUpperCase() || "";
-
-      if (firstCol === "CLIENT" && parts[1]?.toUpperCase() === "TARGET") {
-        inClientTable = true;
-        continue;
-      }
-
-      if (inClientTable) {
-        if (!parts[0] || parts[0].includes("CONTENT-TYPE") || parts[0].includes("ACTION ITEMS")) {
-          break;
-        }
-
-        const clientCodeRaw = parts[0].replace(/\s*\[\?\]/g, "").trim().toUpperCase();
-        if (!clientCodeRaw || seenCodes.has(clientCodeRaw)) {
-          continue; // Strict deduplication so client codes are unique and planned stays exact
-        }
-        seenCodes.add(clientCodeRaw);
-
-        const target = parseInt(parts[1]) || 0;
-        const done = parseInt(parts[2]) || 0;
-        const pending = parseInt(parts[3]) || Math.max(0, target - done);
-        const inProgress = parseInt(parts[4]) || 0;
-        const onHold = parseInt(parts[5]) || 0;
-        const overdue = parseInt(parts[6]) || 0;
-        const completionPct = target > 0 ? Math.round((done / target) * 100) : 0;
-        const missingLinks = parseInt(parts[8]) || 0;
-        const unassigned = parseInt(parts[9]) || 0;
-
-        const isMatchCode = (c1: string, c2: string) => {
-          const a = c1.trim().toUpperCase();
-          const b = c2.trim().toUpperCase();
-          return a === b || (a === "KM" && b === "KMUA") || (a === "KMUA" && b === "KM");
-        };
-
-        const existingRow = master.clientStatusList.find(
-          (r) => isMatchCode(r.clientCode, clientCodeRaw)
-        );
-
-        // When syncing from Google Sheet, update the CRM values from the sheet
-        const finalTarget = target;
-        const finalDone = done;
-
-        const finalInProgress = inProgress;
-        const finalOnHold = onHold;
-        const finalOverdue = overdue;
-        const finalMissingLinks = missingLinks;
-        const finalUnassigned = unassigned;
-        const finalPending = Math.max(0, finalTarget - finalDone);
-        const finalPct = finalTarget > 0 ? Math.round((finalDone / finalTarget) * 100) : 0;
-
-        newClientRows.push({
-          id: existingRow?.id || `cl-${clientCodeRaw.toLowerCase()}`,
-          clientCode: clientCodeRaw,
-          clientName: existingRow?.clientName || (clientCodeRaw === "KM" ? "KM / KMUA Academy" : clientCodeRaw),
-          target: finalTarget,
-          done: finalDone,
-          pending: finalPending,
-          inProgress: finalInProgress,
-          onHold: finalOnHold,
-          overdue: finalOverdue,
-          completionPct: finalPct,
-          missingLinks: finalMissingLinks,
-          unassigned: finalUnassigned,
-          crmOverride: Boolean(existingRow?.crmOverride),
-          lastModified: existingRow?.lastModified || new Date().toISOString(),
-        });
-      }
-    }
-
-    // 2. Fetch Client Targets Tab (gid=1126021745)
-    let updatedCommitments: ClientTargetCommitment[] = [];
+    // 1. Fetch Client Targets Tab (gid=1126021745) - Primary Contracted Commitments
     try {
       const targetsRes = await fetch(
         `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${CLIENT_TARGETS_GID}&_t=${Date.now()}`,
@@ -177,32 +104,28 @@ export async function pullLatestFromGoogleSheet(): Promise<{
           }
 
           if (inTargetsTable) {
-            const clientName = cols[0] || "";
-            if (!clientName || clientName.toUpperCase() === "TOTAL") {
+            const rawClientName = cols[0] || "";
+            if (!rawClientName || rawClientName.toUpperCase() === "TOTAL") {
               break;
             }
+
+            const code = normalizeCode(rawClientName);
+            if (!code || code === "CLIENT") continue;
 
             const reels = parseInt(cols[1]) || 0;
             const carousels = parseInt(cols[2]) || 0;
             const posts = parseInt(cols[3]) || 0;
             const cpUnsplit = parseInt(cols[4]) || 0;
             const stories = parseInt(cols[5]) || 0;
-            const total = parseInt(cols[6]) || reels + carousels + posts + cpUnsplit + stories;
+            const total = parseInt(cols[6]) || (reels + carousels + posts + cpUnsplit + stories);
 
             const hasCheck = (val?: string) =>
               Boolean(val && val.trim().length > 0 && !val.includes("0") && val !== "-");
 
-            const isMatchClient = (c1: string, c2: string) => {
-              const a = c1.trim().toUpperCase();
-              const b = c2.trim().toUpperCase();
-              return a === b || (a === "KM" && b === "KMUA") || (a === "KMUA" && b === "KM");
-            };
-
-            const commitmentId = `ct-${clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+            const commitmentId = `ct-${code.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
             const existingCommitment = (master.clientTargetCommitments || []).find(
-              (c) => c.id === commitmentId || isMatchClient(c.client || "", clientName)
+              (c) => isMatchCode(c.client, code) || c.id === commitmentId
             );
-
             const isCommitmentOverridden = Boolean(existingCommitment?.crmOverride);
 
             const finalReels = reels;
@@ -212,9 +135,9 @@ export async function pullLatestFromGoogleSheet(): Promise<{
             const finalStories = stories;
             const finalTotal = finalReels + finalCarousels + finalPosts + finalCp + finalStories;
 
-            updatedCommitments.push({
+            commitmentsMap.set(code, {
               id: commitmentId,
-              client: clientName,
+              client: rawClientName.trim(),
               reels: finalReels,
               carousels: finalCarousels,
               posts: finalPosts,
@@ -231,9 +154,30 @@ export async function pullLatestFromGoogleSheet(): Promise<{
               },
               originalCp: cols[13] || existingCommitment?.originalCp || "",
               review: cols[14] || existingCommitment?.review || "As noted",
-              notes: cols[15] || existingCommitment?.notes || (clientName.toUpperCase() === "KM" ? "KM / KMUA Academy" : ""),
+              notes: cols[15] || existingCommitment?.notes || (code === "KM" ? "KM / KMUA Academy" : ""),
               crmOverride: Boolean(existingCommitment?.crmOverride),
               lastModified: existingCommitment?.lastModified || new Date().toISOString(),
+            });
+
+            const existingRow = master.clientStatusList.find(
+              (r) => isMatchCode(r.clientCode, code)
+            );
+
+            clientMap.set(code, {
+              id: existingRow?.id || `cl-${code.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+              clientCode: code,
+              clientName: existingRow?.clientName || rawClientName.trim(),
+              target: finalTotal > 0 ? finalTotal : total,
+              done: 0,
+              pending: finalTotal > 0 ? finalTotal : total,
+              inProgress: 0,
+              onHold: 0,
+              overdue: 0,
+              completionPct: 0,
+              missingLinks: 0,
+              unassigned: finalTotal > 0 ? finalTotal : total,
+              crmOverride: Boolean(existingRow?.crmOverride),
+              lastModified: existingRow?.lastModified || new Date().toISOString(),
             });
           }
         }
@@ -242,7 +186,107 @@ export async function pullLatestFromGoogleSheet(): Promise<{
       console.error("[GoogleSheetSync] Error syncing client targets tab:", tErr);
     }
 
-    // 3. Fetch Production Log Tab (gid=14317656)
+    // 2. Fetch Dashboard Tab (gid=1693502346) - Live Client Delivery Metrics
+    try {
+      const dashRes = await fetch(
+        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${DASHBOARD_GID}&_t=${Date.now()}`,
+        { cache: "no-store" }
+      );
+
+      if (dashRes.ok) {
+        const dashText = await dashRes.text();
+        const dashLines = dashText.split(/\r?\n/);
+        let inClientTable = false;
+
+        for (const line of dashLines) {
+          const parts = parseCsvLine(line);
+          const firstCol = parts[0]?.toUpperCase() || "";
+
+          if (firstCol === "CLIENT" && parts[1]?.toUpperCase() === "TARGET") {
+            inClientTable = true;
+            continue;
+          }
+
+          if (inClientTable) {
+            if (!parts[0] || parts[0].includes("CONTENT-TYPE") || parts[0].includes("ACTION ITEMS")) {
+              break;
+            }
+
+            const rawName = parts[0];
+            const code = normalizeCode(rawName);
+            if (!code || code === "CLIENT") continue;
+
+            const target = parseInt(parts[1]) || 0;
+            const done = parseInt(parts[2]) || 0;
+            const inProgress = parseInt(parts[4]) || 0;
+            const onHold = parseInt(parts[5]) || 0;
+            const overdue = parseInt(parts[6]) || 0;
+            const missingLinks = parseInt(parts[8]) || 0;
+            const unassigned = parseInt(parts[9]) || 0;
+
+            const existingRow = master.clientStatusList.find(
+              (r) => isMatchCode(r.clientCode, code)
+            );
+
+            if (clientMap.has(code)) {
+              const current = clientMap.get(code)!;
+              const finalTarget = Math.max(current.target, target);
+              const finalDone = Math.max(current.done, done);
+              current.target = finalTarget;
+              current.done = finalDone;
+              current.inProgress = Math.max(current.inProgress, inProgress);
+              current.onHold = Math.max(current.onHold, onHold);
+              current.overdue = Math.max(current.overdue, overdue);
+              current.missingLinks = Math.max(current.missingLinks, missingLinks);
+              current.unassigned = Math.max(current.unassigned, unassigned);
+              current.pending = Math.max(0, finalTarget - finalDone);
+              current.completionPct = finalTarget > 0 ? Math.round((finalDone / finalTarget) * 100) : 0;
+            } else {
+              const fallbackTarget = target > 0 ? target : (code === "SE" ? 20 : 0);
+              clientMap.set(code, {
+                id: existingRow?.id || `cl-${code.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+                clientCode: code,
+                clientName: existingRow?.clientName || rawName.trim(),
+                target: fallbackTarget,
+                done,
+                pending: Math.max(0, fallbackTarget - done),
+                inProgress,
+                onHold,
+                overdue,
+                completionPct: fallbackTarget > 0 ? Math.round((done / fallbackTarget) * 100) : 0,
+                missingLinks,
+                unassigned,
+                crmOverride: Boolean(existingRow?.crmOverride),
+                lastModified: existingRow?.lastModified || new Date().toISOString(),
+              });
+
+              if (!commitmentsMap.has(code)) {
+                commitmentsMap.set(code, {
+                  id: `ct-${code.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+                  client: rawName.trim(),
+                  reels: fallbackTarget > 0 ? Math.round(fallbackTarget * 0.7) : 0,
+                  carousels: fallbackTarget > 0 ? Math.round(fallbackTarget * 0.3) : 0,
+                  posts: 0,
+                  cpUnsplit: 0,
+                  stories: 0,
+                  total: fallbackTarget,
+                  platforms: { ig: true, fb: true, li: false, gmb: false, whatsapp: false, youtube: false },
+                  originalCp: "",
+                  review: "From Dashboard",
+                  notes: code === "KM" ? "KM / KMUA Academy" : (code === "SE" ? "Signature Events" : ""),
+                  crmOverride: false,
+                  lastModified: new Date().toISOString(),
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (dErr) {
+      console.error("[GoogleSheetSync] Error syncing dashboard tab:", dErr);
+    }
+
+    // 3. Fetch Production Log Tab (gid=14317656) - Operational Task Breakdown
     const productionTasks: any[] = [];
     try {
       const prodRes = await fetch(
@@ -258,6 +302,27 @@ export async function pullLatestFromGoogleSheet(): Promise<{
           const cols = parseCsvLine(line);
           const taskId = cols[0];
           if (!taskId || !taskId.startsWith("MDZ-")) continue;
+
+          const taskClientCode = normalizeCode(cols[2] || "");
+          if (taskClientCode && !clientMap.has(taskClientCode) && taskClientCode !== "CLIENT") {
+            const rawClient = (cols[2] || "").replace(/\s*\[\?\]/g, "").trim();
+            clientMap.set(taskClientCode, {
+              id: `cl-${taskClientCode.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+              clientCode: taskClientCode,
+              clientName: rawClient || taskClientCode,
+              target: 0,
+              done: 0,
+              pending: 0,
+              inProgress: 0,
+              onHold: 0,
+              overdue: 0,
+              completionPct: 0,
+              missingLinks: 0,
+              unassigned: 0,
+              crmOverride: false,
+              lastModified: new Date().toISOString(),
+            });
+          }
 
           productionTasks.push({
             id: taskId,
@@ -338,6 +403,47 @@ export async function pullLatestFromGoogleSheet(): Promise<{
           const cols = parseCsvLine(ewLines[i]);
           const workId = cols[0];
           if (!workId || !workId.startsWith("EX-")) continue;
+
+          const rawClient = cols[1] || "";
+          const extraClientCode = normalizeCode(rawClient);
+          if (extraClientCode && !clientMap.has(extraClientCode) && extraClientCode !== "CLIENT") {
+            clientMap.set(extraClientCode, {
+              id: `cl-${extraClientCode.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+              clientCode: extraClientCode,
+              clientName: rawClient.trim() || extraClientCode,
+              target: 0,
+              done: 0,
+              pending: 0,
+              inProgress: 0,
+              onHold: 0,
+              overdue: 0,
+              completionPct: 0,
+              missingLinks: 0,
+              unassigned: 0,
+              crmOverride: false,
+              lastModified: new Date().toISOString(),
+            });
+
+            if (!commitmentsMap.has(extraClientCode)) {
+              commitmentsMap.set(extraClientCode, {
+                id: `ct-${extraClientCode.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+                client: rawClient.trim() || extraClientCode,
+                reels: 0,
+                carousels: 0,
+                posts: 0,
+                cpUnsplit: 0,
+                stories: 0,
+                total: 0,
+                platforms: { ig: false, fb: false, li: false, gmb: false, whatsapp: false, youtube: false },
+                originalCp: "",
+                review: "Extra Work",
+                notes: "Extra work project deliverables",
+                crmOverride: false,
+                lastModified: new Date().toISOString(),
+              });
+            }
+          }
+
           extraWorkList.push({
             id: workId,
             client: cols[1] || "",
@@ -355,6 +461,9 @@ export async function pullLatestFromGoogleSheet(): Promise<{
     } catch (ewErr) {
       console.error("[GoogleSheetSync] Error syncing extra work tab:", ewErr);
     }
+
+    const newClientRows: ClientDeliveryStatus[] = Array.from(clientMap.values());
+    const updatedCommitments: ClientTargetCommitment[] = Array.from(commitmentsMap.values());
 
     // Save consolidated master data
     const updatePayload: any = {

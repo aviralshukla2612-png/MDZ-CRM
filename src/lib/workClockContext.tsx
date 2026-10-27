@@ -377,7 +377,7 @@ export function WorkClockProvider({ children }: { children: React.ReactNode }) {
         time: formatted,
         type: "PUNCH_IN",
         title: "Punch In",
-        subtitle: "Approved Device • Location Verified",
+        subtitle: "Any Device • Anywhere Verified",
       },
     ]);
 

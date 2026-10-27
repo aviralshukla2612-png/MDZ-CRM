@@ -13,9 +13,16 @@ export async function PATCH(req: Request) {
     const body = await req.json();
     const { type, currentPassword, newValue, confirmValue } = body;
 
-    if (!type || !currentPassword || !newValue) {
+    if (!type || !currentPassword) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    if (type !== "relatives" && type !== "emergencyRelatives" && !newValue) {
+      return NextResponse.json(
+        { success: false, error: "Missing new value field" },
         { status: 400 }
       );
     }
@@ -153,8 +160,48 @@ export async function PATCH(req: Request) {
       });
     }
 
+    if (type === "relatives" || type === "emergencyRelatives") {
+      const rel1Name = String(body.relative1Name || "").trim();
+      const rel1Relation = String(body.relative1Relation || "Father").trim();
+      const rel1Phone = String(body.relative1Phone || "").trim();
+      const rel2Name = String(body.relative2Name || "").trim();
+      const rel2Relation = String(body.relative2Relation || "Mother").trim();
+      const rel2Phone = String(body.relative2Phone || "").trim();
+
+      let emp = await prisma.employee.findFirst({
+        where: { userId: currentUser.id },
+      });
+      if (!emp) {
+        const code = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
+        emp = await prisma.employee.create({
+          data: {
+            userId: currentUser.id,
+            employeeIdCode: code,
+            skillsJson: "[]",
+          },
+        });
+      }
+
+      await prisma.employee.update({
+        where: { id: emp.id },
+        data: {
+          relative1Name: rel1Name,
+          relative1Relation: rel1Relation,
+          relative1Phone: rel1Phone,
+          relative2Name: rel2Name,
+          relative2Relation: rel2Relation,
+          relative2Phone: rel2Phone,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: "Emergency relative contacts updated successfully.",
+      });
+    }
+
     return NextResponse.json(
-      { success: false, error: "Invalid update type. Must be 'name', 'email', 'password', or 'phone'" },
+      { success: false, error: "Invalid update type. Must be 'name', 'email', 'password', 'phone', or 'relatives'" },
       { status: 400 }
     );
   } catch (error) {

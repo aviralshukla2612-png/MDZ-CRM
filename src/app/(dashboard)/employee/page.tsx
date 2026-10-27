@@ -25,6 +25,10 @@ import {
   Sparkles,
   Camera,
   Target,
+  Phone,
+  Users,
+  Edit3,
+  ShieldAlert,
 } from "lucide-react";
 import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
 import { MediaUploader } from "@/components/ui/MediaUploader";
@@ -109,9 +113,80 @@ export default function EmployeeDeskPage() {
     }
   };
 
+  // Employee profile & emergency relatives state
+  const [myProfile, setMyProfile] = useState<any>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [isRelativeModalOpen, setIsRelativeModalOpen] = useState(false);
+  const [savingRelatives, setSavingRelatives] = useState(false);
+
+  const [rel1Name, setRel1Name] = useState("");
+  const [rel1Relation, setRel1Relation] = useState("Father");
+  const [rel1Phone, setRel1Phone] = useState("");
+  const [rel2Name, setRel2Name] = useState("");
+  const [rel2Relation, setRel2Relation] = useState("Mother");
+  const [rel2Phone, setRel2Phone] = useState("");
+
+  const fetchMyProfile = async () => {
+    try {
+      setLoadingProfile(true);
+      const res = await fetch("/mdz-crm/api/employees/me");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setMyProfile(json.data);
+        setRel1Name(json.data.relative1Name || "");
+        setRel1Relation(json.data.relative1Relation || "Father");
+        setRel1Phone(json.data.relative1Phone || "");
+        setRel2Name(json.data.relative2Name || "");
+        setRel2Relation(json.data.relative2Relation || "Mother");
+        setRel2Phone(json.data.relative2Phone || "");
+      }
+    } catch (err) {
+      console.error("Failed to load employee profile:", err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  const handleSaveRelatives = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rel1Phone.trim() || !rel2Phone.trim()) {
+      showToast("Both Relative 1 and Relative 2 phone numbers are compulsory.", "error");
+      return;
+    }
+
+    try {
+      setSavingRelatives(true);
+      const res = await fetch("/mdz-crm/api/employees/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          relative1Name: rel1Name.trim(),
+          relative1Relation: rel1Relation.trim(),
+          relative1Phone: rel1Phone.trim(),
+          relative2Name: rel2Name.trim(),
+          relative2Relation: rel2Relation.trim(),
+          relative2Phone: rel2Phone.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast("✓ Emergency relative contacts updated successfully!", "success");
+        setIsRelativeModalOpen(false);
+        fetchMyProfile();
+      } else {
+        showToast(json.error || "Failed to update relative contacts", "error");
+      }
+    } catch {
+      showToast("Network error updating relative contacts", "error");
+    } finally {
+      setSavingRelatives(false);
+    }
+  };
+
   useEffect(() => {
     fetchEmployeeProjects();
     fetchMyTarget();
+    fetchMyProfile();
   }, []);
 
   const fetchEmployeeProjects = async () => {
@@ -370,6 +445,130 @@ export default function EmployeeDeskPage() {
           <Camera className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
           <span>{photoUrl ? "Change Photo" : "Add Profile Photo"}</span>
         </button>
+      </div>
+
+      {/* Emergency Relative Contacts (2 Compulsory) Card */}
+      <div className="bg-gradient-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 rounded-3xl border border-amber-200/90 dark:border-amber-900/50 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 dark:border-amber-900/40 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-300/40 dark:border-amber-800/40">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-black tracking-wider uppercase px-2 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-400/30">
+                  EMERGENCY CONTACTS (2 COMPULSORY)
+                </span>
+                {myProfile?.relative1Phone && myProfile?.relative2Phone ? (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                    ✓ 2 NUMBERS VERIFIED
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3" />
+                    <span>ACTION REQUIRED</span>
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                Two verified emergency relative phone numbers linked to your company employee record.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsRelativeModalOpen(true)}
+            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto cursor-pointer"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>{myProfile?.relative1Phone && myProfile?.relative2Phone ? "Update Relative Numbers" : "Add Relative Numbers"}</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Relative 1 Card */}
+          <div className="bg-white/90 dark:bg-slate-900/90 rounded-2xl p-4 border border-amber-200/80 dark:border-slate-800 flex items-center justify-between gap-3 shadow-2xs">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                  Relative 1: {myProfile?.relative1Relation || "Father"}
+                </span>
+                {myProfile?.relative1Name && (
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                    {myProfile.relative1Name}
+                  </span>
+                )}
+              </div>
+
+              {myProfile?.relative1Phone ? (
+                <a
+                  href={`tel:${myProfile.relative1Phone}`}
+                  className="font-mono font-bold text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 pt-0.5"
+                  title="Click to Call Relative 1"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="truncate">{myProfile.relative1Phone}</span>
+                </a>
+              ) : (
+                <div className="text-xs text-rose-500 font-mono italic pt-1 flex items-center gap-1">
+                  <span>● Number not provided yet</span>
+                </div>
+              )}
+            </div>
+
+            {myProfile?.relative1Phone && (
+              <a
+                href={`tel:${myProfile.relative1Phone}`}
+                className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 transition-colors shrink-0 border border-emerald-200 dark:border-emerald-800"
+                title="Direct Call Relative 1"
+              >
+                <Phone className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+
+          {/* Relative 2 Card */}
+          <div className="bg-white/90 dark:bg-slate-900/90 rounded-2xl p-4 border border-amber-200/80 dark:border-slate-800 flex items-center justify-between gap-3 shadow-2xs">
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+                  Relative 2: {myProfile?.relative2Relation || "Mother"}
+                </span>
+                {myProfile?.relative2Name && (
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 truncate">
+                    {myProfile.relative2Name}
+                  </span>
+                )}
+              </div>
+
+              {myProfile?.relative2Phone ? (
+                <a
+                  href={`tel:${myProfile.relative2Phone}`}
+                  className="font-mono font-bold text-sm text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 pt-0.5"
+                  title="Click to Call Relative 2"
+                >
+                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="truncate">{myProfile.relative2Phone}</span>
+                </a>
+              ) : (
+                <div className="text-xs text-rose-500 font-mono italic pt-1 flex items-center gap-1">
+                  <span>● Number not provided yet</span>
+                </div>
+              )}
+            </div>
+
+            {myProfile?.relative2Phone && (
+              <a
+                href={`tel:${myProfile.relative2Phone}`}
+                className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950 dark:hover:bg-emerald-900 text-emerald-700 dark:text-emerald-300 transition-colors shrink-0 border border-emerald-200 dark:border-emerald-800"
+                title="Direct Call Relative 2"
+              >
+                <Phone className="w-4 h-4" />
+              </a>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Daily Work Target Reminder & Live Quota Progress */}
@@ -964,6 +1163,161 @@ export default function EmployeeDeskPage() {
         onSuccess={(newUrl) => setPhotoUrl(newUrl)}
         title="Update Your Profile Photo"
       />
+
+      {/* Emergency Relatives Edit Bottom Sheet */}
+      <BottomSheet
+        isOpen={isRelativeModalOpen}
+        onClose={() => setIsRelativeModalOpen(false)}
+        title="Emergency Relative Contacts (2 Compulsory)"
+        subtitle="Provide 2 emergency relative phone numbers linked to your employee record."
+      >
+        <form onSubmit={handleSaveRelatives} className="space-y-4 text-xs">
+          {/* Relative 1 Section */}
+          <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 space-y-3">
+            <div className="font-bold text-amber-900 dark:text-amber-300 text-xs flex items-center gap-2">
+              <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Relative 1 Details</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+                  Relationship <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={rel1Relation}
+                  onChange={(e) => setRel1Relation(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium outline-none focus:border-amber-500"
+                >
+                  <option value="Father">Father</option>
+                  <option value="Mother">Mother</option>
+                  <option value="Spouse">Spouse</option>
+                  <option value="Brother">Brother</option>
+                  <option value="Sister">Sister</option>
+                  <option value="Guardian">Guardian</option>
+                  <option value="Relative">Other Relative</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+                  Full Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={rel1Name}
+                  onChange={(e) => setRel1Name(e.target.value)}
+                  placeholder="e.g. Ramesh Kumar"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+                Relative 1 Phone Number <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  required
+                  value={rel1Phone}
+                  onChange={(e) => setRel1Phone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-mono font-bold outline-none focus:border-amber-500"
+                />
+                <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+              </div>
+            </div>
+          </div>
+
+          {/* Relative 2 Section */}
+          <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 space-y-3">
+            <div className="font-bold text-amber-900 dark:text-amber-300 text-xs flex items-center gap-2">
+              <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Relative 2 Details</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+                  Relationship <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={rel2Relation}
+                  onChange={(e) => setRel2Relation(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium outline-none focus:border-amber-500"
+                >
+                  <option value="Mother">Mother</option>
+                  <option value="Father">Father</option>
+                  <option value="Spouse">Spouse</option>
+                  <option value="Brother">Brother</option>
+                  <option value="Sister">Sister</option>
+                  <option value="Guardian">Guardian</option>
+                  <option value="Relative">Other Relative</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+                  Full Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={rel2Name}
+                  onChange={(e) => setRel2Name(e.target.value)}
+                  placeholder="e.g. Sunita Kumar"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-slate-700 dark:text-slate-300 font-semibold block mb-1">
+                Relative 2 Phone Number <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  required
+                  value={rel2Phone}
+                  onChange={(e) => setRel2Phone(e.target.value)}
+                  placeholder="+91 98765 12340"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-mono font-bold outline-none focus:border-amber-500"
+                />
+                <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setIsRelativeModalOpen(false)}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={savingRelatives || !rel1Phone.trim() || !rel2Phone.trim()}
+              className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              {savingRelatives ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Save Relative Numbers</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </BottomSheet>
     </div>
   );
 }

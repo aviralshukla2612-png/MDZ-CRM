@@ -34,6 +34,35 @@ import {
   Loader2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import {
+  BrandVoiceGuideForm,
+  BrandVoiceGuideData,
+  DEFAULT_BRAND_VOICE_GUIDE,
+} from "@/components/brand/BrandVoiceGuideForm";
+import {
+  CampaignPlannerForm,
+  DEFAULT_CAMPAIGN_PLANNER,
+} from "@/components/campaign/CampaignPlannerForm";
+import {
+  ClientScopeDocumentForm,
+  DEFAULT_SCOPE_DOCUMENT,
+} from "@/components/scope/ClientScopeDocumentForm";
+import {
+  ClientOnboardingForm,
+  DEFAULT_ONBOARDING_DATA,
+} from "@/components/onboarding/ClientOnboardingForm";
+import {
+  CompetitorAnalysisForm,
+  DEFAULT_COMPETITOR_ANALYSIS,
+} from "@/components/competitor/CompetitorAnalysisForm";
+import {
+  ContentPillarsForm,
+  DEFAULT_CONTENT_PILLARS,
+} from "@/components/pillars/ContentPillarsForm";
+import {
+  MeetingNotesForm,
+  DEFAULT_MEETING_NOTES,
+} from "@/components/meeting/MeetingNotesForm";
 
 // Step 2 Industries
 const INDUSTRIES = [
@@ -221,6 +250,13 @@ export default function PublicInquiryPage() {
     googleDriveLink: "",
     preferredLanguage: "English & Hinglish",
     additionalDetails: "",
+    brandVoiceGuide: DEFAULT_BRAND_VOICE_GUIDE,
+    campaignPlanner: DEFAULT_CAMPAIGN_PLANNER,
+    scopeDocument: DEFAULT_SCOPE_DOCUMENT,
+    onboardingForm: DEFAULT_ONBOARDING_DATA,
+    competitorAnalysis: DEFAULT_COMPETITOR_ANALYSIS,
+    contentPillars: DEFAULT_CONTENT_PILLARS,
+    meetingNotes: DEFAULT_MEETING_NOTES,
     // Step 7
     confirmed: false,
     website_hp: "", // honeypot
@@ -561,6 +597,13 @@ export default function PublicInquiryPage() {
                     googleDriveLink: "",
                     preferredLanguage: "English & Hinglish",
                     additionalDetails: "",
+                    brandVoiceGuide: DEFAULT_BRAND_VOICE_GUIDE,
+                    campaignPlanner: DEFAULT_CAMPAIGN_PLANNER,
+                    scopeDocument: DEFAULT_SCOPE_DOCUMENT,
+                    onboardingForm: DEFAULT_ONBOARDING_DATA,
+                    competitorAnalysis: DEFAULT_COMPETITOR_ANALYSIS,
+                    contentPillars: DEFAULT_CONTENT_PILLARS,
+                    meetingNotes: DEFAULT_MEETING_NOTES,
                     confirmed: false,
                     website_hp: "",
                   });
@@ -1296,6 +1339,87 @@ export default function PublicInquiryPage() {
                           ))}
                         </div>
                       )}
+                    </div>
+
+                    {/* Brand Voice & Tone Guide (21-Section Guide) */}
+                    <div className="sm:col-span-2 pt-6 mt-2 border-t border-slate-200 dark:border-slate-800">
+                      <BrandVoiceGuideForm
+                        value={formData.brandVoiceGuide}
+                        onChange={(guide) => setFormData((prev) => ({ ...prev, brandVoiceGuide: guide }))}
+                      />
+                    </div>
+
+                    {/* Campaign Planner (18-Section Guide) */}
+                    <div className="sm:col-span-2 pt-4">
+                      <CampaignPlannerForm
+                        value={formData.campaignPlanner}
+                        onChange={(planner) => setFormData((prev) => ({ ...prev, campaignPlanner: planner }))}
+                      />
+                    </div>
+
+                    {/* Client Expectations & Scope Document (22-Section Guide) */}
+                    <div className="sm:col-span-2 pt-4">
+                      <ClientScopeDocumentForm
+                        value={formData.scopeDocument}
+                        onChange={(scopeDoc) => setFormData((prev) => ({ ...prev, scopeDocument: scopeDoc }))}
+                      />
+                    </div>
+
+                    {/* Client Onboarding Form (13-Section Form) */}
+                    <div className="sm:col-span-2 pt-4">
+                      <ClientOnboardingForm
+                        value={formData.onboardingForm}
+                        onChange={(onboarding) => setFormData((prev) => ({ ...prev, onboardingForm: onboarding }))}
+                      />
+                    </div>
+
+                    {/* Competitor Analysis Sheet (28-Metric Comparative Matrix) */}
+                    <div className="sm:col-span-2 pt-4">
+                      <CompetitorAnalysisForm
+                        value={formData.competitorAnalysis}
+                        onChange={(analysis) =>
+                          setFormData((prev) => {
+                            const compNames = [
+                              analysis.competitor1?.name,
+                              analysis.competitor2?.name,
+                              analysis.competitor3?.name,
+                            ]
+                              .filter(Boolean)
+                              .join(", ");
+                            return {
+                              ...prev,
+                              competitorAnalysis: analysis,
+                              competitors: compNames || prev.competitors,
+                            };
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Content Pillars Sheet (5-Pillar Strategy Matrix) */}
+                    <div className="sm:col-span-2 pt-4">
+                      <ContentPillarsForm
+                        value={formData.contentPillars}
+                        onChange={(pillars) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            contentPillars: pillars,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    {/* Meeting / Call Notes Sheet (15-Section Intake) */}
+                    <div className="sm:col-span-2 pt-4">
+                      <MeetingNotesForm
+                        value={formData.meetingNotes}
+                        onChange={(notes) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            meetingNotes: notes,
+                          }))
+                        }
+                      />
                     </div>
                   </div>
                 </div>

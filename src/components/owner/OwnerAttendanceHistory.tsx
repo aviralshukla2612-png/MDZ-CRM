@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { Clock, Trash2, RefreshCw, FileText } from "lucide-react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { Clock, Trash2, RefreshCw, FileText, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { CalendarDatePicker } from "@/components/ui/CalendarDatePicker";
 
 export function OwnerAttendanceHistory({ inspectedEmployee = "ALL" }: { inspectedEmployee?: string }) {
@@ -10,6 +10,10 @@ export function OwnerAttendanceHistory({ inspectedEmployee = "ALL" }: { inspecte
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     const d = new Date();
@@ -72,6 +76,40 @@ export function OwnerAttendanceHistory({ inspectedEmployee = "ALL" }: { inspecte
       console.error(error);
       alert("Error deleting record");
     }
+  };
+
+  // Reset to page 1 on filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [inspectedEmployee, startDate, endDate]);
+
+  const totalRecords = attendanceRecords.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+
+  // Ensure currentPage stays within valid bounds
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalRecords);
+  const paginatedRecords = useMemo(() => {
+    return attendanceRecords.slice(startIndex, endIndex);
+  }, [attendanceRecords, startIndex, endIndex]);
+
+  const getPaginationRange = (current: number, total: number): (number | string)[] => {
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 3) {
+      return [1, 2, 3, 4, "...", total];
+    }
+    if (current >= total - 2) {
+      return [1, "...", total - 3, total - 2, total - 1, total];
+    }
+    return [1, "...", current - 1, current, current + 1, "...", total];
   };
 
   return (
@@ -142,7 +180,7 @@ export function OwnerAttendanceHistory({ inspectedEmployee = "ALL" }: { inspecte
                 </td>
               </tr>
             ) : (
-              attendanceRecords.map((record) => {
+              paginatedRecords.map((record) => {
                 const formatTime = (isoString: string) => {
                   if (!isoString) return "--";
                   return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -221,6 +259,118 @@ export function OwnerAttendanceHistory({ inspectedEmployee = "ALL" }: { inspecte
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* ── Pagination Bar ────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200/80 dark:border-slate-800/80 text-xs">
+        {/* Left: Summary and Page Size Selector */}
+        <div className="flex flex-wrap items-center gap-3 text-slate-600 dark:text-slate-400">
+          <span>
+            Showing{" "}
+            <strong className="text-slate-900 dark:text-slate-100 font-mono">
+              {totalRecords === 0 ? 0 : startIndex + 1}
+            </strong>{" "}
+            to{" "}
+            <strong className="text-slate-900 dark:text-slate-100 font-mono">
+              {endIndex}
+            </strong>{" "}
+            of{" "}
+            <strong className="text-slate-900 dark:text-slate-100 font-mono">
+              {totalRecords}
+            </strong>{" "}
+            records
+          </span>
+
+          <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
+            <span className="text-[11px]">Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-slate-200 outline-none cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Right: Page Navigation Controls */}
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            {/* First Page */}
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-slate-700 dark:text-slate-300 cursor-pointer"
+              title="First Page"
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
+
+            {/* Prev Page */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-slate-700 dark:text-slate-300 cursor-pointer"
+              title="Previous Page"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Numeric Page Buttons */}
+            <div className="flex items-center gap-1 px-1">
+              {getPaginationRange(currentPage, totalPages).map((p, idx) => {
+                if (p === "...") {
+                  return (
+                    <span key={`dots-${idx}`} className="px-1.5 py-1 text-slate-400 font-mono">
+                      …
+                    </span>
+                  );
+                }
+                const pageNum = Number(p);
+                const isActive = pageNum === currentPage;
+                return (
+                  <button
+                    key={`page-${pageNum}`}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`min-w-[28px] h-7 px-2 rounded-lg font-mono text-xs font-bold transition-all cursor-pointer ${
+                      isActive
+                        ? "bg-indigo-600 text-white shadow-xs"
+                        : "border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Next Page */}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-slate-700 dark:text-slate-300 cursor-pointer"
+              title="Next Page"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            {/* Last Page */}
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-slate-700 dark:text-slate-300 cursor-pointer"
+              title="Last Page"
+            >
+              <ChevronsRight className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

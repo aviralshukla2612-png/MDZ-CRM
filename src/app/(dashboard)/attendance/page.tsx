@@ -335,82 +335,34 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
       return;
     }
 
-    // Client-side device check
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-      showToast("Punch In unavailable: You must punch in from a laptop or desktop computer.", "error");
-      return;
-    }
-
-    if (simulatedDeviceError) {
-      showToast("Punch In unavailable: Morning Punch In must be initiated from your registered office laptop.", "error");
-      return;
-    }
-
-    if (!navigator.geolocation) {
-      showToast("Geolocation is not supported by your browser.", "error");
-      return;
-    }
-
     setIsPunchingIn(true);
-
-    const executePunchIn = async () => {
-      try {
-        const res = await fetch("/mdz-crm/api/attendance/punch-in", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ employeeId: session?.user?.employeeId }),
-        });
-        const data = await res.json();
-        
-        if (!res.ok || !data.success) {
-          if (data.requireUnclosedResolution) {
-            setActiveUnclosedRecord({ id: data.unclosedShiftId, date: data.dateStr });
-            setIsUnclosedModalOpen(true);
-            showToast(data.error || "Please complete yesterday's shift first.", "error");
-            return;
-          }
-          showToast(data.error || "Failed to punch in.", "error");
+    try {
+      const res = await fetch("/mdz-crm/api/attendance/punch-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ employeeId: session?.user?.employeeId }),
+      });
+      const data = await res.json();
+      
+      if (!res.ok || !data.success) {
+        if (data.requireUnclosedResolution) {
+          setActiveUnclosedRecord({ id: data.unclosedShiftId, date: data.dateStr });
+          setIsUnclosedModalOpen(true);
+          showToast(data.error || "Please complete yesterday's shift first.", "error");
           return;
         }
-        
-        punchIn();
-        fetchAttendanceLogs();
-        showToast("✓ Punched In successfully at " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), "success");
-      } catch (e) {
-        showToast("Network error while punching in.", "error");
-      } finally {
-        setIsPunchingIn(false);
+        showToast(data.error || "Failed to punch in.", "error");
+        return;
       }
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        // IMPORTANT: Replace these with your actual office coordinates!
-        const OFFICE_LAT = parseFloat(process.env.NEXT_PUBLIC_OFFICE_LAT || "23.0225"); 
-        const OFFICE_LNG = parseFloat(process.env.NEXT_PUBLIC_OFFICE_LNG || "72.5714"); 
-        
-        const distance = getDistanceInMeters(
-          position.coords.latitude, 
-          position.coords.longitude, 
-          OFFICE_LAT, 
-          OFFICE_LNG
-        );
-
-        if (distance > 50000) { // Increased to 50km to prevent blocking during testing
-          setIsPunchingIn(false);
-          showToast(`Punch In unavailable: You are outside the allowed region.`, "error");
-          return;
-        }
-
-        await executePunchIn();
-      },
-      (error) => {
-        setIsPunchingIn(false);
-        showToast("Location access denied or timed out. Please allow location to punch in.", "error");
-      },
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-    );
+      
+      punchIn();
+      fetchAttendanceLogs();
+      showToast("✓ Punched In successfully at " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }), "success");
+    } catch (e) {
+      showToast("Network error while punching in.", "error");
+    } finally {
+      setIsPunchingIn(false);
+    }
   };
 
   const handleConfirmBreak = async () => {
@@ -526,38 +478,30 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
           <div className="space-y-2">
             <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">Ready to start your day?</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-              Ensure you are connected to the office network or approved VPN. Location services must be enabled.
+              You can punch in from anywhere (office or remote) and from any device (phone, laptop, or desktop).
             </p>
           </div>
 
           <div className="p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-950/60 border border-slate-200/80 dark:border-slate-800/80 max-w-md mx-auto text-left space-y-3 text-xs">
             <div className="font-bold text-slate-900 dark:text-slate-200 mb-1 flex items-center gap-2">
               <Zap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              Punch-In Eligibility Audit
+              Punch-In Flexibility & Access
             </div>
 
             <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/60 pb-2">
               <div className="flex items-center gap-2">
-                <MapPin className={`w-4 h-4 ${simulatedGeofenceError ? "text-rose-500" : "text-emerald-500"}`} />
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Office Geofence</span>
+                <MapPin className="w-4 h-4 text-emerald-500" />
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Location Access</span>
               </div>
-              {simulatedGeofenceError ? (
-                <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400">1.8 km Outside Office</span>
-              ) : (
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Verified (42m)</span>
-              )}
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Anywhere Allowed (Remote & Office)</span>
             </div>
 
             <div className="flex items-center justify-between pt-1">
               <div className="flex items-center gap-2">
-                <Laptop className={`w-4 h-4 ${simulatedDeviceError ? "text-rose-500" : "text-emerald-500"}`} />
-                <span className="font-semibold text-slate-700 dark:text-slate-300">Registered Office Laptop</span>
+                <Laptop className="w-4 h-4 text-emerald-500" />
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Device Compatibility</span>
               </div>
-              {simulatedDeviceError ? (
-                <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400">Unrecognized Device</span>
-              ) : (
-                <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Verified Device</span>
-              )}
+              <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">✓ Any Device Allowed (Mobile, PC, Laptop)</span>
             </div>
           </div>
 

@@ -30,6 +30,7 @@ import {
   Layers,
   Crown,
   User,
+  Users,
 } from "lucide-react";
 import { useBranding, THEME_PALETTES } from "@/components/providers/BrandingProvider";
 import { SubAdminPermissionsManager } from "@/components/admin/SubAdminPermissionsManager";
@@ -517,6 +518,66 @@ export default function SettingsPage() {
     }
   };
 
+  // ── Emergency Relative Numbers ──
+  const [relativesForm, setRelativesForm] = useState({
+    relative1Name: "",
+    relative1Relation: "Father",
+    relative1Phone: "",
+    relative2Name: "",
+    relative2Relation: "Mother",
+    relative2Phone: "",
+  });
+  const [relativesStatus, setRelativesStatus] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [relativesLoading, setRelativesLoading] = useState(false);
+
+  useEffect(() => {
+    fetch("/mdz-crm/api/employees/me")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success && json.data) {
+          setRelativesForm({
+            relative1Name: json.data.relative1Name || "",
+            relative1Relation: json.data.relative1Relation || "Father",
+            relative1Phone: json.data.relative1Phone || "",
+            relative2Name: json.data.relative2Name || "",
+            relative2Relation: json.data.relative2Relation || "Mother",
+            relative2Phone: json.data.relative2Phone || "",
+          });
+        }
+      })
+      .catch(() => null);
+  }, []);
+
+  const handleRelativesChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRelativesStatus(null);
+    if (!relativesForm.relative1Phone.trim() || !relativesForm.relative2Phone.trim()) {
+      setRelativesStatus({ type: "error", msg: "Both Relative 1 and Relative 2 phone numbers are compulsory." });
+      return;
+    }
+    setRelativesLoading(true);
+
+    try {
+      const res = await fetch("/mdz-crm/api/employees/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(relativesForm),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setRelativesStatus({ type: "success", msg: "Emergency relative contacts updated successfully!" });
+        showToast("👨‍👩‍👧 Emergency relative contacts updated!", "success");
+      } else {
+        setRelativesStatus({ type: "error", msg: data.error || "Failed to update relative contacts." });
+      }
+    } catch {
+      setRelativesStatus({ type: "error", msg: "Network error. Please try again." });
+    } finally {
+      setRelativesLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 pb-16">
       <PageHeader
@@ -546,7 +607,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-5 gap-5">
           {/* ── Change Full Name Card ─────────────────────────────────────── */}
           <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-6 shadow-xl dark:shadow-2xl flex flex-col justify-between">
             <div>
@@ -796,6 +857,148 @@ export default function SettingsPage() {
 
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center leading-relaxed">
                   Your session remains active after a password change.
+                </p>
+              </form>
+            </div>
+          </div>
+
+          {/* ── Emergency Relative Numbers Card ─────────────────────────────── */}
+          <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-6 shadow-xl dark:shadow-2xl flex flex-col justify-between">
+            <div>
+              {/* Card header */}
+              <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/80 pb-4 mb-5">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-amber-500" />
+                  Emergency Relatives
+                </h3>
+                {relativesForm.relative1Phone && relativesForm.relative2Phone ? (
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                    VERIFIED
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
+                    COMPULSORY
+                  </span>
+                )}
+              </div>
+
+              <form onSubmit={handleRelativesChange} className="space-y-4">
+                {/* Relative 1 */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/60 dark:border-amber-900/30 space-y-2">
+                  <div className="text-[11px] font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>1. First Relative</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Relation</label>
+                      <select
+                        value={relativesForm.relative1Relation}
+                        onChange={(e) => setRelativesForm((f) => ({ ...f, relative1Relation: e.target.value }))}
+                        className="w-full px-2.5 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium outline-none focus:border-amber-500"
+                      >
+                        <option value="Father">Father</option>
+                        <option value="Mother">Mother</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Brother">Brother</option>
+                        <option value="Sister">Sister</option>
+                        <option value="Guardian">Guardian</option>
+                        <option value="Relative">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={relativesForm.relative1Name}
+                        onChange={(e) => setRelativesForm((f) => ({ ...f, relative1Name: e.target.value }))}
+                        placeholder="e.g. Ramesh"
+                        className="w-full px-2.5 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Phone Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={relativesForm.relative1Phone}
+                      onChange={(e) => setRelativesForm((f) => ({ ...f, relative1Phone: e.target.value }))}
+                      placeholder="+91 98765 43210"
+                      className="w-full px-2.5 py-2 text-xs font-mono font-bold rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Relative 2 */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-950/10 border border-amber-200/60 dark:border-amber-900/30 space-y-2">
+                  <div className="text-[11px] font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    <span>2. Second Relative</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Relation</label>
+                      <select
+                        value={relativesForm.relative2Relation}
+                        onChange={(e) => setRelativesForm((f) => ({ ...f, relative2Relation: e.target.value }))}
+                        className="w-full px-2.5 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 font-medium outline-none focus:border-amber-500"
+                      >
+                        <option value="Mother">Mother</option>
+                        <option value="Father">Father</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Brother">Brother</option>
+                        <option value="Sister">Sister</option>
+                        <option value="Guardian">Guardian</option>
+                        <option value="Relative">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={relativesForm.relative2Name}
+                        onChange={(e) => setRelativesForm((f) => ({ ...f, relative2Name: e.target.value }))}
+                        placeholder="e.g. Sunita"
+                        className="w-full px-2.5 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Phone Number *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={relativesForm.relative2Phone}
+                      onChange={(e) => setRelativesForm((f) => ({ ...f, relative2Phone: e.target.value }))}
+                      placeholder="+91 98765 12340"
+                      className="w-full px-2.5 py-2 text-xs font-mono font-bold rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {relativesStatus && <StatusBanner type={relativesStatus.type} message={relativesStatus.msg} />}
+
+                <button
+                  type="submit"
+                  disabled={relativesLoading || !relativesForm.relative1Phone.trim() || !relativesForm.relative2Phone.trim()}
+                  className="w-full py-3 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-[0.98] text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-1 cursor-pointer"
+                >
+                  {relativesLoading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Saving Relatives…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Users className="w-4 h-4" />
+                      <span>Save Emergency Relatives</span>
+                    </>
+                  )}
+                </button>
+
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 text-center leading-relaxed">
+                  Both numbers are recorded for emergency contact in your employee file.
                 </p>
               </form>
             </div>
