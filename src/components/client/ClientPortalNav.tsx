@@ -169,7 +169,8 @@ export function ClientPortalNav({ currentTab, className = "" }: Props) {
         localStorage.removeItem("mdz_active_client_id");
         url.searchParams.delete("clientId");
       }
-      router.push(url.pathname + url.search);
+      const cleanPath = url.pathname.replace(/^\/mdz-crm/, "") || "/";
+      router.push(cleanPath + url.search);
     }
   };
 

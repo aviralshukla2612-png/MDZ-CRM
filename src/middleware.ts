@@ -4,6 +4,14 @@ import { getToken } from "next-auth/jwt";
 export async function middleware(req: any) {
   const { pathname } = req.nextUrl;
   console.log("MIDDLEWARE HIT:", pathname);
+
+  // If the pathname accidentally has a duplicate /mdz-crm prefix (e.g. /mdz-crm/mdz-crm/...)
+  if (pathname.startsWith("/mdz-crm")) {
+    const cleaned = pathname.replace(/^\/mdz-crm/, "") || "/";
+    const url = req.nextUrl.clone();
+    url.pathname = cleaned;
+    return NextResponse.redirect(url);
+  }
   
   // Exclude static files, API routes, login, client registration, inquiry, terms, and portal
   const isPublicRoute = 
