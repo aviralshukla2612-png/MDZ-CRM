@@ -151,7 +151,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
           completionPct: finalPct,
           missingLinks: finalMissingLinks,
           unassigned: finalUnassigned,
-          crmOverride: isOverridden || (existingRow?.target ?? 0) > 0,
+          crmOverride: Boolean(existingRow?.crmOverride),
           lastModified: existingRow?.lastModified || new Date().toISOString(),
         });
       }
@@ -232,7 +232,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
               originalCp: cols[13] || existingCommitment?.originalCp || "",
               review: cols[14] || existingCommitment?.review || "As noted",
               notes: cols[15] || existingCommitment?.notes || (clientName.toUpperCase() === "KM" ? "KM / KMUA Academy" : ""),
-              crmOverride: isCommitmentOverridden || (existingCommitment?.total ?? 0) > 0,
+              crmOverride: Boolean(existingCommitment?.crmOverride),
               lastModified: existingCommitment?.lastModified || new Date().toISOString(),
             });
           }
