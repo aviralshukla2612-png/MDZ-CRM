@@ -100,9 +100,9 @@ export function MillionaireDeliverySpreadsheet({
   };
 
   // Fetch live dynamic data from backend API
-  const fetchLiveDeliveryData = async (targetId?: string, forceSync = false) => {
+  const fetchLiveDeliveryData = async (targetId?: string, forceSync = false, isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const effectiveId = targetId !== undefined ? targetId : (activeClientId || clientId);
       const params = new URLSearchParams();
       if (effectiveId && effectiveId !== "" && effectiveId !== "ALL") {
@@ -123,9 +123,11 @@ export function MillionaireDeliverySpreadsheet({
       }
     } catch (e) {
       console.error("Failed to load delivery control", e);
-      showToast("Error loading live delivery data", "error");
+      if (!isSilent) {
+        showToast("Error loading live delivery data", "error");
+      }
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -245,14 +247,6 @@ export function MillionaireDeliverySpreadsheet({
     }
   };
 
-  useEffect(() => {
-    // Background polling every 25 seconds for real-time live sync with Google Sheet
-    const interval = setInterval(() => {
-      fetchLiveDeliveryData(undefined, false);
-    }, 25000);
-    return () => clearInterval(interval);
-  }, [activeClientId]);
-
   // Track unsaved changes in refs so background polling doesn't overwrite active typing/edits
   const hasUnsavedClientChangesRef = useRef(false);
   hasUnsavedClientChangesRef.current = hasUnsavedClientChanges;
@@ -275,6 +269,16 @@ export function MillionaireDeliverySpreadsheet({
 
   const hasUnsavedTargetChangesRef = useRef(false);
   hasUnsavedTargetChangesRef.current = hasUnsavedTargetChanges;
+
+  // Automatic silent polling every 15s: pulls latest edits from Google Sheet without disrupting user typing
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!hasUnsavedClientChangesRef.current && !hasUnsavedTargetChangesRef.current) {
+        fetchLiveDeliveryData(undefined, true, true);
+      }
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [activeClientId]);
 
   useEffect(() => {
     if (data && Array.isArray(data.clientTargetCommitments)) {
