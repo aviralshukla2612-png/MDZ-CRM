@@ -104,15 +104,16 @@
       "id": "cl-km",
       "clientCode": "KM",
       "clientName": "KM",
-      "target": 0,
-      "done": 0,
+      "target": 25,
+      "done": 5,
       "pending": 0,
       "inProgress": 0,
       "onHold": 0,
       "overdue": 0,
       "completionPct": 0,
       "missingLinks": 0,
-      "unassigned": 0
+      "unassigned": 0,
+      "crmOverride": true
     },
     {
       "id": "cl-se",

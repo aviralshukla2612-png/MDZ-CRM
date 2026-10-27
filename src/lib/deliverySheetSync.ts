@@ -1,6 +1,8 @@
 import {
   getDeliveryMasterData,
   saveDeliveryMasterData,
+  loadDeliveryMasterDataFromDb,
+  saveDeliveryMasterDataToDb,
   ClientDeliveryStatus,
   ClientTargetCommitment,
   DEFAULT_CLIENT_TARGET_COMMITMENTS,
@@ -58,7 +60,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
   error?: string;
 }> {
   try {
-    const master = getDeliveryMasterData();
+    const master = await loadDeliveryMasterDataFromDb();
     const sheetUrl = master.driveUrl || DEFAULT_GOOGLE_SHEET_URL;
     const sheetId = extractSheetId(sheetUrl);
 
@@ -114,37 +116,39 @@ export async function pullLatestFromGoogleSheet(): Promise<{
         const missingLinks = parseInt(parts[8]) || 0;
         const unassigned = parseInt(parts[9]) || 0;
 
+        const isMatchCode = (c1: string, c2: string) => {
+          const a = c1.trim().toUpperCase();
+          const b = c2.trim().toUpperCase();
+          return a === b || (a === "KM" && b === "KMUA") || (a === "KMUA" && b === "KM");
+        };
+
         const existingRow = master.clientStatusList.find(
-          (r) => r.clientCode.toUpperCase() === clientCodeRaw
+          (r) => isMatchCode(r.clientCode, clientCodeRaw)
         );
 
-        // If row was explicitly customized/entered in CRM, or existing CRM has non-zero values while Sheet is 0/empty,
-        // preserve the CRM values so that user inputs in CRM are never reverted back to zero.
-        const hasExistingCrmData = Boolean(
-          existingRow && (
-            existingRow.crmOverride ||
-            (existingRow.target > 0 && target === 0) ||
-            (existingRow.done > 0 && done === 0) ||
-            (existingRow.inProgress > 0 && inProgress === 0) ||
-            (existingRow.onHold > 0 && onHold === 0) ||
-            (existingRow.overdue > 0 && overdue === 0)
-          )
-        );
+        // If row was explicitly customized/entered in CRM, or existing CRM has non-zero values,
+        // preserve the CRM values so that user inputs in CRM are NEVER reverted back to zero.
+        const isOverridden = Boolean(existingRow?.crmOverride);
+        const finalTarget = isOverridden
+          ? (existingRow?.target ?? target)
+          : (target > 0 ? target : (existingRow?.target ?? 0));
 
-        const finalTarget = hasExistingCrmData && target === 0 && (existingRow?.target || 0) > 0 ? (existingRow?.target || 0) : target;
-        const finalDone = hasExistingCrmData && done === 0 && (existingRow?.done || 0) > 0 ? (existingRow?.done || 0) : done;
+        const finalDone = isOverridden
+          ? (existingRow?.done ?? done)
+          : (done > 0 ? done : (existingRow?.done ?? 0));
+
+        const finalInProgress = inProgress > 0 ? inProgress : (existingRow?.inProgress ?? 0);
+        const finalOnHold = onHold > 0 ? onHold : (existingRow?.onHold ?? 0);
+        const finalOverdue = overdue > 0 ? overdue : (existingRow?.overdue ?? 0);
+        const finalMissingLinks = missingLinks > 0 ? missingLinks : (existingRow?.missingLinks ?? 0);
+        const finalUnassigned = unassigned > 0 ? unassigned : (existingRow?.unassigned ?? 0);
         const finalPending = Math.max(0, finalTarget - finalDone);
-        const finalInProgress = hasExistingCrmData && inProgress === 0 && (existingRow?.inProgress || 0) > 0 ? (existingRow?.inProgress || 0) : inProgress;
-        const finalOnHold = hasExistingCrmData && onHold === 0 && (existingRow?.onHold || 0) > 0 ? (existingRow?.onHold || 0) : onHold;
-        const finalOverdue = hasExistingCrmData && overdue === 0 && (existingRow?.overdue || 0) > 0 ? (existingRow?.overdue || 0) : overdue;
-        const finalMissingLinks = hasExistingCrmData && missingLinks === 0 && (existingRow?.missingLinks || 0) > 0 ? (existingRow?.missingLinks || 0) : missingLinks;
-        const finalUnassigned = hasExistingCrmData && unassigned === 0 && (existingRow?.unassigned || 0) > 0 ? (existingRow?.unassigned || 0) : unassigned;
         const finalPct = finalTarget > 0 ? Math.round((finalDone / finalTarget) * 100) : 0;
 
         newClientRows.push({
           id: existingRow?.id || `cl-${clientCodeRaw.toLowerCase()}`,
           clientCode: clientCodeRaw,
-          clientName: existingRow?.clientName || clientCodeRaw,
+          clientName: existingRow?.clientName || (clientCodeRaw === "KM" ? "KM / KMUA Academy" : clientCodeRaw),
           target: finalTarget,
           done: finalDone,
           pending: finalPending,
@@ -154,8 +158,8 @@ export async function pullLatestFromGoogleSheet(): Promise<{
           completionPct: finalPct,
           missingLinks: finalMissingLinks,
           unassigned: finalUnassigned,
-          crmOverride: existingRow?.crmOverride || hasExistingCrmData || false,
-          lastModified: existingRow?.lastModified,
+          crmOverride: isOverridden || (existingRow?.target ?? 0) > 0,
+          lastModified: existingRow?.lastModified || new Date().toISOString(),
         });
       }
     }
@@ -195,23 +199,24 @@ export async function pullLatestFromGoogleSheet(): Promise<{
             const hasCheck = (val?: string) =>
               Boolean(val && val.trim().length > 0 && !val.includes("0") && val !== "-");
 
+            const isMatchClient = (c1: string, c2: string) => {
+              const a = c1.trim().toUpperCase();
+              const b = c2.trim().toUpperCase();
+              return a === b || (a === "KM" && b === "KMUA") || (a === "KMUA" && b === "KM");
+            };
+
             const commitmentId = `ct-${clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
             const existingCommitment = (master.clientTargetCommitments || []).find(
-              (c) => c.id === commitmentId || c.client?.toLowerCase() === clientName.toLowerCase()
+              (c) => c.id === commitmentId || isMatchClient(c.client || "", clientName)
             );
 
-            const hasExistingCommitmentData = Boolean(
-              existingCommitment && (
-                existingCommitment.crmOverride ||
-                (existingCommitment.total > 0 && total === 0)
-              )
-            );
+            const isCommitmentOverridden = Boolean(existingCommitment?.crmOverride);
 
-            const finalReels = hasExistingCommitmentData && reels === 0 && (existingCommitment?.reels || 0) > 0 ? (existingCommitment?.reels ?? reels) : reels;
-            const finalCarousels = hasExistingCommitmentData && carousels === 0 && (existingCommitment?.carousels || 0) > 0 ? (existingCommitment?.carousels ?? carousels) : carousels;
-            const finalPosts = hasExistingCommitmentData && posts === 0 && (existingCommitment?.posts || 0) > 0 ? (existingCommitment?.posts ?? posts) : posts;
-            const finalCp = hasExistingCommitmentData && cpUnsplit === 0 && (existingCommitment?.cpUnsplit || 0) > 0 ? (existingCommitment?.cpUnsplit ?? cpUnsplit) : cpUnsplit;
-            const finalStories = hasExistingCommitmentData && stories === 0 && (existingCommitment?.stories || 0) > 0 ? (existingCommitment?.stories ?? stories) : stories;
+            const finalReels = isCommitmentOverridden ? (existingCommitment?.reels ?? reels) : (reels > 0 ? reels : (existingCommitment?.reels ?? 0));
+            const finalCarousels = isCommitmentOverridden ? (existingCommitment?.carousels ?? carousels) : (carousels > 0 ? carousels : (existingCommitment?.carousels ?? 0));
+            const finalPosts = isCommitmentOverridden ? (existingCommitment?.posts ?? posts) : (posts > 0 ? posts : (existingCommitment?.posts ?? 0));
+            const finalCp = isCommitmentOverridden ? (existingCommitment?.cpUnsplit ?? cpUnsplit) : (cpUnsplit > 0 ? cpUnsplit : (existingCommitment?.cpUnsplit ?? 0));
+            const finalStories = isCommitmentOverridden ? (existingCommitment?.stories ?? stories) : (stories > 0 ? stories : (existingCommitment?.stories ?? 0));
             const finalTotal = finalReels + finalCarousels + finalPosts + finalCp + finalStories;
 
             updatedCommitments.push({
@@ -223,7 +228,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
               cpUnsplit: finalCp,
               stories: finalStories,
               total: finalTotal > 0 ? finalTotal : total,
-              platforms: hasExistingCommitmentData && existingCommitment?.platforms ? existingCommitment.platforms : {
+              platforms: (isCommitmentOverridden && existingCommitment?.platforms) ? existingCommitment.platforms : {
                 ig: hasCheck(cols[7]),
                 fb: hasCheck(cols[8]),
                 li: hasCheck(cols[9]),
@@ -233,9 +238,9 @@ export async function pullLatestFromGoogleSheet(): Promise<{
               },
               originalCp: cols[13] || existingCommitment?.originalCp || "",
               review: cols[14] || existingCommitment?.review || "As noted",
-              notes: cols[15] || existingCommitment?.notes || "",
-              crmOverride: existingCommitment?.crmOverride || hasExistingCommitmentData || false,
-              lastModified: existingCommitment?.lastModified,
+              notes: cols[15] || existingCommitment?.notes || (clientName.toUpperCase() === "KM" ? "KM / KMUA Academy" : ""),
+              crmOverride: isCommitmentOverridden || (existingCommitment?.total ?? 0) > 0,
+              lastModified: existingCommitment?.lastModified || new Date().toISOString(),
             });
           }
         }
@@ -381,7 +386,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
       updatePayload.extraWork = extraWorkList;
     }
 
-    saveDeliveryMasterData(updatePayload);
+    await saveDeliveryMasterDataToDb(updatePayload);
 
     return {
       success: true,
@@ -591,7 +596,10 @@ function doPost(e) {
 
       for (var i = 0; i < data.length; i++) {
         var cellVal = String(data[i][0] || "").trim().toUpperCase();
-        if (cellVal === clientCode) {
+        var isMatch = cellVal === clientCode ||
+                     (cellVal === "KM" && clientCode === "KMUA") ||
+                     (cellVal === "KMUA" && clientCode === "KM");
+        if (isMatch) {
           var rowNum = i + 1;
           if (!isNaN(target)) sheet.getRange(rowNum, 2).setValue(target); // Col B: Target
           if (!isNaN(done)) sheet.getRange(rowNum, 3).setValue(done);     // Col C: Done
@@ -617,7 +625,11 @@ function doPost(e) {
       rows.forEach(function(r) {
         var code = (r.clientCode || "").toUpperCase().trim();
         for (var i = 0; i < data.length; i++) {
-          if (String(data[i][0] || "").trim().toUpperCase() === code) {
+          var cellVal = String(data[i][0] || "").trim().toUpperCase();
+          var isMatch = cellVal === code ||
+                       (cellVal === "KM" && code === "KMUA") ||
+                       (cellVal === "KMUA" && code === "KM");
+          if (isMatch) {
             var rowNum = i + 1;
             if (r.target !== undefined) sheet.getRange(rowNum, 2).setValue(Number(r.target));
             if (r.done !== undefined) sheet.getRange(rowNum, 3).setValue(Number(r.done));
@@ -641,7 +653,11 @@ function doPost(e) {
         var clientName = (item.client || "").toUpperCase().trim();
         var data = sheet.getDataRange().getValues();
         for (var i = 0; i < data.length; i++) {
-          if (String(data[i][0] || "").trim().toUpperCase() === clientName) {
+          var cellVal = String(data[i][0] || "").trim().toUpperCase();
+          var isMatch = cellVal === clientName ||
+                       (cellVal === "KM" && clientName === "KMUA") ||
+                       (cellVal === "KMUA" && clientName === "KM");
+          if (isMatch) {
             var rowNum = i + 1;
             if (item.reels !== undefined) sheet.getRange(rowNum, 2).setValue(Number(item.reels));
             if (item.carousels !== undefined) sheet.getRange(rowNum, 3).setValue(Number(item.carousels));
@@ -651,6 +667,34 @@ function doPost(e) {
             break;
           }
         }
+      }
+      return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 3b. BULK UPDATE COMMITMENTS IN CLIENT TARGETS TAB
+    if (action === "UPDATE_ALL_TARGET_COMMITMENTS") {
+      var sheet = ss.getSheetByName("Client Targets");
+      if (sheet) {
+        var commitments = contents.commitments || [];
+        var data = sheet.getDataRange().getValues();
+        commitments.forEach(function(item) {
+          var clientName = (item.client || "").toUpperCase().trim();
+          for (var i = 0; i < data.length; i++) {
+            var cellVal = String(data[i][0] || "").trim().toUpperCase();
+            var isMatch = cellVal === clientName ||
+                         (cellVal === "KM" && clientName === "KMUA") ||
+                         (cellVal === "KMUA" && clientName === "KM");
+            if (isMatch) {
+              var rowNum = i + 1;
+              if (item.reels !== undefined) sheet.getRange(rowNum, 2).setValue(Number(item.reels));
+              if (item.carousels !== undefined) sheet.getRange(rowNum, 3).setValue(Number(item.carousels));
+              if (item.posts !== undefined) sheet.getRange(rowNum, 4).setValue(Number(item.posts));
+              if (item.cpUnsplit !== undefined) sheet.getRange(rowNum, 5).setValue(Number(item.cpUnsplit));
+              if (item.stories !== undefined) sheet.getRange(rowNum, 6).setValue(Number(item.stories));
+              break;
+            }
+          }
+        });
       }
       return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(ContentService.MimeType.JSON);
     }

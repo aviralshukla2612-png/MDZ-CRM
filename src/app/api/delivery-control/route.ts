@@ -5,6 +5,8 @@ import { getClientPortalData, saveClientPortalData } from "@/lib/clientPortalSto
 import {
   getDeliveryMasterData,
   saveDeliveryMasterData,
+  loadDeliveryMasterDataFromDb,
+  saveDeliveryMasterDataToDb,
   ClientDeliveryStatus,
   ClientTargetCommitment,
   DEFAULT_CLIENT_TARGET_COMMITMENTS,
@@ -31,17 +33,14 @@ export async function GET(req: Request) {
     const filterClientId = searchParams.get("clientId");
     const forceSync = searchParams.get("sync") === "true" || searchParams.get("refresh") === "true";
 
-    // Auto-sync from Google Sheets on page load if older than 5 minutes or explicitly requested
-    const currentMaster = getDeliveryMasterData();
-    const lastSyncTime = currentMaster.lastGoogleSheetSync
-      ? new Date(currentMaster.lastGoogleSheetSync).getTime()
-      : 0;
-    if (forceSync || Date.now() - lastSyncTime > 300000) {
+    // Only pull from Google Sheet if explicitly requested (e.g. 1-click sync button)
+    // NEVER passive auto-pull on page load, which wipes uncommitted numbers
+    if (forceSync) {
       await pullLatestFromGoogleSheet();
     }
 
-    // 1. Load persistent Master Delivery Data (refreshed from Google Sheet)
-    const masterData = getDeliveryMasterData();
+    // 1. Load persistent Master Delivery Data (from SQLite database)
+    const masterData = await loadDeliveryMasterDataFromDb();
     let clientRows: ClientDeliveryStatus[] = [...masterData.clientStatusList];
 
     // 2. Fetch clients from database to ensure any newly added CRM clients are also included
@@ -584,7 +583,7 @@ export async function POST(req: Request) {
         return item;
       });
 
-      saveDeliveryMasterData({
+      await saveDeliveryMasterDataToDb({
         clientStatusList: updatedList,
         lastGoogleSheetSync: new Date().toISOString(),
       });
@@ -632,7 +631,7 @@ export async function POST(req: Request) {
         };
       });
 
-      saveDeliveryMasterData({
+      await saveDeliveryMasterDataToDb({
         clientStatusList: sanitized,
         lastGoogleSheetSync: new Date().toISOString(),
       });
@@ -657,7 +656,7 @@ export async function POST(req: Request) {
           ? { ...c, ...commitment, crmOverride: true, lastModified: new Date().toISOString() }
           : c
       );
-      saveDeliveryMasterData({
+      await saveDeliveryMasterDataToDb({
         clientTargetCommitments: updated,
         lastGoogleSheetSync: new Date().toISOString(),
       });
@@ -680,7 +679,7 @@ export async function POST(req: Request) {
         crmOverride: true,
         lastModified: new Date().toISOString(),
       }));
-      saveDeliveryMasterData({
+      await saveDeliveryMasterDataToDb({
         clientTargetCommitments: marked,
         lastGoogleSheetSync: new Date().toISOString(),
       });
@@ -713,7 +712,7 @@ export async function POST(req: Request) {
       };
 
       const updated = [...master.clientStatusList, newRow];
-      saveDeliveryMasterData({ clientStatusList: updated });
+      await saveDeliveryMasterDataToDb({ clientStatusList: updated });
       return NextResponse.json({ success: true, message: "Client added successfully", data: newRow });
     }
 
@@ -722,22 +721,22 @@ export async function POST(req: Request) {
       const { id } = body;
       const master = getDeliveryMasterData();
       const filtered = master.clientStatusList.filter((item) => item.id !== id);
-      saveDeliveryMasterData({ clientStatusList: filtered });
+      await saveDeliveryMasterDataToDb({ clientStatusList: filtered });
       return NextResponse.json({ success: true, message: "Client row removed successfully" });
     }
 
     // 5. Update Master Drive Folder or Sheet URL
     if (action === "UPDATE_DRIVE_URL") {
       const { driveUrl } = body;
-      saveDeliveryMasterData({ driveUrl: driveUrl || DEFAULT_GOOGLE_SHEET_URL });
+      await saveDeliveryMasterDataToDb({ driveUrl: driveUrl || DEFAULT_GOOGLE_SHEET_URL });
       return NextResponse.json({ success: true, message: "Google Drive URL updated successfully" });
     }
 
     // 5b. Update Google Sheet Two-Way Sync Configuration (Apps Script Web App URL & Sheet URL)
     if (action === "UPDATE_SYNC_CONFIG") {
       const { driveUrl, appsScriptUrl } = body;
-      const current = getDeliveryMasterData();
-      saveDeliveryMasterData({
+      const current = await loadDeliveryMasterDataFromDb();
+      await saveDeliveryMasterDataToDb({
         driveUrl: driveUrl !== undefined ? (driveUrl.trim() || DEFAULT_GOOGLE_SHEET_URL) : current.driveUrl,
         appsScriptUrl: appsScriptUrl !== undefined ? appsScriptUrl.trim() : current.appsScriptUrl,
       });
