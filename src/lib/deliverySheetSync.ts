@@ -604,6 +604,7 @@ function doPost(e) {
           break;
         }
       }
+      recalculateKpiSummary(sheet);
       return ContentService.createTextOutput(JSON.stringify({ success: true, updated: updated, clientCode: clientCode })).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -635,7 +636,41 @@ function doPost(e) {
           }
         }
       });
+      recalculateKpiSummary(sheet);
       return ContentService.createTextOutput(JSON.stringify({ success: true, count: count })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    function recalculateKpiSummary(dashboardSheet) {
+      try {
+        var vals = dashboardSheet.getDataRange().getValues();
+        var p = 0, d = 0, ip = 0, oh = 0, od = 0, ml = 0, ua = 0;
+        var inClients = false;
+        for (var k = 0; k < vals.length; k++) {
+          var c = String(vals[k][0] || "").trim().toUpperCase();
+          if (c === "CLIENT") { inClients = true; continue; }
+          if (inClients) {
+            if (!c || c.indexOf("CONTENT-TYPE") !== -1 || c === "TOTAL") break;
+            p += Number(vals[k][1]) || 0;
+            d += Number(vals[k][2]) || 0;
+            ip += Number(vals[k][4]) || 0;
+            oh += Number(vals[k][5]) || 0;
+            od += Number(vals[k][6]) || 0;
+            ml += Number(vals[k][8]) || 0;
+            ua += Number(vals[k][9]) || 0;
+          }
+        }
+        if (p > 0 || d > 0) {
+          dashboardSheet.getRange(6, 1).setValue(p);
+          dashboardSheet.getRange(6, 2).setValue(d);
+          dashboardSheet.getRange(6, 3).setValue(Math.max(0, p - d));
+          dashboardSheet.getRange(6, 4).setValue(oh);
+          dashboardSheet.getRange(6, 5).setValue(od);
+          dashboardSheet.getRange(6, 6).setValue(ip);
+          dashboardSheet.getRange(6, 8).setValue(p > 0 ? Math.round((d / p) * 100) + "%" : "0%");
+          dashboardSheet.getRange(6, 9).setValue(ml);
+          dashboardSheet.getRange(6, 10).setValue(ua);
+        }
+      } catch (e) {}
     }
 
     // 3. UPDATE COMMITMENT IN CLIENT TARGETS TAB
