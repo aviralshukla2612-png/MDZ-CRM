@@ -14,6 +14,8 @@ export interface ClientDeliveryStatus {
   completionPct: number;
   missingLinks: number;
   unassigned: number;
+  crmOverride?: boolean;
+  lastModified?: string;
 }
 
 export interface ClientTargetCommitment {
@@ -36,6 +38,8 @@ export interface ClientTargetCommitment {
   originalCp: string;
   review: string;
   notes: string;
+  crmOverride?: boolean;
+  lastModified?: string;
 }
 
 export interface DeliveryMasterData {

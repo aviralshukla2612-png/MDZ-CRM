@@ -118,19 +118,44 @@ export async function pullLatestFromGoogleSheet(): Promise<{
           (r) => r.clientCode.toUpperCase() === clientCodeRaw
         );
 
+        // If row was explicitly customized/entered in CRM, or existing CRM has non-zero values while Sheet is 0/empty,
+        // preserve the CRM values so that user inputs in CRM are never reverted back to zero.
+        const hasExistingCrmData = Boolean(
+          existingRow && (
+            existingRow.crmOverride ||
+            (existingRow.target > 0 && target === 0) ||
+            (existingRow.done > 0 && done === 0) ||
+            (existingRow.inProgress > 0 && inProgress === 0) ||
+            (existingRow.onHold > 0 && onHold === 0) ||
+            (existingRow.overdue > 0 && overdue === 0)
+          )
+        );
+
+        const finalTarget = hasExistingCrmData && target === 0 && (existingRow?.target || 0) > 0 ? (existingRow?.target || 0) : target;
+        const finalDone = hasExistingCrmData && done === 0 && (existingRow?.done || 0) > 0 ? (existingRow?.done || 0) : done;
+        const finalPending = Math.max(0, finalTarget - finalDone);
+        const finalInProgress = hasExistingCrmData && inProgress === 0 && (existingRow?.inProgress || 0) > 0 ? (existingRow?.inProgress || 0) : inProgress;
+        const finalOnHold = hasExistingCrmData && onHold === 0 && (existingRow?.onHold || 0) > 0 ? (existingRow?.onHold || 0) : onHold;
+        const finalOverdue = hasExistingCrmData && overdue === 0 && (existingRow?.overdue || 0) > 0 ? (existingRow?.overdue || 0) : overdue;
+        const finalMissingLinks = hasExistingCrmData && missingLinks === 0 && (existingRow?.missingLinks || 0) > 0 ? (existingRow?.missingLinks || 0) : missingLinks;
+        const finalUnassigned = hasExistingCrmData && unassigned === 0 && (existingRow?.unassigned || 0) > 0 ? (existingRow?.unassigned || 0) : unassigned;
+        const finalPct = finalTarget > 0 ? Math.round((finalDone / finalTarget) * 100) : 0;
+
         newClientRows.push({
           id: existingRow?.id || `cl-${clientCodeRaw.toLowerCase()}`,
           clientCode: clientCodeRaw,
           clientName: existingRow?.clientName || clientCodeRaw,
-          target,
-          done,
-          pending,
-          inProgress,
-          onHold,
-          overdue,
-          completionPct,
-          missingLinks,
-          unassigned,
+          target: finalTarget,
+          done: finalDone,
+          pending: finalPending,
+          inProgress: finalInProgress,
+          onHold: finalOnHold,
+          overdue: finalOverdue,
+          completionPct: finalPct,
+          missingLinks: finalMissingLinks,
+          unassigned: finalUnassigned,
+          crmOverride: existingRow?.crmOverride || hasExistingCrmData || false,
+          lastModified: existingRow?.lastModified,
         });
       }
     }
@@ -170,16 +195,35 @@ export async function pullLatestFromGoogleSheet(): Promise<{
             const hasCheck = (val?: string) =>
               Boolean(val && val.trim().length > 0 && !val.includes("0") && val !== "-");
 
+            const commitmentId = `ct-${clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+            const existingCommitment = (master.clientTargetCommitments || []).find(
+              (c) => c.id === commitmentId || c.client?.toLowerCase() === clientName.toLowerCase()
+            );
+
+            const hasExistingCommitmentData = Boolean(
+              existingCommitment && (
+                existingCommitment.crmOverride ||
+                (existingCommitment.total > 0 && total === 0)
+              )
+            );
+
+            const finalReels = hasExistingCommitmentData && reels === 0 && (existingCommitment?.reels || 0) > 0 ? (existingCommitment?.reels ?? reels) : reels;
+            const finalCarousels = hasExistingCommitmentData && carousels === 0 && (existingCommitment?.carousels || 0) > 0 ? (existingCommitment?.carousels ?? carousels) : carousels;
+            const finalPosts = hasExistingCommitmentData && posts === 0 && (existingCommitment?.posts || 0) > 0 ? (existingCommitment?.posts ?? posts) : posts;
+            const finalCp = hasExistingCommitmentData && cpUnsplit === 0 && (existingCommitment?.cpUnsplit || 0) > 0 ? (existingCommitment?.cpUnsplit ?? cpUnsplit) : cpUnsplit;
+            const finalStories = hasExistingCommitmentData && stories === 0 && (existingCommitment?.stories || 0) > 0 ? (existingCommitment?.stories ?? stories) : stories;
+            const finalTotal = finalReels + finalCarousels + finalPosts + finalCp + finalStories;
+
             updatedCommitments.push({
-              id: `ct-${clientName.toLowerCase().replace(/[^a-z0-9]/g, "")}`,
+              id: commitmentId,
               client: clientName,
-              reels,
-              carousels,
-              posts,
-              cpUnsplit,
-              stories,
-              total,
-              platforms: {
+              reels: finalReels,
+              carousels: finalCarousels,
+              posts: finalPosts,
+              cpUnsplit: finalCp,
+              stories: finalStories,
+              total: finalTotal > 0 ? finalTotal : total,
+              platforms: hasExistingCommitmentData && existingCommitment?.platforms ? existingCommitment.platforms : {
                 ig: hasCheck(cols[7]),
                 fb: hasCheck(cols[8]),
                 li: hasCheck(cols[9]),
@@ -187,9 +231,11 @@ export async function pullLatestFromGoogleSheet(): Promise<{
                 whatsapp: hasCheck(cols[11]),
                 youtube: hasCheck(cols[12]),
               },
-              originalCp: cols[13] || "",
-              review: cols[14] || "As noted",
-              notes: cols[15] || "",
+              originalCp: cols[13] || existingCommitment?.originalCp || "",
+              review: cols[14] || existingCommitment?.review || "As noted",
+              notes: cols[15] || existingCommitment?.notes || "",
+              crmOverride: existingCommitment?.crmOverride || hasExistingCommitmentData || false,
+              lastModified: existingCommitment?.lastModified,
             });
           }
         }

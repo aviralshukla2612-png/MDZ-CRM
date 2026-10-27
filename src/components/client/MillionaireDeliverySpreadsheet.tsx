@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Plus,
   Menu,
@@ -253,11 +253,16 @@ export function MillionaireDeliverySpreadsheet({
     return () => clearInterval(interval);
   }, [activeClientId]);
 
-  // Sync clientRows whenever data loads
+  // Track unsaved changes in refs so background polling doesn't overwrite active typing/edits
+  const hasUnsavedClientChangesRef = useRef(false);
+  hasUnsavedClientChangesRef.current = hasUnsavedClientChanges;
+
+  // Sync clientRows whenever data loads, but NOT if user has unsaved edits
   useEffect(() => {
     if (data && Array.isArray(data.clientStatusList)) {
-      setClientRows(data.clientStatusList);
-      setHasUnsavedClientChanges(false);
+      if (!hasUnsavedClientChangesRef.current) {
+        setClientRows(data.clientStatusList);
+      }
     }
   }, [data]);
 
@@ -268,10 +273,14 @@ export function MillionaireDeliverySpreadsheet({
   const [targetSearch, setTargetSearch] = useState("");
   const [editingTargetRowId, setEditingTargetRowId] = useState<string | null>(null);
 
+  const hasUnsavedTargetChangesRef = useRef(false);
+  hasUnsavedTargetChangesRef.current = hasUnsavedTargetChanges;
+
   useEffect(() => {
     if (data && Array.isArray(data.clientTargetCommitments)) {
-      setTargetRows(data.clientTargetCommitments);
-      setHasUnsavedTargetChanges(false);
+      if (!hasUnsavedTargetChangesRef.current) {
+        setTargetRows(data.clientTargetCommitments);
+      }
     }
   }, [data]);
 
@@ -313,9 +322,43 @@ export function MillionaireDeliverySpreadsheet({
     );
   }, [isAdmin, displayedTargetRows, targetRows, data?.clientTargetCommitments]);
 
+  const targetAutoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const saveTargetRowsToServer = async (commitmentsToSave: any[], showNotification: boolean = false) => {
+    try {
+      setSavingTargets(true);
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_ALL_TARGET_COMMITMENTS",
+          commitments: commitmentsToSave,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setHasUnsavedTargetChanges(false);
+        setEditingTargetRowId(null);
+        if (showNotification) {
+          showToast(json.message || "✓ Client target commitments saved and synced to Google Sheet", "success");
+        }
+      } else if (showNotification) {
+        showToast(json.error || "Failed to save client targets", "error");
+      }
+    } catch (e) {
+      console.error(e);
+      if (showNotification) {
+        showToast("Error saving client targets", "error");
+      }
+    } finally {
+      setSavingTargets(false);
+    }
+  };
+
   const handleUpdateTargetField = (rowId: string, field: string, value: any) => {
-    setTargetRows((prev) =>
-      prev.map((r) => {
+    let nextTargets: any[] = [];
+    setTargetRows((prev) => {
+      nextTargets = prev.map((r) => {
         if (r.id === rowId) {
           const updated = { ...r, [field]: value };
           if (["reels", "carousels", "posts", "cpUnsplit", "stories"].includes(field)) {
@@ -329,50 +372,59 @@ export function MillionaireDeliverySpreadsheet({
           return updated;
         }
         return r;
-      })
-    );
+      });
+      return nextTargets;
+    });
     setHasUnsavedTargetChanges(true);
+
+    if (targetAutoSaveTimerRef.current) {
+      clearTimeout(targetAutoSaveTimerRef.current);
+    }
+    targetAutoSaveTimerRef.current = setTimeout(() => {
+      if (nextTargets.length > 0) {
+        saveTargetRowsToServer(nextTargets, false);
+      }
+    }, 700);
+  };
+
+  const handleTargetCellBlur = () => {
+    if (targetAutoSaveTimerRef.current) {
+      clearTimeout(targetAutoSaveTimerRef.current);
+    }
+    if (targetRows.length > 0) {
+      saveTargetRowsToServer(targetRows, false);
+    }
   };
 
   const handleToggleTargetPlatform = (rowId: string, platformKey: string) => {
-    setTargetRows((prev) =>
-      prev.map((r) => {
+    let nextTargets: any[] = [];
+    setTargetRows((prev) => {
+      nextTargets = prev.map((r) => {
         if (r.id === rowId) {
           const platforms = { ...r.platforms, [platformKey]: !r.platforms?.[platformKey] };
           return { ...r, platforms };
         }
         return r;
-      })
-    );
+      });
+      return nextTargets;
+    });
     setHasUnsavedTargetChanges(true);
+
+    if (targetAutoSaveTimerRef.current) {
+      clearTimeout(targetAutoSaveTimerRef.current);
+    }
+    targetAutoSaveTimerRef.current = setTimeout(() => {
+      if (nextTargets.length > 0) {
+        saveTargetRowsToServer(nextTargets, false);
+      }
+    }, 700);
   };
 
   const handleSaveAllTargetChanges = async () => {
-    try {
-      setSavingTargets(true);
-      const res = await fetch("/mdz-crm/api/delivery-control", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_ALL_TARGET_COMMITMENTS",
-          commitments: targetRows,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        showToast(json.message || "✓ Client target commitments saved and synced to Google Sheet", "success");
-        setHasUnsavedTargetChanges(false);
-        setEditingTargetRowId(null);
-        await fetchLiveDeliveryData();
-      } else {
-        showToast(json.error || "Failed to save client targets", "error");
-      }
-    } catch (e) {
-      console.error(e);
-      showToast("Error saving client targets", "error");
-    } finally {
-      setSavingTargets(false);
+    if (targetAutoSaveTimerRef.current) {
+      clearTimeout(targetAutoSaveTimerRef.current);
     }
+    await saveTargetRowsToServer(targetRows, true);
   };
 
   // Filtered rows to display on client dashboard table
@@ -600,10 +652,46 @@ export function MillionaireDeliverySpreadsheet({
     };
   }, [isAdmin, displayedClientRows, clientRows, activeClientId, data]);
 
+  const clientAutoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const saveClientRowsToServer = async (rowsToSave: any[], showNotification: boolean = false) => {
+    try {
+      setSavingClients(true);
+      const res = await fetch("/mdz-crm/api/delivery-control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "UPDATE_ALL_CLIENT_ROWS",
+          rows: rowsToSave,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setHasUnsavedClientChanges(false);
+        if (showNotification) {
+          showToast(json.message || "✓ All client delivery targets & status saved and synced to Google Sheet", "success");
+        }
+      } else if (showNotification) {
+        showToast(json.error || "Failed to save client targets", "error");
+      }
+    } catch (e) {
+      console.error("Auto-save client error:", e);
+      if (showNotification) {
+        showToast("Network error saving client status", "error");
+      }
+    } finally {
+      setSavingClients(false);
+    }
+  };
+
   const handleCellChange = (id: string, field: string, rawVal: any) => {
-    const val = field === "clientCode" || field === "clientName" ? rawVal : Number(rawVal) || 0;
-    setClientRows((prev) =>
-      prev.map((row) => {
+    const val = field === "clientCode" || field === "clientName"
+      ? rawVal
+      : (rawVal === "" ? 0 : Math.max(0, parseInt(rawVal, 10) || 0));
+
+    let updatedRows: any[] = [];
+    setClientRows((prev) => {
+      updatedRows = prev.map((row) => {
         if (row.id === id) {
           const updated = { ...row, [field]: val };
           if (field === "target" || field === "done") {
@@ -615,35 +703,35 @@ export function MillionaireDeliverySpreadsheet({
           return updated;
         }
         return row;
-      })
-    );
+      });
+      return updatedRows;
+    });
     setHasUnsavedClientChanges(true);
+
+    if (clientAutoSaveTimerRef.current) {
+      clearTimeout(clientAutoSaveTimerRef.current);
+    }
+    clientAutoSaveTimerRef.current = setTimeout(() => {
+      if (updatedRows.length > 0) {
+        saveClientRowsToServer(updatedRows, false);
+      }
+    }, 700);
+  };
+
+  const handleCellBlur = () => {
+    if (clientAutoSaveTimerRef.current) {
+      clearTimeout(clientAutoSaveTimerRef.current);
+    }
+    if (clientRows.length > 0) {
+      saveClientRowsToServer(clientRows, false);
+    }
   };
 
   const handleSaveAllClientRows = async () => {
-    try {
-      setSavingClients(true);
-      const res = await fetch("/mdz-crm/api/delivery-control", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "UPDATE_ALL_CLIENT_ROWS",
-          rows: clientRows,
-        }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        showToast(json.message || "✓ All client delivery targets & status saved and synced to Google Sheet", "success");
-        setHasUnsavedClientChanges(false);
-      } else {
-        showToast(json.error || "Failed to save client targets", "error");
-      }
-    } catch (e) {
-      console.error(e);
-      showToast("Network error saving client status", "error");
-    } finally {
-      setSavingClients(false);
+    if (clientAutoSaveTimerRef.current) {
+      clearTimeout(clientAutoSaveTimerRef.current);
     }
+    await saveClientRowsToServer(clientRows, true);
   };
 
   const handleAddClientRow = async () => {
@@ -1097,9 +1185,18 @@ export function MillionaireDeliverySpreadsheet({
 
               {isAdmin && (
                 <div className="flex items-center gap-2">
-                  {hasUnsavedClientChanges && (
+                  {savingClients ? (
+                    <span className="text-[10px] bg-emerald-800 text-emerald-200 font-bold px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                      Saving...
+                    </span>
+                  ) : hasUnsavedClientChanges ? (
                     <span className="text-[10px] bg-amber-300 text-slate-900 font-bold px-2 py-0.5 rounded-full animate-pulse">
                       Unsaved Edits
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-black/25 text-emerald-200 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                      ✓ Auto-saved
                     </span>
                   )}
                   <button
@@ -1112,7 +1209,7 @@ export function MillionaireDeliverySpreadsheet({
                     }`}
                   >
                     <Save className="w-3.5 h-3.5" />
-                    <span>{savingClients ? "Saving..." : "Save Table Changes"}</span>
+                    <span>{savingClients ? "Saving..." : (hasUnsavedClientChanges ? "Save Changes" : "Saved ✓")}</span>
                   </button>
                   <button
                     onClick={() => setShowAddClientModal(true)}
@@ -1212,7 +1309,12 @@ export function MillionaireDeliverySpreadsheet({
                           type="number"
                           min="0"
                           value={row.target}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleCellChange(row.id, "target", e.target.value)}
+                          onBlur={handleCellBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
                           className="w-14 text-center font-bold bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
                         />
                       ) : (
@@ -1225,7 +1327,12 @@ export function MillionaireDeliverySpreadsheet({
                           type="number"
                           min="0"
                           value={row.done}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleCellChange(row.id, "done", e.target.value)}
+                          onBlur={handleCellBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
                           className="w-14 text-center font-bold text-emerald-700 dark:text-emerald-400 bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
                         />
                       ) : (
@@ -1241,7 +1348,12 @@ export function MillionaireDeliverySpreadsheet({
                           type="number"
                           min="0"
                           value={row.inProgress || 0}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleCellChange(row.id, "inProgress", e.target.value)}
+                          onBlur={handleCellBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
                           className="w-14 text-center bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
                         />
                       ) : (
@@ -1254,7 +1366,12 @@ export function MillionaireDeliverySpreadsheet({
                           type="number"
                           min="0"
                           value={row.onHold || 0}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleCellChange(row.id, "onHold", e.target.value)}
+                          onBlur={handleCellBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
                           className="w-14 text-center bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
                         />
                       ) : (
@@ -1267,7 +1384,12 @@ export function MillionaireDeliverySpreadsheet({
                           type="number"
                           min="0"
                           value={row.overdue || 0}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleCellChange(row.id, "overdue", e.target.value)}
+                          onBlur={handleCellBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
                           className="w-14 text-center text-rose-600 dark:text-rose-400 font-bold bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
                         />
                       ) : (
@@ -1283,7 +1405,12 @@ export function MillionaireDeliverySpreadsheet({
                           type="number"
                           min="0"
                           value={row.missingLinks || 0}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleCellChange(row.id, "missingLinks", e.target.value)}
+                          onBlur={handleCellBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
                           className="w-14 text-center text-amber-600 dark:text-amber-400 font-bold bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
                         />
                       ) : (
@@ -1296,7 +1423,12 @@ export function MillionaireDeliverySpreadsheet({
                           type="number"
                           min="0"
                           value={row.unassigned || 0}
+                          onFocus={(e) => e.target.select()}
                           onChange={(e) => handleCellChange(row.id, "unassigned", e.target.value)}
+                          onBlur={handleCellBlur}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                          }}
                           className="w-14 text-center font-bold bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-emerald-50 dark:focus:bg-emerald-950/50 border border-transparent focus:border-emerald-500 rounded px-1 py-0.5 outline-none transition-all cursor-pointer focus:cursor-text"
                         />
                       ) : (
@@ -2037,7 +2169,12 @@ export function MillionaireDeliverySpreadsheet({
                               type="number"
                               min="0"
                               value={row.reels ?? 0}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => handleUpdateTargetField(row.id, "reels", e.target.value)}
+                              onBlur={handleTargetCellBlur}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              }}
                               className="w-12 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold"
                             />
                           ) : (
@@ -2052,7 +2189,12 @@ export function MillionaireDeliverySpreadsheet({
                               type="number"
                               min="0"
                               value={row.carousels ?? 0}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => handleUpdateTargetField(row.id, "carousels", e.target.value)}
+                              onBlur={handleTargetCellBlur}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              }}
                               className="w-12 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono"
                             />
                           ) : (
@@ -2067,7 +2209,12 @@ export function MillionaireDeliverySpreadsheet({
                               type="number"
                               min="0"
                               value={row.posts ?? 0}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => handleUpdateTargetField(row.id, "posts", e.target.value)}
+                              onBlur={handleTargetCellBlur}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              }}
                               className="w-12 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono"
                             />
                           ) : (
@@ -2082,7 +2229,12 @@ export function MillionaireDeliverySpreadsheet({
                               type="number"
                               min="0"
                               value={row.cpUnsplit ?? 0}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => handleUpdateTargetField(row.id, "cpUnsplit", e.target.value)}
+                              onBlur={handleTargetCellBlur}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              }}
                               className="w-12 text-center py-0.5 rounded border border-amber-400 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-amber-950 dark:text-amber-200"
                             />
                           ) : (
@@ -2097,7 +2249,12 @@ export function MillionaireDeliverySpreadsheet({
                               type="number"
                               min="0"
                               value={row.stories ?? 0}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => handleUpdateTargetField(row.id, "stories", e.target.value)}
+                              onBlur={handleTargetCellBlur}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                              }}
                               className="w-12 text-center py-0.5 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono"
                             />
                           ) : (

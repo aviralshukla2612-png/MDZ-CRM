@@ -31,12 +31,12 @@ export async function GET(req: Request) {
     const filterClientId = searchParams.get("clientId");
     const forceSync = searchParams.get("sync") === "true" || searchParams.get("refresh") === "true";
 
-    // Auto-sync from Google Sheets on page load if older than 20 seconds or requested
+    // Auto-sync from Google Sheets on page load if older than 5 minutes or explicitly requested
     const currentMaster = getDeliveryMasterData();
     const lastSyncTime = currentMaster.lastGoogleSheetSync
       ? new Date(currentMaster.lastGoogleSheetSync).getTime()
       : 0;
-    if (forceSync || Date.now() - lastSyncTime > 20000) {
+    if (forceSync || Date.now() - lastSyncTime > 300000) {
       await pullLatestFromGoogleSheet();
     }
 
@@ -577,12 +577,17 @@ export async function POST(req: Request) {
             completionPct,
             missingLinks,
             unassigned,
+            crmOverride: true,
+            lastModified: new Date().toISOString(),
           };
         }
         return item;
       });
 
-      saveDeliveryMasterData({ clientStatusList: updatedList });
+      saveDeliveryMasterData({
+        clientStatusList: updatedList,
+        lastGoogleSheetSync: new Date().toISOString(),
+      });
       const pushRes = await pushChangeToGoogleSheet("UPDATE_CLIENT_ROW", { row });
       return NextResponse.json({
         success: true,
@@ -622,10 +627,15 @@ export async function POST(req: Request) {
           completionPct,
           missingLinks,
           unassigned,
+          crmOverride: true,
+          lastModified: new Date().toISOString(),
         };
       });
 
-      saveDeliveryMasterData({ clientStatusList: sanitized });
+      saveDeliveryMasterData({
+        clientStatusList: sanitized,
+        lastGoogleSheetSync: new Date().toISOString(),
+      });
       const pushRes = await pushChangeToGoogleSheet("UPDATE_ALL_CLIENT_ROWS", { rows: sanitized });
       return NextResponse.json({
         success: true,
@@ -644,10 +654,13 @@ export async function POST(req: Request) {
       const list = master.clientTargetCommitments || DEFAULT_CLIENT_TARGET_COMMITMENTS;
       const updated = list.map((c) =>
         c.id === commitment.id || c.client.toLowerCase() === commitment.client?.toLowerCase()
-          ? { ...c, ...commitment }
+          ? { ...c, ...commitment, crmOverride: true, lastModified: new Date().toISOString() }
           : c
       );
-      saveDeliveryMasterData({ clientTargetCommitments: updated });
+      saveDeliveryMasterData({
+        clientTargetCommitments: updated,
+        lastGoogleSheetSync: new Date().toISOString(),
+      });
       const pushRes = await pushChangeToGoogleSheet("UPDATE_CLIENT_TARGET_COMMITMENT", { commitment });
       return NextResponse.json({
         success: true,
@@ -662,8 +675,16 @@ export async function POST(req: Request) {
       if (!Array.isArray(commitments)) {
         return NextResponse.json({ success: false, error: "Commitments must be an array" }, { status: 400 });
       }
-      saveDeliveryMasterData({ clientTargetCommitments: commitments });
-      const pushRes = await pushChangeToGoogleSheet("UPDATE_ALL_TARGET_COMMITMENTS", { commitments });
+      const marked = commitments.map((c: any) => ({
+        ...c,
+        crmOverride: true,
+        lastModified: new Date().toISOString(),
+      }));
+      saveDeliveryMasterData({
+        clientTargetCommitments: marked,
+        lastGoogleSheetSync: new Date().toISOString(),
+      });
+      const pushRes = await pushChangeToGoogleSheet("UPDATE_ALL_TARGET_COMMITMENTS", { commitments: marked });
       return NextResponse.json({
         success: true,
         message: `All client target commitments saved.${pushRes.pushedToSheet ? " Synced to live Google Sheet." : ""}`,
