@@ -66,7 +66,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
 
     // 1. Fetch Dashboard Tab (gid=1693502346)
     const dashRes = await fetch(
-      `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${DASHBOARD_GID}`,
+      `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${DASHBOARD_GID}&_t=${Date.now()}`,
       { cache: "no-store" }
     );
 
@@ -161,7 +161,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
     let updatedCommitments: ClientTargetCommitment[] = [];
     try {
       const targetsRes = await fetch(
-        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${CLIENT_TARGETS_GID}`,
+        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${CLIENT_TARGETS_GID}&_t=${Date.now()}`,
         { cache: "no-store" }
       );
       if (targetsRes.ok) {
@@ -246,7 +246,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
     const productionTasks: any[] = [];
     try {
       const prodRes = await fetch(
-        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${PRODUCTION_LOG_GID}`,
+        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${PRODUCTION_LOG_GID}&_t=${Date.now()}`,
         { cache: "no-store" }
       );
       if (prodRes.ok) {
@@ -298,7 +298,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
     const teamMembers: any[] = [];
     try {
       const teamRes = await fetch(
-        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${TEAM_SUMMARY_GID}`,
+        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${TEAM_SUMMARY_GID}&_t=${Date.now()}`,
         { cache: "no-store" }
       );
       if (teamRes.ok) {
@@ -328,7 +328,7 @@ export async function pullLatestFromGoogleSheet(): Promise<{
     const extraWorkList: any[] = [];
     try {
       const ewRes = await fetch(
-        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${EXTRA_WORK_GID}`,
+        `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${EXTRA_WORK_GID}&_t=${Date.now()}`,
         { cache: "no-store" }
       );
       if (ewRes.ok) {
