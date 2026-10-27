@@ -76,10 +76,10 @@ const CANDIDATE_FILES = [
 let memoryDeliveryData: DeliveryMasterData | null = null;
 
 export const DEFAULT_GOOGLE_SHEET_URL =
-  "https://docs.google.com/spreadsheets/d/1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat/edit?gid=1693502346#gid=1693502346";
+  "https://docs.google.com/spreadsheets/d/1C8FCIE12Gz6cNQVml-nxP5EmME-BJKFUWLwgliTXMpU/edit?gid=1693502346#gid=1693502346";
 
 export const DEFAULT_CLIENT_TARGETS_URL =
-  "https://docs.google.com/spreadsheets/d/1h3FUAY3HQljoerEgMCeBx-cUv-JxuAat/edit?gid=1126021745#gid=1126021745";
+  "https://docs.google.com/spreadsheets/d/1C8FCIE12Gz6cNQVml-nxP5EmME-BJKFUWLwgliTXMpU/edit?gid=1126021745#gid=1126021745";
 
 export const DEFAULT_CLIENT_TARGET_COMMITMENTS: ClientTargetCommitment[] = [
   {
