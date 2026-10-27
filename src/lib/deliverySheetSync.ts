@@ -126,22 +126,15 @@ export async function pullLatestFromGoogleSheet(): Promise<{
           (r) => isMatchCode(r.clientCode, clientCodeRaw)
         );
 
-        // If row was explicitly customized/entered in CRM, or existing CRM has non-zero values,
-        // preserve the CRM values so that user inputs in CRM are NEVER reverted back to zero.
-        const isOverridden = Boolean(existingRow?.crmOverride);
-        const finalTarget = isOverridden
-          ? (existingRow?.target ?? target)
-          : (target > 0 ? target : (existingRow?.target ?? 0));
+        // When syncing from Google Sheet, update the CRM values from the sheet
+        const finalTarget = target;
+        const finalDone = done;
 
-        const finalDone = isOverridden
-          ? (existingRow?.done ?? done)
-          : (done > 0 ? done : (existingRow?.done ?? 0));
-
-        const finalInProgress = inProgress > 0 ? inProgress : (existingRow?.inProgress ?? 0);
-        const finalOnHold = onHold > 0 ? onHold : (existingRow?.onHold ?? 0);
-        const finalOverdue = overdue > 0 ? overdue : (existingRow?.overdue ?? 0);
-        const finalMissingLinks = missingLinks > 0 ? missingLinks : (existingRow?.missingLinks ?? 0);
-        const finalUnassigned = unassigned > 0 ? unassigned : (existingRow?.unassigned ?? 0);
+        const finalInProgress = inProgress;
+        const finalOnHold = onHold;
+        const finalOverdue = overdue;
+        const finalMissingLinks = missingLinks;
+        const finalUnassigned = unassigned;
         const finalPending = Math.max(0, finalTarget - finalDone);
         const finalPct = finalTarget > 0 ? Math.round((finalDone / finalTarget) * 100) : 0;
 
@@ -212,11 +205,11 @@ export async function pullLatestFromGoogleSheet(): Promise<{
 
             const isCommitmentOverridden = Boolean(existingCommitment?.crmOverride);
 
-            const finalReels = isCommitmentOverridden ? (existingCommitment?.reels ?? reels) : (reels > 0 ? reels : (existingCommitment?.reels ?? 0));
-            const finalCarousels = isCommitmentOverridden ? (existingCommitment?.carousels ?? carousels) : (carousels > 0 ? carousels : (existingCommitment?.carousels ?? 0));
-            const finalPosts = isCommitmentOverridden ? (existingCommitment?.posts ?? posts) : (posts > 0 ? posts : (existingCommitment?.posts ?? 0));
-            const finalCp = isCommitmentOverridden ? (existingCommitment?.cpUnsplit ?? cpUnsplit) : (cpUnsplit > 0 ? cpUnsplit : (existingCommitment?.cpUnsplit ?? 0));
-            const finalStories = isCommitmentOverridden ? (existingCommitment?.stories ?? stories) : (stories > 0 ? stories : (existingCommitment?.stories ?? 0));
+            const finalReels = reels;
+            const finalCarousels = carousels;
+            const finalPosts = posts;
+            const finalCp = cpUnsplit;
+            const finalStories = stories;
             const finalTotal = finalReels + finalCarousels + finalPosts + finalCp + finalStories;
 
             updatedCommitments.push({
