@@ -168,7 +168,7 @@ export function MillionaireDeliverySpreadsheet({
   const [syncingSheet, setSyncingSheet] = useState(false);
 
   const DEFAULT_GOOGLE_SHEET_URL =
-    "https://docs.google.com/spreadsheets/d/1C8FCIE12Gz6cNQVml-nxP5EmME-BJKFUWLwgliTXMpU/edit?gid=1693502346#gid=1693502346";
+    "https://docs.google.com/spreadsheets/d/1C8FCIE12Gz6cNQVmI-nxP5EmME-BJKFUWLwgIiTXMpU/edit?gid=1693502346#gid=1693502346";
 
   const handleSaveDriveUrl = async () => {
     try {

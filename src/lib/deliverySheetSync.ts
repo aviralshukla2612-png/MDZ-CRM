@@ -9,7 +9,7 @@ import {
   DEFAULT_GOOGLE_SHEET_URL,
 } from "./deliveryMasterStore";
 
-export const DEFAULT_SHEET_ID = "1C8FCIE12Gz6cNQVml-nxP5EmME-BJKFUWLwgliTXMpU";
+export const DEFAULT_SHEET_ID = "1C8FCIE12Gz6cNQVmI-nxP5EmME-BJKFUWLwgIiTXMpU";
 export const DASHBOARD_GID = "1693502346";
 export const CLIENT_TARGETS_GID = "1126021745";
 export const PRODUCTION_LOG_GID = "14317656";
