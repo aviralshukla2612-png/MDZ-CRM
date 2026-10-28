@@ -16,7 +16,7 @@ export default async function HomePage() {
   } else if (role === "SALES") {
     redirect("/sales");
   } else if (role === "EMPLOYEE") {
-    redirect("/attendance");
+    redirect("/employee");
   } else if (role === "CLIENT") {
     redirect("/client");
   }

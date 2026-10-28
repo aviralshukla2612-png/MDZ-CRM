@@ -139,6 +139,12 @@ export default function EmployeeDeskPage() {
         setRel2Name(json.data.relative2Name || "");
         setRel2Relation(json.data.relative2Relation || "Mother");
         setRel2Phone(json.data.relative2Phone || "");
+
+        const r1Digits = (json.data.relative1Phone || "").replace(/\D/g, "");
+        const r2Digits = (json.data.relative2Phone || "").replace(/\D/g, "");
+        if (r1Digits.length < 10 || r2Digits.length < 10) {
+          setIsRelativeModalOpen(true);
+        }
       }
     } catch (err) {
       console.error("Failed to load employee profile:", err);
@@ -149,8 +155,19 @@ export default function EmployeeDeskPage() {
 
   const handleSaveRelatives = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!rel1Phone.trim() || !rel2Phone.trim()) {
-      showToast("Both Relative 1 and Relative 2 phone numbers are compulsory.", "error");
+    const clean1 = rel1Phone.replace(/\D/g, "");
+    const clean2 = rel2Phone.replace(/\D/g, "");
+
+    if (!rel1Phone.trim() || clean1.length < 10) {
+      showToast("Relative 1 phone number is compulsory and must contain at least 10 digits.", "error");
+      return;
+    }
+    if (!rel2Phone.trim() || clean2.length < 10) {
+      showToast("Relative 2 phone number is compulsory and must contain at least 10 digits.", "error");
+      return;
+    }
+    if (clean1 === clean2) {
+      showToast("Relative 1 and Relative 2 must be different contact numbers.", "error");
       return;
     }
 
@@ -173,6 +190,9 @@ export default function EmployeeDeskPage() {
         showToast("✓ Emergency relative contacts updated successfully!", "success");
         setIsRelativeModalOpen(false);
         fetchMyProfile();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("employee_relatives_updated", { detail: json.data }));
+        }
       } else {
         showToast(json.error || "Failed to update relative contacts", "error");
       }
@@ -187,6 +207,14 @@ export default function EmployeeDeskPage() {
     fetchEmployeeProjects();
     fetchMyTarget();
     fetchMyProfile();
+
+    const handleSync = () => {
+      fetchMyProfile();
+    };
+    window.addEventListener("employee_relatives_updated", handleSync);
+    return () => {
+      window.removeEventListener("employee_relatives_updated", handleSync);
+    };
   }, []);
 
   const fetchEmployeeProjects = async () => {
@@ -448,7 +476,36 @@ export default function EmployeeDeskPage() {
       </div>
 
       {/* Emergency Relative Contacts (2 Compulsory) Card */}
-      <div className="bg-gradient-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 rounded-3xl border border-amber-200/90 dark:border-amber-900/50 p-5 shadow-xs space-y-4">
+      <div className={`rounded-3xl border p-5 shadow-xs space-y-4 transition-all ${
+        !myProfile?.relative1Phone || !myProfile?.relative2Phone
+          ? "bg-gradient-to-r from-rose-50/90 via-amber-50/80 to-rose-50/90 dark:from-rose-950/40 dark:via-amber-950/30 dark:to-rose-950/40 border-rose-300 dark:border-rose-800 ring-2 ring-rose-400/40"
+          : "bg-gradient-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-amber-950/30 border-amber-200/90 dark:border-amber-900/50"
+      }`}>
+        {(!myProfile?.relative1Phone || !myProfile?.relative2Phone) && (
+          <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-400/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-900 dark:text-rose-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-rose-600 text-white shrink-0 shadow-sm animate-pulse">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-wide">
+                  ⚠️ Compulsory Action: 2 Emergency Relative Numbers Missing!
+                </p>
+                <p className="text-[11px] text-rose-800 dark:text-rose-300 mt-0.5">
+                  Company policy strictly requires all employees to submit 2 verified relative contact numbers.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsRelativeModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-extrabold text-xs shadow-md transition-all shrink-0 cursor-pointer"
+            >
+              Fill 2 Numbers Now
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-amber-200/60 dark:border-amber-900/40 pb-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-amber-500/20 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-300/40 dark:border-amber-800/40">
@@ -464,9 +521,9 @@ export default function EmployeeDeskPage() {
                     ✓ 2 NUMBERS VERIFIED
                   </span>
                 ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1">
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800 flex items-center gap-1 animate-pulse">
                     <ShieldAlert className="w-3 h-3" />
-                    <span>ACTION REQUIRED</span>
+                    <span>COMPULSORY REQUIREMENT</span>
                   </span>
                 )}
               </div>
@@ -482,7 +539,7 @@ export default function EmployeeDeskPage() {
             className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 self-start sm:self-auto cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span>{myProfile?.relative1Phone && myProfile?.relative2Phone ? "Update Relative Numbers" : "Add Relative Numbers"}</span>
+            <span>{myProfile?.relative1Phone && myProfile?.relative2Phone ? "Update Relative Numbers" : "Fill 2 Compulsory Numbers"}</span>
           </button>
         </div>
 
@@ -1290,14 +1347,21 @@ export default function EmployeeDeskPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setIsRelativeModalOpen(false)}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            {(!myProfile?.relative1Phone || !myProfile?.relative2Phone) ? (
+              <span className="text-[11px] font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>2 Numbers are compulsory for company records</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsRelativeModalOpen(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            )}
             <button
               type="submit"
               disabled={savingRelatives || !rel1Phone.trim() || !rel2Phone.trim()}

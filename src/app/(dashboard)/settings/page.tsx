@@ -551,10 +551,22 @@ export default function SettingsPage() {
   const handleRelativesChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setRelativesStatus(null);
-    if (!relativesForm.relative1Phone.trim() || !relativesForm.relative2Phone.trim()) {
-      setRelativesStatus({ type: "error", msg: "Both Relative 1 and Relative 2 phone numbers are compulsory." });
+    const clean1 = relativesForm.relative1Phone.replace(/\D/g, "");
+    const clean2 = relativesForm.relative2Phone.replace(/\D/g, "");
+
+    if (!relativesForm.relative1Phone.trim() || clean1.length < 10) {
+      setRelativesStatus({ type: "error", msg: "Relative 1 phone number is compulsory and must contain at least 10 digits." });
       return;
     }
+    if (!relativesForm.relative2Phone.trim() || clean2.length < 10) {
+      setRelativesStatus({ type: "error", msg: "Relative 2 phone number is compulsory and must contain at least 10 digits." });
+      return;
+    }
+    if (clean1 === clean2) {
+      setRelativesStatus({ type: "error", msg: "Relative 1 and Relative 2 must be different contact numbers." });
+      return;
+    }
+
     setRelativesLoading(true);
 
     try {
@@ -566,8 +578,11 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (data.success) {
-        setRelativesStatus({ type: "success", msg: "Emergency relative contacts updated successfully!" });
-        showToast("👨‍👩‍👧 Emergency relative contacts updated!", "success");
+        setRelativesStatus({ type: "success", msg: "✓ Emergency relative contacts updated successfully!" });
+        showToast("✓ 2 Emergency relative contacts updated!", "success");
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("employee_relatives_updated", { detail: data.data }));
+        }
       } else {
         setRelativesStatus({ type: "error", msg: data.error || "Failed to update relative contacts." });
       }

@@ -57,6 +57,12 @@ export async function GET() {
       });
     }
 
+    const r1Phone = (employee.relative1Phone || "").trim();
+    const r2Phone = (employee.relative2Phone || "").trim();
+    const r1Digits = r1Phone.replace(/\D/g, "");
+    const r2Digits = r2Phone.replace(/\D/g, "");
+    const hasBothRelatives = Boolean(r1Digits.length >= 10 && r2Digits.length >= 10);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -74,6 +80,8 @@ export async function GET() {
         relative2Name: employee.relative2Name || "",
         relative2Relation: employee.relative2Relation || "Mother",
         relative2Phone: employee.relative2Phone || "",
+        hasBothRelatives,
+        needsRelatives: !hasBothRelatives,
       },
     });
   } catch (error) {
@@ -118,13 +126,43 @@ export async function PATCH(req: Request) {
       userUpdateData.phone = cleanPhone;
     }
 
+    // Compulsory check: If updating relative numbers, both relative1Phone and relative2Phone are strictly compulsory
+    const isUpdatingRelatives = body.relative1Phone !== undefined || body.relative2Phone !== undefined;
+
+    if (isUpdatingRelatives) {
+      const p1 = String(body.relative1Phone || "").trim();
+      const p2 = String(body.relative2Phone || "").trim();
+      const d1 = p1.replace(/\D/g, "");
+      const d2 = p2.replace(/\D/g, "");
+
+      if (!p1 || d1.length < 10) {
+        return NextResponse.json(
+          { success: false, error: "Relative 1 phone number is compulsory and must contain at least 10 digits." },
+          { status: 400 }
+        );
+      }
+      if (!p2 || d2.length < 10) {
+        return NextResponse.json(
+          { success: false, error: "Relative 2 phone number is compulsory and must contain at least 10 digits." },
+          { status: 400 }
+        );
+      }
+      if (d1 === d2) {
+        return NextResponse.json(
+          { success: false, error: "Relative 1 and Relative 2 must be different contact numbers." },
+          { status: 400 }
+        );
+      }
+
+      employeeUpdateData.relative1Phone = p1;
+      employeeUpdateData.relative2Phone = p2;
+    }
+
     if (body.relative1Name !== undefined) employeeUpdateData.relative1Name = String(body.relative1Name || "").trim();
-    if (body.relative1Relation !== undefined) employeeUpdateData.relative1Relation = String(body.relative1Relation || "").trim();
-    if (body.relative1Phone !== undefined) employeeUpdateData.relative1Phone = String(body.relative1Phone || "").trim();
+    if (body.relative1Relation !== undefined) employeeUpdateData.relative1Relation = String(body.relative1Relation || "").trim() || "Father";
 
     if (body.relative2Name !== undefined) employeeUpdateData.relative2Name = String(body.relative2Name || "").trim();
-    if (body.relative2Relation !== undefined) employeeUpdateData.relative2Relation = String(body.relative2Relation || "").trim();
-    if (body.relative2Phone !== undefined) employeeUpdateData.relative2Phone = String(body.relative2Phone || "").trim();
+    if (body.relative2Relation !== undefined) employeeUpdateData.relative2Relation = String(body.relative2Relation || "").trim() || "Mother";
 
     const updatedEmployee = await prisma.employee.update({
       where: { id: employee.id },
@@ -138,9 +176,15 @@ export async function PATCH(req: Request) {
       });
     }
 
+    const r1Digits = (updatedEmployee.relative1Phone || "").replace(/\D/g, "");
+    const r2Digits = (updatedEmployee.relative2Phone || "").replace(/\D/g, "");
+    const hasBothRelatives = Boolean(r1Digits.length >= 10 && r2Digits.length >= 10);
+
     return NextResponse.json({
       success: true,
-      message: "Emergency relative contacts updated successfully",
+      message: "Emergency relative contacts saved successfully",
+      hasBothRelatives,
+      needsRelatives: !hasBothRelatives,
       data: {
         id: updatedEmployee.id,
         relative1Name: updatedEmployee.relative1Name || "",

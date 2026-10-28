@@ -28,6 +28,7 @@ import {
   Moon,
   Edit3,
   Loader2,
+  ShieldAlert,
 } from "lucide-react";
 import { TimeModificationModal } from "@/components/attendance/TimeModificationModal";
 import { UnclosedShiftModal } from "@/components/attendance/UnclosedShiftModal";
@@ -178,6 +179,41 @@ export default function AttendanceWorkClockPage() {
   const [isBreakSheetOpen, setIsBreakSheetOpen] = useState(false);
   const [isChangeWorkOpen, setIsChangeWorkOpen] = useState(false);
   const [isPunchOutConfirmOpen, setIsPunchOutConfirmOpen] = useState(false);
+
+  // Compulsory 2 relative numbers check for employee
+  const [needsRelatives, setNeedsRelatives] = useState(false);
+
+  useEffect(() => {
+    if (session?.user?.role === "EMPLOYEE") {
+      fetch("/mdz-crm/api/employees/me")
+        .then((r) => r.json())
+        .then((j) => {
+          if (j.success && j.data) {
+            const r1 = (j.data.relative1Phone || "").replace(/\D/g, "");
+            const r2 = (j.data.relative2Phone || "").replace(/\D/g, "");
+            setNeedsRelatives(r1.length < 10 || r2.length < 10);
+          }
+        })
+        .catch(() => {});
+    }
+
+    const handleSync = () => {
+      if (session?.user?.role === "EMPLOYEE") {
+        fetch("/mdz-crm/api/employees/me")
+          .then((r) => r.json())
+          .then((j) => {
+            if (j.success && j.data) {
+              const r1 = (j.data.relative1Phone || "").replace(/\D/g, "");
+              const r2 = (j.data.relative2Phone || "").replace(/\D/g, "");
+              setNeedsRelatives(r1.length < 10 || r2.length < 10);
+            }
+          })
+          .catch(() => {});
+      }
+    };
+    window.addEventListener("employee_relatives_updated", handleSync);
+    return () => window.removeEventListener("employee_relatives_updated", handleSync);
+  }, [session]);
   const [isUnclosedModalOpen, setIsUnclosedModalOpen] = useState(false);
   const [activeUnclosedRecord, setActiveUnclosedRecord] = useState<any>(null);
 
@@ -468,6 +504,36 @@ function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: num
           </button>
         }
       />
+
+      {/* Compulsory 2 Relative Numbers Missing Banner for Employee */}
+      {session?.user?.role === "EMPLOYEE" && needsRelatives && (
+        <div className="p-4 rounded-2xl bg-amber-500/15 border-2 border-amber-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-950 dark:text-amber-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-600 text-white shrink-0 shadow-sm animate-pulse">
+              <ShieldAlert className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide">
+                ⚠️ Compulsory: 2 Emergency Relative Numbers Required
+              </p>
+              <p className="text-[11px] text-amber-800 dark:text-amber-300 mt-0.5">
+                Every employee must register 2 verified relative contact numbers for company records.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("open_relative_contacts_modal"));
+              }
+            }}
+            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-extrabold text-xs shadow-md transition-all shrink-0 cursor-pointer"
+          >
+            Fill 2 Numbers Now
+          </button>
+        </div>
+      )}
 
         {/* STATE 1: NOT PUNCHED IN */}
       {status === "NOT_PUNCHED_IN" && (
