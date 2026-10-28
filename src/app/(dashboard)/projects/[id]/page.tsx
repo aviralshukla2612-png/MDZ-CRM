@@ -1890,11 +1890,14 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-slate-100 outline-none"
             >
               <option value="">-- Unassigned --</option>
-              {project.memberships?.map((m: any) => (
-                <option key={m.id} value={m.employee?.user?.id}>
-                  {m.employee?.user?.name || "Member"} ({m.roleInProject})
-                </option>
-              ))}
+              {project.memberships?.map((m: any) => {
+                const optVal = m.employee?.user?.id || m.employee?.userId || m.employeeId || m.id;
+                return (
+                  <option key={m.id} value={optVal}>
+                    {m.employee?.user?.name || "Member"} ({m.roleInProject})
+                  </option>
+                );
+              })}
             </select>
           </div>
           <div>
@@ -2240,9 +2243,9 @@ export default function ProjectWorkspacePage({ params }: { params: { id: string 
               ? [
                   ...(project.teamMembers || []),
                   ...availableEmployees.map((ae: any) => ({
-                    id: ae.id,
-                    userId: ae.id,
-                    employeeId: ae.id,
+                    id: ae.userId || ae.id,
+                    userId: ae.userId || ae.id,
+                    employeeId: ae.employeeId || ae.id,
                     name: ae.name,
                     role: ae.designation || ae.role || "Developer",
                     designation: ae.designation || ae.role || "Developer",

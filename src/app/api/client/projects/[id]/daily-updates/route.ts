@@ -150,7 +150,7 @@ export async function POST(
               status: "COMPLETED",
               completedAt: new Date(),
               priority: "MEDIUM",
-              assignedToId: employee?.id || null,
+              assignedToId: userOrRes.id,
               createdById: userOrRes.id,
             },
           });

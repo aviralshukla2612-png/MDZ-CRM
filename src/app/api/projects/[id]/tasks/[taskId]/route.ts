@@ -31,25 +31,27 @@ export async function PATCH(
   const actualProjectId = project.id;
   const isAdminOrOwner = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES"].includes(authRes.activeRole as string);
 
-  // Authorization: OWNER, ADMIN, SALES or assigned EMPLOYEE / task assignee
+  // Authorization: OWNER, ADMIN, SALES or assigned EMPLOYEE / task assignee / task creator
   if (!isAdminOrOwner) {
     if (authRes.activeRole === "EMPLOYEE") {
       const existingTask = await prisma.task.findUnique({ where: { id: taskId } });
       const isTaskAssignee =
         existingTask?.assignedToId === authRes.id ||
         (authRes.employeeId && existingTask?.assignedToId === authRes.employeeId);
+      const isTaskCreator = existingTask?.createdById === authRes.id;
 
-      const membership = authRes.employeeId
-        ? await prisma.projectMembership.findFirst({
-            where: {
-              projectId: actualProjectId,
-              employeeId: authRes.employeeId,
-              isActive: true,
-            },
-          })
-        : null;
+      const membership = await prisma.projectMembership.findFirst({
+        where: {
+          projectId: actualProjectId,
+          OR: [
+            ...(authRes.employeeId ? [{ employeeId: authRes.employeeId }] : []),
+            { employee: { userId: authRes.id } },
+          ],
+          isActive: true,
+        },
+      });
 
-      if (!membership && !isTaskAssignee) {
+      if (!membership && !isTaskAssignee && !isTaskCreator) {
         return NextResponse.json(
           { success: false, error: "Forbidden: You are not authorized to edit this task" },
           { status: 403 }
@@ -78,7 +80,11 @@ export async function PATCH(
     const body = await req.json();
 
     // Security Rule: Only OWNER or ADMIN can modify isMostImportant priority flag
-    if (body.isMostImportant !== undefined && !isAdminOrOwner) {
+    if (
+      body.isMostImportant !== undefined &&
+      Boolean(body.isMostImportant) !== Boolean(existingTask.isMostImportant) &&
+      !isAdminOrOwner
+    ) {
       return NextResponse.json(
         { success: false, error: "Forbidden: Only Admin or Owner can set or modify Most Important Task status" },
         { status: 403 }
@@ -248,15 +254,26 @@ export async function PATCH(
     // If reassigned to a user with an employee profile, ensure they are an active project member
     if (resolvedAssignedToId && isReassigned) {
       try {
-        const targetEmployee = await prisma.employee.findUnique({
+        let targetEmployee = await prisma.employee.findUnique({
           where: { userId: resolvedAssignedToId },
           select: { id: true },
         });
 
+        if (!targetEmployee) {
+          targetEmployee = await prisma.employee.create({
+            data: {
+              userId: resolvedAssignedToId,
+              employeeIdCode: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+              skillsJson: "[]",
+            },
+            select: { id: true },
+          });
+        }
+
         if (targetEmployee) {
           const existingMem = await prisma.projectMembership.findFirst({
             where: {
-              projectId,
+              projectId: actualProjectId,
               employeeId: targetEmployee.id,
             },
           });
@@ -264,7 +281,7 @@ export async function PATCH(
           if (!existingMem) {
             await prisma.projectMembership.create({
               data: {
-                projectId,
+                projectId: actualProjectId,
                 employeeId: targetEmployee.id,
                 roleInProject: "MEMBER",
                 isActive: true,
@@ -285,16 +302,16 @@ export async function PATCH(
       // Send Realtime & Push Notification to newly assigned employee
       if (resolvedAssignedToId !== authRes.id) {
         try {
-          const project = await prisma.project.findUnique({
-            where: { id: projectId },
+          const projectObj = await prisma.project.findUnique({
+            where: { id: actualProjectId },
             select: { name: true },
           });
           await sendNotificationToUser({
             recipientId: resolvedAssignedToId,
             title: "📌 Task Reassigned to You",
-            message: `${authRes.name || "A team member"} assigned task "${updateData.title || existingTask.title}" in project "${project?.name || "Project"}" to you.`,
+            message: `${authRes.name || "A team member"} assigned task "${updateData.title || existingTask.title}" in project "${projectObj?.name || "Project"}" to you.`,
             urgency: "MEDIUM",
-            linkUrl: `/projects/${projectId}`,
+            linkUrl: `/projects/${actualProjectId}`,
           });
         } catch (notifErr) {
           console.warn("[TaskReassign] Failed to dispatch notification:", notifErr);

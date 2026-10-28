@@ -55,7 +55,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       members: project.memberships.filter((m) => m.isActive),
       removalHistory: project.memberships.filter((m) => !m.isActive),
       availableEmployees: allEmployees.map((e) => ({
-        id: e.id,
+        id: e.user?.id || e.id,
+        userId: e.user?.id || e.userId,
+        employeeId: e.id,
         name: e.user?.name || "Unknown",
         email: e.user?.email,
         designation: e.user?.designation || "Developer",

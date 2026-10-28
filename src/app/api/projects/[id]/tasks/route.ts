@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { verifyClientProjectAccess } from "@/lib/client-auth";
 import { recalculateProjectProgress } from "@/lib/progressEngine";
-import { sendNotificationToAdmins } from "@/lib/notifications";
+import { sendNotificationToAdmins, sendNotificationToUser } from "@/lib/notifications";
 import { syncTaskCompletionToEmployeeQuota } from "@/lib/quotaSync";
 
 export async function GET(
@@ -124,14 +124,13 @@ export async function POST(
   // Authorization: OWNER, ADMIN, SALES, or assigned EMPLOYEE
   if (!isAdminOrOwner) {
     if (authRes.activeRole === "EMPLOYEE") {
-      if (!authRes.employeeId) {
-        return NextResponse.json({ success: false, error: "Forbidden: Employee profile missing" }, { status: 403 });
-      }
-
       const membership = await prisma.projectMembership.findFirst({
         where: {
           projectId: actualProjectId,
-          employeeId: authRes.employeeId,
+          OR: [
+            ...(authRes.employeeId ? [{ employeeId: authRes.employeeId }] : []),
+            { employee: { userId: authRes.id } },
+          ],
           isActive: true,
         },
       });
@@ -168,7 +167,7 @@ export async function POST(
     }
 
     // Security check: Only OWNER or ADMIN can set isMostImportant on task creation
-    if (body.isMostImportant !== undefined && !isAdminOrOwner) {
+    if (body.isMostImportant === true && !isAdminOrOwner) {
       return NextResponse.json(
         { success: false, error: "Forbidden: Only Admin or Owner can set Most Important Task status" },
         { status: 403 }
@@ -205,6 +204,12 @@ export async function POST(
           });
           if (mem?.employee?.userId) {
             resolvedAssignedToId = mem.employee.userId;
+          } else {
+            const userFallback = await prisma.user.findFirst({
+              where: { OR: [{ email: rawAssigneeId }, { name: rawAssigneeId }] },
+              select: { id: true },
+            });
+            resolvedAssignedToId = userFallback?.id || null;
           }
         }
       }
@@ -226,6 +231,7 @@ export async function POST(
           : "PLANNING",
         assignedToId: resolvedAssignedToId,
         createdById: authRes.id,
+        isMostImportant: isAdminOrOwner ? Boolean(body.isMostImportant) : false,
         orderInt: typeof body.orderInt === "number" ? body.orderInt : taskCount + 1,
         completedAt: body.status === "COMPLETED" || body.status === "DONE" ? new Date() : null,
         deadline: body.deadline ? new Date(body.deadline) : null,
@@ -241,10 +247,21 @@ export async function POST(
     // If assigned to an employee user, ensure they have membership on the project
     if (resolvedAssignedToId) {
       try {
-        const targetEmp = await prisma.employee.findUnique({
+        let targetEmp = await prisma.employee.findUnique({
           where: { userId: resolvedAssignedToId },
           select: { id: true },
         });
+        if (!targetEmp) {
+          targetEmp = await prisma.employee.create({
+            data: {
+              userId: resolvedAssignedToId,
+              employeeIdCode: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+              skillsJson: "[]",
+            },
+            select: { id: true },
+          });
+        }
+
         if (targetEmp) {
           const existingMem = await prisma.projectMembership.findFirst({
             where: { projectId: actualProjectId, employeeId: targetEmp.id },
@@ -268,6 +285,21 @@ export async function POST(
         }
       } catch (memErr) {
         console.warn("[TaskCreation] Auto membership creation failed:", memErr);
+      }
+
+      // Notify assigned employee if assigned to someone else
+      if (resolvedAssignedToId !== authRes.id) {
+        try {
+          await sendNotificationToUser({
+            recipientId: resolvedAssignedToId,
+            title: "📌 New Task Assigned to You",
+            message: `${authRes.name || "A team member"} assigned task "${newTask.title}" in project "${project.name}" to you.`,
+            urgency: newTask.priority === "URGENT" ? "HIGH" : "MEDIUM",
+            linkUrl: `/projects/${actualProjectId}`,
+          });
+        } catch (notifErr) {
+          console.warn("[TaskCreation] Failed to notify assignee:", notifErr);
+        }
       }
     }
 

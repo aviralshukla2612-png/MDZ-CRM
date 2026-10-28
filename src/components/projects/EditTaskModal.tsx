@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
 import { CheckCircle2, Save, Calendar, User, Star, AlertCircle, Sparkles } from "lucide-react";
@@ -31,6 +32,10 @@ export function EditTaskModal({
   employees = [],
   onSuccess,
 }: EditTaskModalProps) {
+  const { data: session } = useSession();
+  const userRole = ((session?.user as any)?.role || (session?.user as any)?.activeRole || "").toUpperCase();
+  const isAdminOrOwner = ["OWNER", "ADMIN", "SUB_ADMIN", "SALES"].includes(userRole);
+
   const { showToast } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -64,7 +69,7 @@ export function EditTaskModal({
 
     // 1. Process passed employees prop (usually project members)
     (employees || []).forEach((emp: any) => {
-      const uId = emp.userId || emp.user?.id || emp.id;
+      const uId = emp.userId || emp.user?.id || (emp.employee ? emp.employee.userId : null) || emp.id;
       if (!uId) return;
       const name = emp.name || emp.user?.name || "Team Member";
       const desig = emp.designation || emp.role || emp.user?.designation || "Developer";
@@ -80,7 +85,7 @@ export function EditTaskModal({
 
     // 2. Process all company employees
     (allCompanyEmployees || []).forEach((emp: any) => {
-      const uId = emp.userId || emp.user?.id || emp.id;
+      const uId = emp.userId || emp.user?.id || (emp.employee ? emp.employee.userId : null) || emp.id;
       if (!uId) return;
       if (!map.has(uId)) {
         map.set(uId, {
@@ -166,18 +171,27 @@ export function EditTaskModal({
     setSubmitting(true);
     try {
       const targetProjectId = projectId || task?.projectId;
+      const patchBody: any = {
+        title: title.trim(),
+        description: description.trim() || null,
+        status,
+        priority,
+        assignedToId: assignedToId ? assignedToId.trim() : null,
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+      };
+
+      if (isAdminOrOwner) {
+        patchBody.isMostImportant = isMostImportant;
+      } else if (isMostImportant !== Boolean(task.isMostImportant)) {
+        showToast("Only Admin or Owner can set or modify Most Important Task status", "error");
+        setSubmitting(false);
+        return;
+      }
+
       const res = await fetch(`/mdz-crm/api/projects/${targetProjectId}/tasks/${task.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          description: description.trim() || null,
-          status,
-          priority,
-          assignedToId: assignedToId ? assignedToId.trim() : null,
-          deadline: deadline ? new Date(deadline).toISOString() : null,
-          isMostImportant,
-        }),
+        body: JSON.stringify(patchBody),
       });
 
       const json = await res.json();
@@ -347,16 +361,18 @@ export function EditTaskModal({
         </div>
 
         {/* Priority Star Checkbox */}
-        <label className="flex items-center gap-2.5 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 cursor-pointer">
+        <label className={`flex items-center gap-2.5 p-3 rounded-xl bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 ${isAdminOrOwner ? "cursor-pointer" : "opacity-75 cursor-not-allowed"}`}>
           <input
             type="checkbox"
             checked={isMostImportant}
+            disabled={!isAdminOrOwner}
             onChange={(e) => setIsMostImportant(e.target.checked)}
             className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500 border-amber-300"
           />
           <div className="text-xs">
             <div className="font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1">
               <span>⭐ Mark as Most Important Task</span>
+              {!isAdminOrOwner && <span className="text-[10px] text-amber-600 font-normal">(Admin / Owner only)</span>}
             </div>
             <div className="text-[10px] text-amber-700 dark:text-amber-400">
               Pins this task to the top of the developer's daily focus queue.
