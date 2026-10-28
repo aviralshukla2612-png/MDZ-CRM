@@ -3,7 +3,9 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith("https://") ?? false;
+const useSecureCookies =
+  process.env.NODE_ENV === "production" &&
+  (process.env.NEXTAUTH_URL?.startsWith("https://") ?? false);
 const cookiePrefix = useSecureCookies ? "__Secure-" : "";
 
 export const authOptions: NextAuthOptions = {
@@ -42,7 +44,7 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email", placeholder: "you@example.com" },
+        email: { label: "Email, Phone, or Employee ID", type: "text", placeholder: "you@example.com or phone" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
@@ -53,22 +55,134 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email.trim().toLowerCase() },
+          const rawIdentifier = credentials.email.trim();
+          const lowerIdentifier = rawIdentifier.toLowerCase();
+          const digitsOnly = rawIdentifier.replace(/\D/g, "");
+
+          // 1. Try finding by email (case-insensitive)
+          let user = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { email: lowerIdentifier },
+                { email: rawIdentifier },
+              ],
+            },
             include: { employeeProfile: true },
           });
+
+          // 2. Try finding by Employee ID Code (e.g. EMP-1234 or EMP-OWNER)
+          if (!user && (lowerIdentifier.startsWith("emp") || lowerIdentifier.includes("emp"))) {
+            const emp = await prisma.employee.findFirst({
+              where: {
+                OR: [
+                  { employeeIdCode: rawIdentifier },
+                  { employeeIdCode: lowerIdentifier.toUpperCase() },
+                  { employeeIdCode: lowerIdentifier },
+                ],
+              },
+              include: { user: { include: { employeeProfile: true } } },
+            });
+            if (emp?.user) {
+              user = emp.user;
+            }
+          }
+
+          // 3. Try finding by Phone Number (User, Employee, Client, or ClientContact)
+          if (!user && (digitsOnly.length >= 7 || rawIdentifier.startsWith("+"))) {
+            const last10 = digitsOnly.slice(-10);
+
+            // A. Check user.phone directly
+            user = await prisma.user.findFirst({
+              where: {
+                OR: [
+                  { phone: rawIdentifier },
+                  { phone: digitsOnly },
+                  ...(digitsOnly.length >= 10 ? [{ phone: { contains: last10 } }] : []),
+                ],
+              },
+              include: { employeeProfile: true },
+            });
+
+            // B. Check employee.phone
+            if (!user) {
+              const emp = await prisma.employee.findFirst({
+                where: {
+                  OR: [
+                    { phone: rawIdentifier },
+                    { phone: digitsOnly },
+                    ...(digitsOnly.length >= 10 ? [{ phone: { contains: last10 } }] : []),
+                  ],
+                },
+                include: { user: { include: { employeeProfile: true } } },
+              });
+              if (emp?.user) {
+                user = emp.user;
+              }
+            }
+
+            // C. Check client.phone
+            if (!user) {
+              const clients = await prisma.client.findMany({
+                where: { phone: { not: "" } },
+                select: { email: true, phone: true },
+              });
+              const matchedClient = clients.find((c) => {
+                const cDigits = (c.phone || "").replace(/\D/g, "");
+                return cDigits.endsWith(last10) || cDigits === digitsOnly;
+              });
+              if (matchedClient?.email) {
+                user = await prisma.user.findFirst({
+                  where: { email: matchedClient.email.trim().toLowerCase() },
+                  include: { employeeProfile: true },
+                });
+              }
+            }
+
+            // D. Check clientContact.phone
+            if (!user) {
+              const contacts = await prisma.clientContact.findMany({
+                where: { phone: { not: "" } },
+                select: { email: true, phone: true },
+              });
+              const matchedContact = contacts.find((c) => {
+                const cDigits = (c.phone || "").replace(/\D/g, "");
+                return cDigits.endsWith(last10) || cDigits === digitsOnly;
+              });
+              if (matchedContact?.email) {
+                user = await prisma.user.findFirst({
+                  where: { email: matchedContact.email.trim().toLowerCase() },
+                  include: { employeeProfile: true },
+                });
+              }
+            }
+
+            // E. Flexible in-memory phone check across users and employees if phone has formatting
+            if (!user && digitsOnly.length >= 10) {
+              const allUsersWithPhone = await prisma.user.findMany({
+                where: { phone: { not: "" } },
+                include: { employeeProfile: true },
+              });
+              const matchedUser = allUsersWithPhone.find((u) => {
+                const uDigits = (u.phone || "").replace(/\D/g, "");
+                return uDigits.endsWith(last10) || uDigits === digitsOnly;
+              });
+              if (matchedUser) {
+                user = matchedUser;
+              }
+            }
+          }
 
           console.log("NEXTAUTH FOUND USER:", user ? `${user.email} (Role: ${user.activeRole}, Active: ${user.isActive})` : "null");
 
           if (!user || !user.isActive) {
-            console.log("NEXTAUTH: User not found or inactive for", credentials.email);
+            console.log("NEXTAUTH: User not found or inactive for identifier", rawIdentifier);
             return null;
           }
 
           const isPasswordValid = await bcrypt.compare(credentials.password, user.passwordHash);
 
           if (!isPasswordValid) {
-            console.log("NEXTAUTH: Password mismatch for", credentials.email);
+            console.log("NEXTAUTH: Password mismatch for", rawIdentifier);
             return null;
           }
 

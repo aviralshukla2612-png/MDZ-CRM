@@ -172,6 +172,7 @@ export async function POST(request: Request) {
         email: normalizedEmail,
         passwordHash,
         name: contactName.trim(),
+        phone: phone ? phone.trim() : "",
         designation: "Client Contact",
         department: "External",
         activeRole: "CLIENT",

@@ -37,11 +37,30 @@ export async function middleware(req: any) {
     return NextResponse.next();
   }
 
-  const useSecureCookies = process.env.NEXTAUTH_URL?.startsWith("https://") ?? false;
+  const useSecureCookies =
+    process.env.NODE_ENV === "production" &&
+    (process.env.NEXTAUTH_URL?.startsWith("https://") ?? false);
   const cookiePrefix = useSecureCookies ? "__Secure-" : "";
   const cookieName = `${cookiePrefix}mdz-crm.session-token`;
+  const secret = process.env.NEXTAUTH_SECRET;
 
-  const token = await getToken({ req, cookieName });
+  // Attempt to resolve token with primary cookie name
+  let token = await getToken({ req, cookieName, secret });
+
+  // Fallbacks for mobile devices and varied proxy/protocol environments:
+  if (!token && cookiePrefix) {
+    // Mobile connected via HTTP / local IP where __Secure- prefix was omitted
+    token = await getToken({ req, cookieName: "mdz-crm.session-token", secret });
+  }
+  if (!token && !cookiePrefix) {
+    // Mobile connected via HTTPS reverse proxy
+    token = await getToken({ req, cookieName: "__Secure-mdz-crm.session-token", secret });
+  }
+  if (!token) {
+    // Standard NextAuth cookie names fallback
+    token = await getToken({ req, secret });
+  }
+
   console.log("MIDDLEWARE TOKEN ROLE:", token?.role, "FOR PATH:", pathname);
 
   if (!token) {
