@@ -7,18 +7,14 @@ import {
   Users,
   ShieldCheck,
   Smile,
-  Target,
   Sparkles,
   ChevronDown,
   ChevronUp,
+  RotateCcw,
+  Check,
+  Target,
   FileText,
-  BarChart3,
   Calendar,
-  CheckCircle2,
-  Tag,
-  Hash,
-  Layers,
-  ArrowRight,
 } from "lucide-react";
 
 export interface PillarItem {
@@ -170,6 +166,9 @@ export function ContentPillarsForm({
   className = "",
 }: ContentPillarsFormProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState<
+    "educational" | "promotional" | "engagement" | "trustAuthority" | "entertainment" | "notes"
+  >("educational");
 
   const data: ContentPillarsData = {
     educational: { ...DEFAULT_CONTENT_PILLARS.educational, ...(value.educational || {}) },
@@ -194,7 +193,7 @@ export function ContentPillarsForm({
     });
   };
 
-  const togglePillarFormat = (
+  const toggleFormat = (
     pillarKey: keyof Omit<ContentPillarsData, "overallNotes">,
     format: string
   ) => {
@@ -220,98 +219,100 @@ export function ContentPillarsForm({
     {
       key: "educational" as const,
       num: 1,
-      title: "Educational Content",
+      title: "Educational",
+      fullTitle: "Educational Content",
       badge: "Teach · Inform · Add Value",
       icon: GraduationCap,
-      color: "emerald",
-      bgLight: "bg-emerald-50 dark:bg-emerald-950/20",
-      borderLight: "border-emerald-200 dark:border-emerald-900/50",
-      badgeClass: "bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300",
-      numClass: "bg-emerald-600 text-white",
     },
     {
       key: "promotional" as const,
       num: 2,
-      title: "Promotional Content",
-      badge: "Showcase · Sell · Drive Conversions",
+      title: "Promotional",
+      fullTitle: "Promotional Content",
+      badge: "Showcase · Sell · Conversions",
       icon: ShoppingBag,
-      color: "rose",
-      bgLight: "bg-rose-50 dark:bg-rose-950/20",
-      borderLight: "border-rose-200 dark:border-rose-900/50",
-      badgeClass: "bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300",
-      numClass: "bg-rose-600 text-white",
     },
     {
       key: "engagement" as const,
       num: 3,
-      title: "Engagement Content",
-      badge: "Start Conversations · Build Community",
+      title: "Engagement",
+      fullTitle: "Engagement Content",
+      badge: "Start Debates · Community",
       icon: Users,
-      color: "amber",
-      bgLight: "bg-amber-50 dark:bg-amber-950/20",
-      borderLight: "border-amber-200 dark:border-amber-900/50",
-      badgeClass: "bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300",
-      numClass: "bg-amber-600 text-white",
     },
     {
       key: "trustAuthority" as const,
       num: 4,
-      title: "Trust / Authority Content",
-      badge: "Build Credibility · Showcase Expertise",
+      title: "Trust & Authority",
+      fullTitle: "Trust / Authority Content",
+      badge: "Case Studies · Proof · Credibility",
       icon: ShieldCheck,
-      color: "purple",
-      bgLight: "bg-purple-50 dark:bg-purple-950/20",
-      borderLight: "border-purple-200 dark:border-purple-900/50",
-      badgeClass: "bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-300",
-      numClass: "bg-purple-600 text-white",
     },
     {
       key: "entertainment" as const,
       num: 5,
-      title: "Entertainment / Relatable Content",
-      badge: "Entertain · Connect · Make it Relatable",
+      title: "Entertainment",
+      fullTitle: "Entertainment Content",
+      badge: "Memes · Relatable · Culture",
       icon: Smile,
-      color: "blue",
-      bgLight: "bg-blue-50 dark:bg-blue-950/20",
-      borderLight: "border-blue-200 dark:border-blue-900/50",
-      badgeClass: "bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300",
-      numClass: "bg-blue-600 text-white",
     },
   ];
 
+  const currentCfg = pillarsConfig.find((c) => c.key === activeTab);
+  const currentPillar = activeTab !== "notes" ? data[activeTab] : null;
+
   return (
     <div
-      className={`rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-[#151311] overflow-hidden shadow-sm transition-all ${className}`}
+      className={`rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-[#1a1714] p-4 sm:p-5 space-y-4 ${className}`}
     >
-      {/* Header Banner */}
-      <div className="p-5 sm:p-6 bg-gradient-to-r from-stone-900 via-stone-800 to-emerald-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
-              <Layers className="w-4 h-4" />
-            </div>
-            <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-              CONTENT PILLARS SHEET
-            </h2>
+      {/* Native Form Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/80 dark:border-stone-800 pb-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4" />
           </div>
-          <p className="text-xs text-stone-300 font-mono tracking-wider uppercase">
-            PLAN · CREATE · ENGAGE · CONVERT
-          </p>
+          <div>
+            <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <span>Content Pillars & Strategy Plan</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-200/70 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-normal">
+                5 Strategic Buckets
+              </span>
+            </h3>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+              Define your core content buckets so our agency creates balanced, high-converting social media deliverables.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
           <button
             type="button"
             onClick={() => onChange(DEFAULT_CONTENT_PILLARS)}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            className="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Load Strategy Template</span>
+            <span>Sample Strategy</span>
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              onChange({
+                educational: createDefaultPillar("", "", "", "", ["", "", ""], ["", "", ""], [], ["", "", ""], "", "High", "", ""),
+                promotional: createDefaultPillar("", "", "", "", ["", "", ""], ["", "", ""], [], ["", "", ""], "", "Medium", "", ""),
+                engagement: createDefaultPillar("", "", "", "", ["", "", ""], ["", "", ""], [], ["", "", ""], "", "High", "", ""),
+                trustAuthority: createDefaultPillar("", "", "", "", ["", "", ""], ["", "", ""], [], ["", "", ""], "", "High", "", ""),
+                entertainment: createDefaultPillar("", "", "", "", ["", "", ""], ["", "", ""], [], ["", "", ""], "", "Medium", "", ""),
+                overallNotes: "",
+              })
+            }
+            className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 text-[11px] font-medium transition-colors cursor-pointer"
+          >
+            Reset
           </button>
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors cursor-pointer"
             aria-label="Toggle section"
           >
             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -319,365 +320,299 @@ export function ContentPillarsForm({
         </div>
       </div>
 
-      {/* Purpose Banner */}
-      <div className="px-5 py-3 bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-200 dark:border-emerald-900/40 flex items-start gap-3">
-        <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-emerald-950 dark:text-emerald-200 leading-relaxed">
-          <strong className="font-bold">Purpose:</strong> This sheet defines your brand&apos;s 5 primary content pillars, topics, formats, and CTAs so our agency creates consistent, relevant, high-converting social media deliverables.
-        </p>
-      </div>
-
       {isOpen && (
-        <div className="p-4 sm:p-6 space-y-8">
-          {/* 5 Core Pillars */}
-          <div className="space-y-6">
+        <div className="space-y-4">
+          {/* Pillar Pill Tabs */}
+          <div className="flex flex-wrap gap-2">
             {pillarsConfig.map((cfg) => {
-              const pillar = data[cfg.key];
-              const Icon = cfg.icon;
-
+              const isActive = activeTab === cfg.key;
               return (
-                <div
+                <button
                   key={cfg.key}
-                  className={`rounded-xl border ${cfg.borderLight} ${cfg.bgLight} p-4 sm:p-5 space-y-4 transition-all shadow-xs`}
+                  type="button"
+                  onClick={() => setActiveTab(cfg.key)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                      : "bg-white dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
+                  }`}
                 >
-                  {/* Pillar Top Bar */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3 border-stone-200/60 dark:border-stone-800/80">
-                    <div className="flex items-center gap-2.5">
-                      <div
-                        className={`w-6 h-6 rounded-md ${cfg.numClass} text-xs font-black flex items-center justify-center shadow-xs`}
-                      >
-                        {cfg.num}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4 text-stone-700 dark:text-stone-300" />
-                        <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100">
-                          {cfg.title}
-                        </h3>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${cfg.badgeClass} self-start sm:self-auto`}
-                    >
-                      {cfg.badge}
-                    </span>
-                  </div>
-
-                  {/* Top Grid: Name, Description, Purpose, Audience, Topics, Subtopics */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-                    {/* Content Pillar Name */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Content Pillar Name
-                      </label>
-                      <input
-                        type="text"
-                        value={pillar.pillarName}
-                        onChange={(e) => updatePillar(cfg.key, "pillarName", e.target.value)}
-                        placeholder="e.g. Tips, How-to, Guides"
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                      />
-                    </div>
-
-                    {/* Pillar Description */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Pillar Description
-                      </label>
-                      <input
-                        type="text"
-                        value={pillar.description}
-                        onChange={(e) => updatePillar(cfg.key, "description", e.target.value)}
-                        placeholder="Brief description of this pillar."
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                      />
-                    </div>
-
-                    {/* Purpose of the Pillar */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Purpose of the Pillar
-                      </label>
-                      <input
-                        type="text"
-                        value={pillar.purpose}
-                        onChange={(e) => updatePillar(cfg.key, "purpose", e.target.value)}
-                        placeholder="What do you want to achieve?"
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                      />
-                    </div>
-
-                    {/* Target Audience */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Target Audience
-                      </label>
-                      <input
-                        type="text"
-                        value={pillar.targetAudience}
-                        onChange={(e) => updatePillar(cfg.key, "targetAudience", e.target.value)}
-                        placeholder="Who is this for?"
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                      />
-                    </div>
-
-                    {/* Topics Covered (3 Items) */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Topics Covered
-                      </label>
-                      <div className="space-y-1">
-                        {[0, 1, 2].map((idx) => (
-                          <input
-                            key={idx}
-                            type="text"
-                            value={pillar.topicsCovered?.[idx] || ""}
-                            onChange={(e) =>
-                              updateArrayField(cfg.key, "topicsCovered", idx, e.target.value)
-                            }
-                            placeholder={`• Topic ${idx + 1}`}
-                            className="w-full px-2 py-1 rounded bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Sub-topics (3 Items) */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Sub-topics
-                      </label>
-                      <div className="space-y-1">
-                        {[0, 1, 2].map((idx) => (
-                          <input
-                            key={idx}
-                            type="text"
-                            value={pillar.subTopics?.[idx] || ""}
-                            onChange={(e) =>
-                              updateArrayField(cfg.key, "subTopics", idx, e.target.value)
-                            }
-                            placeholder={`• Sub-topic ${idx + 1}`}
-                            className="w-full px-2 py-1 rounded bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Grid: Formats, Examples, CTAs, Priority, Keywords */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-2 border-t border-stone-200/60 dark:border-stone-800/60">
-                    {/* Content Formats */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Content Formats
-                      </label>
-                      <div className="space-y-1">
-                        {FORMAT_OPTIONS.map((fmt) => {
-                          const checked = (pillar.formats || []).includes(fmt);
-                          return (
-                            <label
-                              key={fmt}
-                              className="flex items-center gap-1.5 cursor-pointer text-[11px] text-stone-700 dark:text-stone-300"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => togglePillarFormat(cfg.key, fmt)}
-                                className="rounded border-stone-300 dark:border-stone-700 text-emerald-600 focus:ring-emerald-500"
-                              />
-                              <span>{fmt}</span>
-                            </label>
-                          );
-                        })}
-                        <input
-                          type="text"
-                          value={pillar.formatsOther}
-                          onChange={(e) => updatePillar(cfg.key, "formatsOther", e.target.value)}
-                          placeholder="Other: ..."
-                          className="w-full px-2 py-1 rounded bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-[10px] focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Content Examples (3 items) */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Content Examples
-                      </label>
-                      <div className="space-y-1">
-                        {[0, 1, 2].map((idx) => (
-                          <input
-                            key={idx}
-                            type="text"
-                            value={pillar.contentExamples?.[idx] || ""}
-                            onChange={(e) =>
-                              updateArrayField(cfg.key, "contentExamples", idx, e.target.value)
-                            }
-                            placeholder={`• Example ${idx + 1}`}
-                            className="w-full px-2 py-1 rounded bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* CTA Ideas */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        CTA Ideas
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={pillar.ctaIdeas}
-                        onChange={(e) => updatePillar(cfg.key, "ctaIdeas", e.target.value)}
-                        placeholder="e.g. Save for later · Follow for more · Comment thoughts"
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                      />
-                    </div>
-
-                    {/* Content Frequency / Priority */}
-                    <div className="space-y-2">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Content Frequency / Priority
-                      </label>
-                      <div className="flex gap-2">
-                        {(["High", "Medium", "Low"] as const).map((p) => (
-                          <label
-                            key={p}
-                            className={`flex-1 py-1 text-center rounded border text-[11px] font-bold cursor-pointer transition-all ${
-                              pillar.priority === p
-                                ? p === "High"
-                                  ? "bg-rose-500 border-rose-500 text-white"
-                                  : p === "Medium"
-                                  ? "bg-amber-500 border-amber-500 text-white"
-                                  : "bg-stone-400 border-stone-400 text-white"
-                                : "bg-white dark:bg-stone-900 border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-400"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name={`priority-${cfg.key}`}
-                              checked={pillar.priority === p}
-                              onChange={() => updatePillar(cfg.key, "priority", p)}
-                              className="hidden"
-                            />
-                            {p}
-                          </label>
-                        ))}
-                      </div>
-                      <input
-                        type="text"
-                        value={pillar.plannedFrequency}
-                        onChange={(e) => updatePillar(cfg.key, "plannedFrequency", e.target.value)}
-                        placeholder="e.g. 3 posts/week"
-                        className="w-full px-2 py-1 rounded bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
-                      />
-                    </div>
-
-                    {/* Relevant Keywords / Topics */}
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-bold text-stone-700 dark:text-stone-300">
-                        Relevant Keywords / Topics
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={pillar.keywords}
-                        onChange={(e) => updatePillar(cfg.key, "keywords", e.target.value)}
-                        placeholder="Add relevant keywords..."
-                        className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
+                  <span className={`text-[10px] px-1 rounded ${isActive ? "bg-emerald-700" : "bg-stone-200 dark:bg-stone-800"}`}>
+                    {cfg.num}
+                  </span>
+                  <span>{cfg.title}</span>
+                </button>
               );
             })}
+            <button
+              type="button"
+              onClick={() => setActiveTab("notes")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                activeTab === "notes"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                  : "bg-white dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
+              }`}
+            >
+              <span>Strategy Notes</span>
+            </button>
           </div>
 
-          {/* Bottom Section: Overall Notes & Strategy + Content Frequency Summary Table */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-2">
-            {/* Overall Notes & Strategy */}
-            <div className="p-4 sm:p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-[#1a1714] space-y-2">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-600" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-stone-100">
-                  Overall Notes & Strategy
-                </h4>
-              </div>
-              <p className="text-[11px] text-stone-500 dark:text-stone-400">
-                Add any additional notes, content strategy pointers, seasonal topics, or important campaign details.
-              </p>
-              <textarea
-                rows={5}
-                value={data.overallNotes}
-                onChange={(e) => onChange({ ...data, overallNotes: e.target.value })}
-                placeholder="Add any additional notes, content strategy pointers, seasonal topics, or important details here..."
-                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-              />
-            </div>
-
-            {/* Content Frequency Summary Table */}
-            <div className="p-4 sm:p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-[#1a1714] space-y-3">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-emerald-600" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-stone-100">
-                  Content Frequency Summary
-                </h4>
+          {/* Active Pillar Form Body */}
+          {activeTab !== "notes" && currentCfg && currentPillar && (
+            <div className="space-y-4 animate-fade-in">
+              {/* Badge Bar */}
+              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200/80 dark:border-stone-800">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-md bg-emerald-600 text-white text-[11px] font-black flex items-center justify-center">
+                    {currentCfg.num}
+                  </span>
+                  <span className="font-bold text-xs text-stone-900 dark:text-stone-100">
+                    {currentCfg.fullTitle}
+                  </span>
+                </div>
+                <span className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 font-medium">
+                  {currentCfg.badge}
+                </span>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-stone-100 dark:bg-stone-800/80 border-b border-stone-200 dark:border-stone-700 text-[10px] uppercase font-bold text-stone-600 dark:text-stone-400">
-                      <th className="p-2.5">Content Pillar</th>
-                      <th className="p-2.5">Planned Frequency (per week)</th>
-                      <th className="p-2.5 text-center">Priority</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-200 dark:divide-stone-800 text-[11px]">
-                    {pillarsConfig.map((cfg) => {
-                      const p = data[cfg.key];
+              {/* Row 1: Pillar Name & Purpose */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Content Pillar Name
+                  </label>
+                  <input
+                    type="text"
+                    value={currentPillar.pillarName}
+                    onChange={(e) => updatePillar(currentCfg.key, "pillarName", e.target.value)}
+                    placeholder="e.g. Tips, How-to, Guides"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Target Audience for this Bucket
+                  </label>
+                  <input
+                    type="text"
+                    value={currentPillar.targetAudience}
+                    onChange={(e) => updatePillar(currentCfg.key, "targetAudience", e.target.value)}
+                    placeholder="e.g. Beginners seeking practical solutions"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Purpose & Description */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Purpose of this Pillar
+                  </label>
+                  <input
+                    type="text"
+                    value={currentPillar.purpose}
+                    onChange={(e) => updatePillar(currentCfg.key, "purpose", e.target.value)}
+                    placeholder="e.g. Teach, inform, and build top-of-mind educational authority"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Pillar Description / Angle
+                  </label>
+                  <input
+                    type="text"
+                    value={currentPillar.description}
+                    onChange={(e) => updatePillar(currentCfg.key, "description", e.target.value)}
+                    placeholder="Actionable industry insights, step-by-step tutorials..."
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Topics Covered & Sub-topics */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5 p-3 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200/80 dark:border-stone-800">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Core Topics Covered (3 Items)
+                  </label>
+                  <div className="space-y-1.5">
+                    {[0, 1, 2].map((idx) => (
+                      <input
+                        key={idx}
+                        type="text"
+                        value={currentPillar.topicsCovered?.[idx] || ""}
+                        onChange={(e) => updateArrayField(currentCfg.key, "topicsCovered", idx, e.target.value)}
+                        placeholder={`• Topic ${idx + 1}`}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 p-3 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200/80 dark:border-stone-800">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Sub-topics & Angles (3 Items)
+                  </label>
+                  <div className="space-y-1.5">
+                    {[0, 1, 2].map((idx) => (
+                      <input
+                        key={idx}
+                        type="text"
+                        value={currentPillar.subTopics?.[idx] || ""}
+                        onChange={(e) => updateArrayField(currentCfg.key, "subTopics", idx, e.target.value)}
+                        placeholder={`• Sub-topic ${idx + 1}`}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 4: Preferred Formats Chips */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  Preferred Content Formats
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {FORMAT_OPTIONS.map((fmt) => {
+                    const isSelected = currentPillar.formats?.includes(fmt);
+                    return (
+                      <button
+                        key={fmt}
+                        type="button"
+                        onClick={() => toggleFormat(currentCfg.key, fmt)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                            : "bg-white dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
+                        }`}
+                      >
+                        {isSelected ? <Check className="w-3 h-3" /> : null}
+                        <span>{fmt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 5: Content Examples & CTA */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5 p-3 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200/80 dark:border-stone-800">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Content Headline / Hook Examples
+                  </label>
+                  <div className="space-y-1.5">
+                    {[0, 1, 2].map((idx) => (
+                      <input
+                        key={idx}
+                        type="text"
+                        value={currentPillar.contentExamples?.[idx] || ""}
+                        onChange={(e) => updateArrayField(currentCfg.key, "contentExamples", idx, e.target.value)}
+                        placeholder={`Example ${idx + 1}`}
+                        className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3.5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Call To Action (CTA) Ideas
+                    </label>
+                    <input
+                      type="text"
+                      value={currentPillar.ctaIdeas}
+                      onChange={(e) => updatePillar(currentCfg.key, "ctaIdeas", e.target.value)}
+                      placeholder="e.g. Save for later · Follow for more · Comment below"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Relevant Keywords / Hashtags
+                    </label>
+                    <input
+                      type="text"
+                      value={currentPillar.keywords}
+                      onChange={(e) => updatePillar(currentCfg.key, "keywords", e.target.value)}
+                      placeholder="e.g. how to, tips, strategy, guide"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 6: Frequency & Priority */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Planned Frequency
+                  </label>
+                  <input
+                    type="text"
+                    value={currentPillar.plannedFrequency}
+                    onChange={(e) => updatePillar(currentCfg.key, "plannedFrequency", e.target.value)}
+                    placeholder="e.g. 3 posts/week"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Strategic Priority
+                  </label>
+                  <div className="flex gap-2">
+                    {(["High", "Medium", "Low"] as const).map((pri) => {
+                      const isSelected = currentPillar.priority === pri;
                       return (
-                        <tr key={cfg.key} className="hover:bg-stone-50/50 dark:hover:bg-stone-800/40">
-                          <td className="p-2.5 font-bold text-stone-800 dark:text-stone-200 flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${cfg.numClass}`} />
-                            <span>{cfg.title.split(" ")[0]}</span>
-                          </td>
-                          <td className="p-2.5">
-                            <input
-                              type="text"
-                              value={p.plannedFrequency}
-                              onChange={(e) =>
-                                updatePillar(cfg.key, "plannedFrequency", e.target.value)
-                              }
-                              placeholder="e.g. 3 posts/week"
-                              className="w-full px-2 py-1 rounded bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs font-mono"
-                            />
-                          </td>
-                          <td className="p-2.5">
-                            <div className="flex items-center justify-center gap-2">
-                              {(["High", "Medium", "Low"] as const).map((pr) => (
-                                <label
-                                  key={pr}
-                                  className="flex items-center gap-1 cursor-pointer text-[10px]"
-                                >
-                                  <input
-                                    type="radio"
-                                    name={`summary-priority-${cfg.key}`}
-                                    checked={p.priority === pr}
-                                    onChange={() => updatePillar(cfg.key, "priority", pr)}
-                                    className="text-emerald-600 focus:ring-emerald-500"
-                                  />
-                                  <span>{pr}</span>
-                                </label>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
+                        <button
+                          key={pri}
+                          type="button"
+                          onClick={() => updatePillar(currentCfg.key, "priority", pri)}
+                          className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            isSelected
+                              ? pri === "High"
+                                ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                                : pri === "Medium"
+                                ? "bg-amber-600 text-white border-amber-600 shadow-xs"
+                                : "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                              : "bg-white dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
+                          }`}
+                        >
+                          {pri}
+                        </button>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Tab Content: Overall Strategy Notes */}
+          {activeTab === "notes" && (
+            <div className="space-y-3.5 animate-fade-in">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Content Distribution & Channel Strategy Notes</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={data.overallNotes}
+                  onChange={(e) => onChange({ ...data, overallNotes: e.target.value })}
+                  placeholder="e.g. Maintain a balanced 40% Educational, 20% Trust, 20% Engagement, 10% Promotional distribution..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

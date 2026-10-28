@@ -4,33 +4,9 @@ import React, { useState } from "react";
 import {
   Search,
   Globe,
-  Share2,
   Users,
-  Calendar,
-  Layers,
-  LayoutGrid,
-  Trophy,
-  BarChart3,
-  Percent,
-  Video,
-  FileText,
-  MessageSquare,
-  Sparkles,
-  MousePointerClick,
-  Hash,
-  Palette,
-  Volume2,
-  Tag,
-  ThumbsUp,
-  ShieldCheck,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
   Target,
-  Lightbulb,
-  BookOpen,
-  Ban,
-  TrendingUp,
+  Sparkles,
   ChevronDown,
   ChevronUp,
   Instagram,
@@ -38,6 +14,12 @@ import {
   Youtube,
   Linkedin,
   Twitter,
+  RotateCcw,
+  Check,
+  TrendingUp,
+  AlertTriangle,
+  Lightbulb,
+  ShieldCheck,
 } from "lucide-react";
 
 export interface CompetitorProfile {
@@ -150,7 +132,7 @@ export function CompetitorAnalysisForm({
   className = "",
 }: CompetitorAnalysisFormProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const [activeMobileTab, setActiveMobileTab] = useState<"c1" | "c2" | "c3">("c1");
+  const [activeTab, setActiveTab] = useState<"c1" | "c2" | "c3" | "summary">("c1");
 
   const data: CompetitorAnalysisData = {
     competitor1: { ...createEmptyCompetitor("Competitor 1"), ...(value.competitor1 || {}) },
@@ -210,121 +192,118 @@ export function CompetitorAnalysisForm({
         website: "https://primefit.example.com",
         primaryHandle: "@primefit_global",
         followers: {
-          instagram: "120",
-          facebook: "45",
-          youtube: "85",
-          linkedin: "12",
-          tiktok: "210",
-          x: "15",
+          instagram: "120K",
+          facebook: "45K",
+          youtube: "85K",
+          linkedin: "12K",
+          tiktok: "210K",
+          x: "15K",
         },
         postingFrequency: "5 reels / week",
-        contentPillars: "Workout tutorials, Athlete routines, Nutrition tips",
-        contentFormats: ["Reels", "Stories", "Carousels"],
-        contentFormatsOther: "IG Live Q&As",
-        bestPerformingContent: "15-minute quick HIIT workout reels with high tempo audio",
-        averageEngagement: "1,800 likes, 120 comments",
-        engagementRate: "3.2%",
-        reelsStrategy: "Fast paced, dynamic cuts, bold hook text in first 2 seconds",
-        carouselStrategy: "7-slide educational carousel breakdowns with actionable steps",
-        captionStyle: "Concise value summary with clear CTA to save post",
-        hookStyle: "Question hooks: 'Stop doing squats like this...'",
-        ctaStrategy: "Comment 'WORKOUT' to get the free routine PDF in DM",
-        hashtagStrategy: "5 niche training hashtags + #PrimeFitSquad",
-        visualStyle: "High contrast, dark gym aesthetic with neon accents",
-        brandVoice: "Authoritative, intense, motivating, highly disciplined",
-        offersPromotions: "Seasonal 20% bundle discount on membership",
-        audienceResponse: "Strong loyal community, high save rate on workouts",
-        strengths: "Elite video editing quality and influencer athlete endorsements",
-        weaknesses: "Very little community reply in comments; robotic support",
-        whatTheyDoWell: "Hook retention and short video pacing are top-tier",
-        whatTheyAreMissing: "Customer transformation stories and beginner onboarding",
-        contentGaps: "No beginner-friendly low-impact routines or nutritional cooking",
-        opportunitiesForUs: "Position as more relatable, supportive, and accessible for everyday fitness",
-        ideasToLearnFrom: "Automated DM lead magnet delivery on carousel comments",
-        thingsToAvoid: "Overly intimidating hardcore bodybuilder vibe",
+        contentPillars: "Workout tutorials, athlete transformations, product drops",
+        contentFormats: ["Reels", "Carousels", "Stories"],
+        contentFormatsOther: "",
+        bestPerformingContent: "POV workout split reels & viral hook audio trends",
+        averageEngagement: "4.2K likes, 120 comments",
+        engagementRate: "3.5%",
+        reelsStrategy: "Fast paced, dynamic cuts under 15s with bold text hooks",
+        carouselStrategy: "10-slide workout guides with swipe cues",
+        captionStyle: "Concise bullet points with CTA to save post",
+        hookStyle: "'Stop making this mistake if you want to grow...'",
+        ctaStrategy: "'Save this for your next session'",
+        hashtagStrategy: "5 niche tags + 3 branded tags",
+        visualStyle: "High contrast, dark athletic moody grading",
+        brandVoice: "Authoritative, intense, motivational",
+        offersPromotions: "Seasonal 20% bundle drops",
+        audienceResponse: "High save rate, high follower loyalty",
+        strengths: "Elite video production quality and consistent branding",
+        weaknesses: "Very little community interaction or reply to comments",
+        whatTheyDoWell: "Visual consistency and high-speed hook execution",
+        whatTheyAreMissing: "Customer case studies and authentic founder stories",
+        contentGaps: "Beginner fitness education and transparent pricing",
+        opportunitiesForUs: "Win on authentic founder presence, community AMAs, and honest breakdowns",
+        ideasToLearnFrom: "Their bold subtitle animations and 3-second hook structure",
+        thingsToAvoid: "Overly corporate detached tone",
       },
       competitor2: {
-        name: "Zenith Activewear",
-        website: "https://zenithactive.example.com",
-        primaryHandle: "@zenith_active",
+        name: "Aura Lifestyle Co",
+        website: "https://auralifestyle.example.com",
+        primaryHandle: "@auralife_official",
         followers: {
-          instagram: "85",
-          facebook: "25",
-          youtube: "18",
-          linkedin: "8",
-          tiktok: "140",
-          x: "5",
+          instagram: "85K",
+          facebook: "20K",
+          youtube: "15K",
+          linkedin: "5K",
+          tiktok: "95K",
+          x: "8K",
         },
-        postingFrequency: "3 posts / week",
-        contentPillars: "Athleisure styling, Fabric features, Sustainability",
-        contentFormats: ["Carousels", "Single Posts", "Stories"],
+        postingFrequency: "Daily reels & carousels",
+        contentPillars: "Aesthetic lifestyle, daily routines, wellness tips",
+        contentFormats: ["Reels", "Carousels"],
         contentFormatsOther: "",
-        bestPerformingContent: "Try-on hauls showing squat-proof fabric stretch tests",
-        averageEngagement: "850 likes, 45 comments",
-        engagementRate: "2.1%",
-        reelsStrategy: "Aesthetic lifestyle b-roll with trending lofi audio",
-        carouselStrategy: "Side-by-side color comparisons and size charts",
-        captionStyle: "Casual, conversational, emoji-heavy",
-        hookStyle: "Sensory hooks: 'The softest gym set you will ever wear'",
-        ctaStrategy: "Link in bio to shop new seasonal color drop",
-        hashtagStrategy: "Broad fashion hashtags (#athleisure #gymootd)",
-        visualStyle: "Warm neutral tones, pastel beige, clean studio lighting",
-        brandVoice: "Friendly, gentle, wellness-focused, mindful",
-        offersPromotions: "Free shipping on orders above ₹1,999",
-        audienceResponse: "Moderate engagement; high product inquiries in DMs",
-        strengths: "Very aesthetically pleasing feed and visual packaging",
-        weaknesses: "Irregular posting schedule and slow turnaround on reels",
-        whatTheyDoWell: "Product photography and fabric detail closeups",
-        whatTheyAreMissing: "Performance marketing video ads and customer UGC",
-        contentGaps: "Lack of real workout testing or athlete sweat proof tests",
-        opportunitiesForUs: "Combine aesthetic styling with high-performance proof tests",
-        ideasToLearnFrom: "Minimalist color palette styling in carousels",
-        thingsToAvoid: "Posting beautiful photos without clear purchasing CTAs",
+        bestPerformingContent: "Morning routine aesthetics and calm aesthetic packaging",
+        averageEngagement: "2.1K likes, 80 comments",
+        engagementRate: "2.5%",
+        reelsStrategy: "Slow aesthetic b-roll with soothing ambient sound",
+        carouselStrategy: "Minimalist typography slides on cream backgrounds",
+        captionStyle: "Poetic, journal-like reflections",
+        hookStyle: "'A gentle reminder for your Tuesday morning...'",
+        ctaStrategy: "'Share with someone who needs peace today'",
+        hashtagStrategy: "Broad lifestyle aesthetic tags",
+        visualStyle: "Warm earthy tones, soft natural lighting",
+        brandVoice: "Gentle, empowering, mindful",
+        offersPromotions: "Free shipping codes in bio",
+        audienceResponse: "Strong emotional resonance and aesthetic saves",
+        strengths: "Cohesive aesthetic grid and warm community feel",
+        weaknesses: "Weak direct sales call-to-actions, vague product benefits",
+        whatTheyDoWell: "Building an aspirational lifestyle universe",
+        whatTheyAreMissing: "Proof of clinical efficacy or product science",
+        contentGaps: "Before/After proof, clear product differentiation",
+        opportunitiesForUs: "Combine aesthetic beauty with strong, quantifiable product value",
+        ideasToLearnFrom: "Their color grading and seamless carousel transitions",
+        thingsToAvoid: "Style over substance with no clear buying journey",
       },
       competitor3: {
-        name: "Apex Fuel & Nutra",
-        website: "https://apexfuel.example.com",
-        primaryHandle: "@apexfuel",
+        name: "Zenith Performance",
+        website: "https://zenithperformance.example.com",
+        primaryHandle: "@zenith_prep",
         followers: {
-          instagram: "190",
-          facebook: "80",
-          youtube: "310",
-          linkedin: "35",
-          tiktok: "90",
-          x: "28",
+          instagram: "45K",
+          facebook: "12K",
+          youtube: "30K",
+          linkedin: "25K",
+          tiktok: "15K",
+          x: "10K",
         },
-        postingFrequency: "Daily reels & YouTube Shorts",
-        contentPillars: "Supplement science, Myth busting, Protein recipes",
-        contentFormats: ["Reels", "Stories", "Carousels", "Live"],
-        contentFormatsOther: "Long-form podcast clips",
-        bestPerformingContent: "Doctor/trainer breaking down fake protein powder scams",
-        averageEngagement: "4,200 likes, 380 comments",
-        engagementRate: "4.5%",
-        reelsStrategy: "Talking-head expert with high-speed b-roll and sound effects",
-        carouselStrategy: "Ingredient label comparisons vs supermarket brands",
-        captionStyle: "Detailed research breakdown with scientific citations",
-        hookStyle: "Controversial / Myth-busting: 'Your whey protein is lying to you'",
-        ctaStrategy: "Check lab test certificates via link in bio",
-        hashtagStrategy: "Scientific fitness tags (#supplements #nutritionfacts)",
-        visualStyle: "Medical clean white & bold red, scientific graphs",
-        brandVoice: "Scientific, unapologetic, fact-first, transparent",
-        offersPromotions: "Buy 1 Get 1 on shaker bottles; bundle discounts",
-        audienceResponse: "Extremely high comment debate and share rate",
-        strengths: "Immense credibility and scientific backing",
-        weaknesses: "Overly technical jargon can confuse casual fitness buyers",
-        whatTheyDoWell: "Viral controversy hooks and myth-busting content",
-        whatTheyAreMissing: "Lifestyle appeal; feel-good community stories",
-        contentGaps: "Quick 2-minute snack recipes for working professionals",
-        opportunitiesForUs: "Simplify the science with approachable infographics",
-        ideasToLearnFrom: "Displaying third-party lab certifications to build trust",
-        thingsToAvoid: "Attacking other brands directly in an aggressive tone",
+        postingFrequency: "3 long-form carousels / week",
+        contentPillars: "Scientific research, data breakdowns, founder talks",
+        contentFormats: ["Carousels", "Single Posts"],
+        contentFormatsOther: "",
+        bestPerformingContent: "Clinical study infographics & whitepaper breakdowns",
+        averageEngagement: "1.5K likes, 150 comments",
+        engagementRate: "3.3%",
+        reelsStrategy: "Rarely posts short reels, mostly podcast clips",
+        carouselStrategy: "Dense information-rich graphic carousels",
+        captionStyle: "Long-form micro-blog essays",
+        hookStyle: "'The data is finally in: here is what 500 studies show...'",
+        ctaStrategy: "'Download the full research PDF via link in bio'",
+        hashtagStrategy: "Scientific industry hashtags",
+        visualStyle: "Clinical blue and white chart aesthetics",
+        brandVoice: "Academic, analytical, serious",
+        offersPromotions: "Annual subscription discounts",
+        audienceResponse: "Extremely high comment debate and bookmark rate",
+        strengths: "Unmatched scientific credibility and intellectual depth",
+        weaknesses: "Content can be dry, difficult for beginners to digest",
+        whatTheyDoWell: "Definitive authority and undeniable domain proof",
+        whatTheyAreMissing: "Short-form viral hooks and mobile-first entertainment",
+        contentGaps: "Fast snackable video summaries and relatable memes",
+        opportunitiesForUs: "Translate deep authority into fast, engaging short-form reels",
+        ideasToLearnFrom: "Using charts and verifiable data to silence skeptics",
+        thingsToAvoid: "Boring long text blocks that get skipped on mobile feeds",
       },
-      keyTakeaways:
-        "Competitors are winning through high-speed hook pacing and scientific authority, but failing to cater to beginner audiences with empathetic support.",
-      overallOpportunities:
-        "Own the 'Approachable High-Performance' category by combining dynamic, fast-paced reels with friendly, relatable community engagement and clear DM automation.",
-      strategyIdeas:
-        "1. Launch a weekly 'Myth vs Fact' short video series with doctor backed citations.\n2. Implement comment-to-DM automated lead magnets for custom workout/diet planners.\n3. Highlight real customer transformations with raw, authentic video testimonials.",
+      keyTakeaways: "Competitors are either purely aesthetic (no proof) or purely technical (too boring).",
+      overallOpportunities: "Own the sweet spot: fast-paced dynamic reels with undeniable visual proof and real community replies.",
+      strategyIdeas: "Engineer 3-second hook reels followed by 10-slide value carousels and authentic weekly founder AMAs.",
     });
   };
 
@@ -332,31 +311,38 @@ export function CompetitorAnalysisForm({
     onChange(DEFAULT_COMPETITOR_ANALYSIS);
   };
 
+  const currentCompKey =
+    activeTab === "c1" ? "competitor1" : activeTab === "c2" ? "competitor2" : "competitor3";
+  const currentComp = data[currentCompKey];
+
   return (
     <div
-      className={`rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-[#151311] overflow-hidden shadow-sm transition-all ${className}`}
+      className={`rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-[#1a1714] p-4 sm:p-5 space-y-4 ${className}`}
     >
-      {/* Header Banner */}
-      <div className="p-5 sm:p-6 bg-gradient-to-r from-stone-900 via-stone-800 to-slate-900 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center">
-              <Search className="w-4 h-4" />
-            </div>
-            <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2">
-              COMPETITOR ANALYSIS SHEET
-            </h2>
+      {/* Native Form Section Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-200/80 dark:border-stone-800 pb-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <Search className="w-4 h-4" />
           </div>
-          <p className="text-xs text-stone-300 font-mono tracking-wider uppercase">
-            Analyze · Compare · Find Opportunities
-          </p>
+          <div>
+            <h3 className="text-sm font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+              <span>Competitor Analysis & Market Intelligence</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-stone-200/70 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-normal">
+                Optional Deep Dive
+              </span>
+            </h3>
+            <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5">
+              Analyze your top 3 competitors to help our creative team identify content gaps and winning hooks.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
           <button
             type="button"
             onClick={prefillSampleAnalysis}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            className="px-2.5 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Sample Intel</span>
@@ -364,14 +350,14 @@ export function CompetitorAnalysisForm({
           <button
             type="button"
             onClick={clearAnalysis}
-            className="px-3 py-1.5 rounded-lg bg-stone-700 hover:bg-stone-600 text-stone-300 hover:text-white text-xs font-medium transition-colors cursor-pointer"
+            className="px-2.5 py-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 text-[11px] font-medium transition-colors cursor-pointer"
           >
             Reset
           </button>
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="p-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 dark:bg-stone-800 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors cursor-pointer"
             aria-label="Toggle section"
           >
             {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -379,1138 +365,325 @@ export function CompetitorAnalysisForm({
         </div>
       </div>
 
-      {/* Purpose Banner */}
-      <div className="px-5 py-3 bg-emerald-50 dark:bg-emerald-950/30 border-b border-emerald-200 dark:border-emerald-900/40 flex items-start gap-3">
-        <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-        <p className="text-xs text-emerald-950 dark:text-emerald-200 leading-relaxed">
-          <strong className="font-bold">Purpose:</strong> Use this matrix to analyze your top 3 competitors' content, social performance, visual strategy, and audience response so our team can exploit market gaps and position your brand to win.
-        </p>
-      </div>
-
       {isOpen && (
-        <div className="p-4 sm:p-6 space-y-8">
-          {/* Mobile Tab Switcher */}
-          <div className="block lg:hidden">
-            <div className="grid grid-cols-3 gap-1.5 p-1 bg-stone-100 dark:bg-stone-900 rounded-xl">
-              <button
-                type="button"
-                onClick={() => setActiveMobileTab("c1")}
-                className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                  activeMobileTab === "c1"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "text-stone-600 dark:text-stone-400"
-                }`}
-              >
-                Competitor 1
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMobileTab("c2")}
-                className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                  activeMobileTab === "c2"
-                    ? "bg-rose-600 text-white shadow-xs"
-                    : "text-stone-600 dark:text-stone-400"
-                }`}
-              >
-                Competitor 2
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMobileTab("c3")}
-                className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                  activeMobileTab === "c3"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-stone-600 dark:text-stone-400"
-                }`}
-              >
-                Competitor 3
-              </button>
-            </div>
+        <div className="space-y-4">
+          {/* Competitor Pill Tabs */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { id: "c1" as const, label: data.competitor1.name || "Competitor 1", num: "1" },
+              { id: "c2" as const, label: data.competitor2.name || "Competitor 2", num: "2" },
+              { id: "c3" as const, label: data.competitor3.name || "Competitor 3", num: "3" },
+              { id: "summary" as const, label: "Market Gaps & Strategy", num: "★" },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                      : "bg-white dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
+                  }`}
+                >
+                  <span className={`text-[10px] px-1 rounded ${isActive ? "bg-emerald-700" : "bg-stone-200 dark:bg-stone-800"}`}>
+                    {tab.num}
+                  </span>
+                  <span className="truncate max-w-[140px] sm:max-w-none">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Master Comparison Matrix Table */}
-          <div className="overflow-x-auto rounded-xl border border-stone-200 dark:border-stone-800">
-            <table className="w-full text-left border-collapse min-w-[760px] text-xs">
-              <thead>
-                <tr>
-                  <th className="w-1/4 p-3.5 bg-stone-800 text-white font-bold tracking-wider uppercase text-[11px] border-r border-stone-700">
-                    Category
-                  </th>
-                  <th
-                    className={`w-1/4 p-3.5 font-bold tracking-wider uppercase text-[11px] border-r border-stone-200 dark:border-stone-800 ${
-                      activeMobileTab === "c1" ? "table-cell" : "hidden lg:table-cell"
-                    } bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200`}
-                  >
-                    Competitor 1
-                  </th>
-                  <th
-                    className={`w-1/4 p-3.5 font-bold tracking-wider uppercase text-[11px] border-r border-stone-200 dark:border-stone-800 ${
-                      activeMobileTab === "c2" ? "table-cell" : "hidden lg:table-cell"
-                    } bg-rose-50 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200`}
-                  >
-                    Competitor 2
-                  </th>
-                  <th
-                    className={`w-1/4 p-3.5 font-bold tracking-wider uppercase text-[11px] ${
-                      activeMobileTab === "c3" ? "table-cell" : "hidden lg:table-cell"
-                    } bg-blue-50 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200`}
-                  >
-                    Competitor 3
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-200 dark:divide-stone-800">
-                {/* 1. Competitor Name */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Share2 className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Competitor Name</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].name}
-                          onChange={(e) => updateCompetitor(ckey, "name", e.target.value)}
-                          placeholder="e.g. Brand Name"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs font-semibold focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
+          {/* Tab Content: Competitor 1, 2, or 3 */}
+          {activeTab !== "summary" && (
+            <div className="space-y-4 animate-fade-in">
+              {/* Row 1: Brand Name & Links */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Competitor Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={currentComp.name}
+                    onChange={(e) => updateCompetitor(currentCompKey, "name", e.target.value)}
+                    placeholder="e.g. Brand Alpha"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-medium"
+                  />
+                </div>
 
-                {/* 2. Website */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Globe className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Website</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].website}
-                          onChange={(e) => updateCompetitor(ckey, "website", e.target.value)}
-                          placeholder="https://"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 3. Social Media Primary Handle */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Users className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Social Media Handles</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 text-stone-400">
-                            <Instagram className="w-3.5 h-3.5 text-pink-500" />
-                            <Facebook className="w-3.5 h-3.5 text-blue-600" />
-                            <Youtube className="w-3.5 h-3.5 text-red-500" />
-                            <Linkedin className="w-3.5 h-3.5 text-blue-700" />
-                            <span className="text-[10px] font-bold">TikTok</span>
-                            <Twitter className="w-3.5 h-3.5 text-stone-700 dark:text-stone-300" />
-                          </div>
-                          <input
-                            type="text"
-                            value={data[ckey].primaryHandle}
-                            onChange={(e) => updateCompetitor(ckey, "primaryHandle", e.target.value)}
-                            placeholder="@username"
-                            className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs font-mono focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                          />
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 4. Platform-wise Followers */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <BarChart3 className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Platform-wise Followers</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    const f = data[ckey].followers;
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="flex items-center gap-1">
-                            <Instagram className="w-3 h-3 text-pink-500 shrink-0" />
-                            <input
-                              type="text"
-                              value={f.instagram}
-                              onChange={(e) => updateFollower(ckey, "instagram", e.target.value)}
-                              placeholder="0"
-                              className="w-12 px-1.5 py-1 text-[11px] rounded bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-center font-mono"
-                            />
-                            <span className="text-[10px] text-stone-400">K</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Facebook className="w-3 h-3 text-blue-600 shrink-0" />
-                            <input
-                              type="text"
-                              value={f.facebook}
-                              onChange={(e) => updateFollower(ckey, "facebook", e.target.value)}
-                              placeholder="0"
-                              className="w-12 px-1.5 py-1 text-[11px] rounded bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-center font-mono"
-                            />
-                            <span className="text-[10px] text-stone-400">K</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Youtube className="w-3 h-3 text-red-500 shrink-0" />
-                            <input
-                              type="text"
-                              value={f.youtube}
-                              onChange={(e) => updateFollower(ckey, "youtube", e.target.value)}
-                              placeholder="0"
-                              className="w-12 px-1.5 py-1 text-[11px] rounded bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-center font-mono"
-                            />
-                            <span className="text-[10px] text-stone-400">K</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Linkedin className="w-3 h-3 text-blue-700 shrink-0" />
-                            <input
-                              type="text"
-                              value={f.linkedin}
-                              onChange={(e) => updateFollower(ckey, "linkedin", e.target.value)}
-                              placeholder="0"
-                              className="w-12 px-1.5 py-1 text-[11px] rounded bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-center font-mono"
-                            />
-                            <span className="text-[10px] text-stone-400">K</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[9px] font-bold text-stone-500 shrink-0">TT</span>
-                            <input
-                              type="text"
-                              value={f.tiktok}
-                              onChange={(e) => updateFollower(ckey, "tiktok", e.target.value)}
-                              placeholder="0"
-                              className="w-12 px-1.5 py-1 text-[11px] rounded bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-center font-mono"
-                            />
-                            <span className="text-[10px] text-stone-400">K</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Twitter className="w-3 h-3 text-stone-700 dark:text-stone-300 shrink-0" />
-                            <input
-                              type="text"
-                              value={f.x}
-                              onChange={(e) => updateFollower(ckey, "x", e.target.value)}
-                              placeholder="0"
-                              className="w-12 px-1.5 py-1 text-[11px] rounded bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-center font-mono"
-                            />
-                            <span className="text-[10px] text-stone-400">K</span>
-                          </div>
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 5. Posting Frequency */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Calendar className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Posting Frequency</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].postingFrequency}
-                          onChange={(e) => updateCompetitor(ckey, "postingFrequency", e.target.value)}
-                          placeholder="e.g. 3 posts/week"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 6. Content Pillars */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Content Pillars</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].contentPillars}
-                          onChange={(e) => updateCompetitor(ckey, "contentPillars", e.target.value)}
-                          placeholder="e.g. Education, Promotion, Lifestyle"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 7. Content Formats */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <LayoutGrid className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Content Formats</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    const currentFormats = data[ckey].contentFormats || [];
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <div className="space-y-1.5">
-                          <div className="grid grid-cols-2 gap-1.5">
-                            {FORMAT_OPTIONS.map((fmt) => {
-                              const checked = currentFormats.includes(fmt);
-                              return (
-                                <label
-                                  key={fmt}
-                                  className="flex items-center gap-1.5 cursor-pointer text-[11px] text-stone-700 dark:text-stone-300"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleFormat(ckey, fmt)}
-                                    className="rounded border-stone-300 dark:border-stone-700 text-emerald-600 focus:ring-emerald-500"
-                                  />
-                                  <span>{fmt}</span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                          <input
-                            type="text"
-                            value={data[ckey].contentFormatsOther}
-                            onChange={(e) => updateCompetitor(ckey, "contentFormatsOther", e.target.value)}
-                            placeholder="Other format..."
-                            className="w-full px-2 py-1 rounded bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-[11px] focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                          />
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 8. Best-performing Content */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Trophy className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Best-performing Content</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].bestPerformingContent}
-                          onChange={(e) => updateCompetitor(ckey, "bestPerformingContent", e.target.value)}
-                          placeholder="e.g. Product tips reel, Client testimonial"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 9. Average Engagement */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <ThumbsUp className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Average Engagement</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].averageEngagement}
-                          onChange={(e) => updateCompetitor(ckey, "averageEngagement", e.target.value)}
-                          placeholder="e.g. 500 likes, 50 comments"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 10. Engagement Rate */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Percent className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Engagement Rate</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].engagementRate}
-                          onChange={(e) => updateCompetitor(ckey, "engagementRate", e.target.value)}
-                          placeholder="e.g. 2.5%"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs font-mono focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 11. Reels Strategy */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Video className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Reels Strategy</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].reelsStrategy}
-                          onChange={(e) => updateCompetitor(ckey, "reelsStrategy", e.target.value)}
-                          placeholder="e.g. Tutorials, Trends, Behind the Scenes"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 12. Carousel / Post Strategy */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <FileText className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Carousel / Post Strategy</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].carouselStrategy}
-                          onChange={(e) => updateCompetitor(ckey, "carouselStrategy", e.target.value)}
-                          placeholder="e.g. Tips, Lists, Case Studies"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 13. Caption Style */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <MessageSquare className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Caption Style</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].captionStyle}
-                          onChange={(e) => updateCompetitor(ckey, "captionStyle", e.target.value)}
-                          placeholder="e.g. Short, Storytelling, Detailed"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 14. Hook Style */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Hook Style</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].hookStyle}
-                          onChange={(e) => updateCompetitor(ckey, "hookStyle", e.target.value)}
-                          placeholder="e.g. Question, Bold Statement, Problem"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 15. CTA Strategy */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <MousePointerClick className="w-3.5 h-3.5 text-stone-500" />
-                    <span>CTA Strategy</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].ctaStrategy}
-                          onChange={(e) => updateCompetitor(ckey, "ctaStrategy", e.target.value)}
-                          placeholder="e.g. Follow, Comment, Visit Website"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 16. Hashtag/SEO Strategy */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Hash className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Hashtag/SEO Strategy</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].hashtagStrategy}
-                          onChange={(e) => updateCompetitor(ckey, "hashtagStrategy", e.target.value)}
-                          placeholder="e.g. Niche hashtags, Branded hashtags"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 17. Visual Style */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Palette className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Visual Style</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].visualStyle}
-                          onChange={(e) => updateCompetitor(ckey, "visualStyle", e.target.value)}
-                          placeholder="e.g. Clean, Minimal, Bold, Colorful"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 18. Brand Voice */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Volume2 className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Brand Voice</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].brandVoice}
-                          onChange={(e) => updateCompetitor(ckey, "brandVoice", e.target.value)}
-                          placeholder="e.g. Professional, Friendly, Fun"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 19. Offers / Promotions */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Tag className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Offers / Promotions</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].offersPromotions}
-                          onChange={(e) => updateCompetitor(ckey, "offersPromotions", e.target.value)}
-                          placeholder="e.g. Discounts, Freebies, Limited Time"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 20. Audience Response */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <MessageSquare className="w-3.5 h-3.5 text-stone-500" />
-                    <span>Audience Response</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <input
-                          type="text"
-                          value={data[ckey].audienceResponse}
-                          onChange={(e) => updateCompetitor(ckey, "audienceResponse", e.target.value)}
-                          placeholder="e.g. Positive, Active, High Engagement"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 21. Strengths */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>Strengths</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <textarea
-                          rows={2}
-                          value={data[ckey].strengths}
-                          onChange={(e) => updateCompetitor(ckey, "strengths", e.target.value)}
-                          placeholder="What are they good at?"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 22. Weaknesses */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
-                    <span>Weaknesses</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <textarea
-                          rows={2}
-                          value={data[ckey].weaknesses}
-                          onChange={(e) => updateCompetitor(ckey, "weaknesses", e.target.value)}
-                          placeholder="Where do they lack?"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 23. What They're Doing Well */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-                    <span>What They're Doing Well</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <textarea
-                          rows={2}
-                          value={data[ckey].whatTheyDoWell}
-                          onChange={(e) => updateCompetitor(ckey, "whatTheyDoWell", e.target.value)}
-                          placeholder="Key things working for them"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 24. What They're Missing */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <XCircle className="w-3.5 h-3.5 text-rose-500" />
-                    <span>What They're Missing</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <textarea
-                          rows={2}
-                          value={data[ckey].whatTheyAreMissing}
-                          onChange={(e) => updateCompetitor(ckey, "whatTheyAreMissing", e.target.value)}
-                          placeholder="What are they not doing?"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 25. Content Gaps */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Target className="w-3.5 h-3.5 text-indigo-500" />
-                    <span>Content Gaps</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <textarea
-                          rows={2}
-                          value={data[ckey].contentGaps}
-                          onChange={(e) => updateCompetitor(ckey, "contentGaps", e.target.value)}
-                          placeholder="Topics or formats they don't cover"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 26. Opportunities for Our Brand */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Opportunities for Our Brand</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <textarea
-                          rows={2}
-                          value={data[ckey].opportunitiesForUs}
-                          onChange={(e) => updateCompetitor(ckey, "opportunitiesForUs", e.target.value)}
-                          placeholder="How can we do it better?"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 27. Ideas We Can Learn From */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <BookOpen className="w-3.5 h-3.5 text-blue-500" />
-                    <span>Ideas We Can Learn From</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <textarea
-                          rows={2}
-                          value={data[ckey].ideasToLearnFrom}
-                          onChange={(e) => updateCompetitor(ckey, "ideasToLearnFrom", e.target.value)}
-                          placeholder="Content ideas, strategies, approaches"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-
-                {/* 28. Things We Should Avoid */}
-                <tr className="hover:bg-stone-50/50 dark:hover:bg-stone-900/30">
-                  <td className="p-3 font-semibold text-stone-700 dark:text-stone-300 bg-stone-50/80 dark:bg-stone-900/60 border-r border-stone-200 dark:border-stone-800 flex items-center gap-2">
-                    <Ban className="w-3.5 h-3.5 text-rose-500" />
-                    <span>Things We Should Avoid</span>
-                  </td>
-                  {(["competitor1", "competitor2", "competitor3"] as const).map((ckey) => {
-                    const isVisible =
-                      ckey === "competitor1"
-                        ? activeMobileTab === "c1"
-                        : ckey === "competitor2"
-                        ? activeMobileTab === "c2"
-                        : activeMobileTab === "c3";
-                    return (
-                      <td
-                        key={ckey}
-                        className={`p-2.5 border-r last:border-r-0 border-stone-200 dark:border-stone-800 ${
-                          isVisible ? "table-cell" : "hidden lg:table-cell"
-                        }`}
-                      >
-                        <textarea
-                          rows={2}
-                          value={data[ckey].thingsToAvoid}
-                          onChange={(e) => updateCompetitor(ckey, "thingsToAvoid", e.target.value)}
-                          placeholder="Mistakes or things that don't work"
-                          className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900/80 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
-                        />
-                      </td>
-                    );
-                  })}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* Bottom Row: Overall Insights & Strategy */}
-          <div className="p-5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-[#1a1714] space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center">
-                <TrendingUp className="w-4 h-4" />
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Website URL
+                  </label>
+                  <input
+                    type="text"
+                    value={currentComp.website}
+                    onChange={(e) => updateCompetitor(currentCompKey, "website", e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono text-[11px]"
+                  />
+                </div>
               </div>
-              <h3 className="text-sm font-black uppercase tracking-wider text-stone-900 dark:text-stone-100">
-                Overall Insights & Strategy
-              </h3>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Key Takeaways */}
-              <div className="space-y-1.5">
+              {/* Row 2: Handle & Posting Frequency */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Primary Social Handle
+                  </label>
+                  <input
+                    type="text"
+                    value={currentComp.primaryHandle}
+                    onChange={(e) => updateCompetitor(currentCompKey, "primaryHandle", e.target.value)}
+                    placeholder="@brand_instagram"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Posting Frequency
+                  </label>
+                  <input
+                    type="text"
+                    value={currentComp.postingFrequency}
+                    onChange={(e) => updateCompetitor(currentCompKey, "postingFrequency", e.target.value)}
+                    placeholder="e.g. 5 reels/week, 3 carousels/week"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Follower Base */}
+              <div className="space-y-1.5 p-3 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200/80 dark:border-stone-800">
                 <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Key Takeaways</span>
+                  <Users className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Estimated Follower Counts</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
+                  {[
+                    { key: "instagram" as const, label: "Instagram", icon: Instagram, color: "text-pink-500" },
+                    { key: "youtube" as const, label: "YouTube", icon: Youtube, color: "text-red-500" },
+                    { key: "facebook" as const, label: "Facebook", icon: Facebook, color: "text-blue-600" },
+                    { key: "linkedin" as const, label: "LinkedIn", icon: Linkedin, color: "text-blue-700" },
+                    { key: "tiktok" as const, label: "TikTok", icon: Users, color: "text-stone-700 dark:text-stone-300" },
+                    { key: "x" as const, label: "X / Twitter", icon: Twitter, color: "text-stone-700 dark:text-stone-300" },
+                  ].map((plat) => {
+                    const IconComponent = plat.icon;
+                    return (
+                      <div key={plat.key} className="space-y-0.5">
+                        <span className="text-[10px] text-stone-500 flex items-center gap-1 truncate">
+                          <IconComponent className={`w-3 h-3 ${plat.color}`} />
+                          <span>{plat.label}</span>
+                        </span>
+                        <input
+                          type="text"
+                          value={currentComp.followers[plat.key]}
+                          onChange={(e) => updateFollower(currentCompKey, plat.key, e.target.value)}
+                          placeholder="e.g. 50K"
+                          className="w-full px-2 py-1.5 rounded-lg bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 outline-none font-mono"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 4: Preferred Formats Chips */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  Their Primary Content Formats
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {FORMAT_OPTIONS.map((fmt) => {
+                    const isSelected = currentComp.contentFormats?.includes(fmt);
+                    return (
+                      <button
+                        key={fmt}
+                        type="button"
+                        onClick={() => toggleFormat(currentCompKey, fmt)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                            : "bg-white dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
+                        }`}
+                      >
+                        {isSelected ? <Check className="w-3 h-3" /> : null}
+                        <span>{fmt}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 5: Content Themes & Best Performing */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Best Performing Content / Viral Formats
+                  </label>
+                  <input
+                    type="text"
+                    value={currentComp.bestPerformingContent}
+                    onChange={(e) => updateCompetitor(currentCompKey, "bestPerformingContent", e.target.value)}
+                    placeholder="e.g. 15s POV reels, bold carousel guides"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Average Engagement Rate / Reach
+                  </label>
+                  <input
+                    type="text"
+                    value={currentComp.averageEngagement}
+                    onChange={(e) => updateCompetitor(currentCompKey, "averageEngagement", e.target.value)}
+                    placeholder="e.g. ~3.5% engagement, 3K-5K views"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 6: Hooks, Captions & Visuals */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Hook & Reels Strategy
+                  </label>
+                  <input
+                    type="text"
+                    value={currentComp.hookStyle}
+                    onChange={(e) => updateCompetitor(currentCompKey, "hookStyle", e.target.value)}
+                    placeholder="e.g. Negative frame, controversial opening line"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Visual Aesthetics & Brand Voice
+                  </label>
+                  <input
+                    type="text"
+                    value={currentComp.visualStyle}
+                    onChange={(e) => updateCompetitor(currentCompKey, "visualStyle", e.target.value)}
+                    placeholder="e.g. Minimalist luxury, high contrast, warm neutral"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 7: Strengths & Weaknesses */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Key Strengths (What they do well)</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={currentComp.whatTheyDoWell}
+                    onChange={(e) => updateCompetitor(currentCompKey, "whatTheyDoWell", e.target.value)}
+                    placeholder="What gives them authority or loyal followers?"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Weaknesses & Content Gaps</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={currentComp.whatTheyAreMissing}
+                    onChange={(e) => updateCompetitor(currentCompKey, "whatTheyAreMissing", e.target.value)}
+                    placeholder="What are they missing or doing poorly that we can exploit?"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Row 8: Opportunities & Things to Avoid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Opportunities For Our Brand</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={currentComp.opportunitiesForUs}
+                    onChange={(e) => updateCompetitor(currentCompKey, "opportunitiesForUs", e.target.value)}
+                    placeholder="How our agency can position you to win in this space"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                    Things To Avoid From Their Playbook
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={currentComp.thingsToAvoid}
+                    onChange={(e) => updateCompetitor(currentCompKey, "thingsToAvoid", e.target.value)}
+                    placeholder="Mistakes, cliches, or bad habits we shouldn't copy"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Content: Summary & Market Gaps */}
+          {activeTab === "summary" && (
+            <div className="space-y-3.5 animate-fade-in">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Key Market Takeaways</span>
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={data.keyTakeaways}
                   onChange={(e) => onChange({ ...data, keyTakeaways: e.target.value })}
-                  placeholder="Main learnings from competitor analysis."
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
+                  placeholder="Summary of what the competitive landscape looks like right now..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
                 />
               </div>
 
-              {/* Opportunities */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  <span>Opportunities</span>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  Overall Market Gaps & Opportunities to Exploit
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={data.overallOpportunities}
                   onChange={(e) => onChange({ ...data, overallOpportunities: e.target.value })}
-                  placeholder="Areas where we can stand out."
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
+                  placeholder="What can your brand do that none of the competitors are doing?"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
                 />
               </div>
 
-              {/* Strategy Ideas for Our Brand */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-purple-500" />
-                  <span>Strategy Ideas for Our Brand</span>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  Creative Strategy & Hook Ideas
                 </label>
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={data.strategyIdeas}
                   onChange={(e) => onChange({ ...data, strategyIdeas: e.target.value })}
-                  placeholder="Actionable ideas based on this analysis."
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-hidden resize-none"
+                  placeholder="Initial creative concepts, angles, or content series to test..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
                 />
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
