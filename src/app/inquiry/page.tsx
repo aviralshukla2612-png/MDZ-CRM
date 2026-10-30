@@ -34,35 +34,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import {
-  BrandVoiceGuideForm,
-  BrandVoiceGuideData,
-  DEFAULT_BRAND_VOICE_GUIDE,
-} from "@/components/brand/BrandVoiceGuideForm";
-import {
-  CampaignPlannerForm,
-  DEFAULT_CAMPAIGN_PLANNER,
-} from "@/components/campaign/CampaignPlannerForm";
-import {
-  ClientScopeDocumentForm,
-  DEFAULT_SCOPE_DOCUMENT,
-} from "@/components/scope/ClientScopeDocumentForm";
-import {
-  ClientOnboardingForm,
-  DEFAULT_ONBOARDING_DATA,
-} from "@/components/onboarding/ClientOnboardingForm";
-import {
-  CompetitorAnalysisForm,
-  DEFAULT_COMPETITOR_ANALYSIS,
-} from "@/components/competitor/CompetitorAnalysisForm";
-import {
-  ContentPillarsForm,
-  DEFAULT_CONTENT_PILLARS,
-} from "@/components/pillars/ContentPillarsForm";
-import {
-  MeetingNotesForm,
-  DEFAULT_MEETING_NOTES,
-} from "@/components/meeting/MeetingNotesForm";
+import { DEFAULT_BRAND_VOICE_GUIDE } from "@/components/brand/BrandVoiceGuideForm";
+import { DEFAULT_CAMPAIGN_PLANNER } from "@/components/campaign/CampaignPlannerForm";
+import { DEFAULT_SCOPE_DOCUMENT } from "@/components/scope/ClientScopeDocumentForm";
+import { DEFAULT_ONBOARDING_DATA } from "@/components/onboarding/ClientOnboardingForm";
+import { DEFAULT_COMPETITOR_ANALYSIS } from "@/components/competitor/CompetitorAnalysisForm";
+import { DEFAULT_CONTENT_PILLARS } from "@/components/pillars/ContentPillarsForm";
+import { DEFAULT_MEETING_NOTES } from "@/components/meeting/MeetingNotesForm";
 
 // Step 2 Industries
 const INDUSTRIES = [
@@ -218,8 +196,42 @@ const DURATIONS = [
   { type: "CUSTOM", months: 8, label: "Custom Duration", desc: "Select custom engagement timeline" },
 ];
 
+// Step 6 Sub-Steps (Sectional Intake)
+const SUB_STEPS = [
+  { id: 1, title: "Project Brief & Brand Assets", shortTitle: "Brief & Assets", icon: "📋" },
+  { id: 2, title: "Brand Voice & Persona", shortTitle: "Brand Voice", icon: "🎭" },
+  { id: 3, title: "Deliverables & Scope Preferences", shortTitle: "Deliverables", icon: "📦" },
+  { id: 4, title: "Competitors & Strategy Focus", shortTitle: "Strategy", icon: "🎯" },
+];
+
+const BRAND_PERSONALITIES = [
+  "Professional", "Trustworthy", "Creative", "Bold", "Premium",
+  "Modern", "Energetic", "Friendly", "Informative", "Motivational",
+  "Empathetic", "Minimalist"
+];
+
+const BRAND_VOICES = [
+  "Conversational", "Professional", "Educational", "Humorous",
+  "Inspirational", "Authoritative", "Friendly"
+];
+
+const TONE_SPECTRUM = [
+  "Friendly", "Informative", "Casual", "Formal",
+  "Motivational", "Empathetic", "Direct", "Story-driven"
+];
+
+const COMM_STYLES = [
+  "Simple & Easy to Understand",
+  "Conversational & Relatable",
+  "High-Authority & Premium",
+  "Bold & Direct"
+];
+
+const CONTENT_LANGUAGES = ["English", "Hindi", "Hinglish", "Gujarati", "Regional Languages"];
+
 export default function PublicInquiryPage() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [subStep, setSubStep] = useState(1);
   const totalSteps = 7;
 
   // Form State
@@ -377,8 +389,14 @@ export default function PublicInquiryPage() {
     else if (currentStep === 3) isValid = validateStep3();
     else if (currentStep === 4) isValid = validateStep4();
     else if (currentStep === 5) isValid = validateStep5();
-    else if (currentStep === 6) isValid = validateStep6();
-    else if (currentStep === 7) isValid = validateStep7();
+    else if (currentStep === 6) {
+      if (subStep < 4) {
+        setSubStep((prev) => prev + 1);
+        window.scrollTo({ top: 300, behavior: "smooth" });
+        return;
+      }
+      isValid = validateStep6();
+    } else if (currentStep === 7) isValid = validateStep7();
 
     if (isValid) {
       setErrors({});
@@ -389,8 +407,60 @@ export default function PublicInquiryPage() {
 
   const handleBack = () => {
     setErrors({});
+    if (currentStep === 6 && subStep > 1) {
+      setSubStep((prev) => prev - 1);
+      window.scrollTo({ top: 300, behavior: "smooth" });
+      return;
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
     setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  // Helper for toggling Brand Voice arrays
+  const toggleBrandVoiceArray = (
+    field: "personalityTraits" | "voiceTypes" | "toneTypes" | "commStyles" | "preferredLanguages",
+    val: string
+  ) => {
+    setFormData((prev) => {
+      const currentList = prev.brandVoiceGuide[field] || [];
+      const exists = currentList.includes(val);
+      const updated = exists ? currentList.filter((item) => item !== val) : [...currentList, val];
+      return {
+        ...prev,
+        brandVoiceGuide: {
+          ...prev.brandVoiceGuide,
+          [field]: updated,
+        },
+      };
+    });
+  };
+
+  // Helper for updating Scope document quotas
+  const updateScopeQuota = (
+    field: "deliverablesReels" | "deliverablesCarousels" | "deliverablesStatics" | "deliverablesStories",
+    val: number
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      scopeDocument: {
+        ...prev.scopeDocument,
+        [field]: val,
+      },
+    }));
+  };
+
+  // Helper for updating Competitor fields
+  const updateCompetitorField = (compKey: "competitor1" | "competitor2", field: string, val: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      competitorAnalysis: {
+        ...prev.competitorAnalysis,
+        [compKey]: {
+          ...(prev.competitorAnalysis[compKey] || {}),
+          [field]: val,
+        },
+      },
+    }));
   };
 
   // Multi-select toggle helper
@@ -576,6 +646,7 @@ export default function PublicInquiryPage() {
                 onClick={() => {
                   setSubmissionSuccess(false);
                   setCurrentStep(1);
+                  setSubStep(1);
                   setFormData({
                     companyName: "",
                     contactName: "",
@@ -1171,257 +1242,744 @@ export default function PublicInquiryPage() {
                 </div>
               )}
 
-              {/* STEP 6: ADDITIONAL DETAILS & ATTACHMENTS */}
+              {/* STEP 6: STRATEGIC INTAKE & BRIEF (SECTIONAL WIZARD) */}
               {currentStep === 6 && (
-                <div className="space-y-5 animate-in fade-in duration-150">
-                  <div className="space-y-1">
-                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                      Additional Details & File Attachments (Optional)
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Share your target audience, top competitors, and upload logos, decks or brief documents.
-                    </p>
+                <div className="space-y-6 animate-in fade-in duration-150">
+                  {/* Step 6 Section Stepper Header (Matches Image 2 Style) */}
+                  <div className="rounded-2xl bg-slate-50 dark:bg-[#0D101A] border border-slate-200 dark:border-slate-800 p-4 sm:p-5">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
+                          Section {subStep} of 4 • Strategy & Scope
+                        </span>
+                        <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+                          {SUB_STEPS[subStep - 1].title}
+                        </h3>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
+                          {Math.round((subStep / 4) * 100)}% Section Completed
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden mb-3">
+                      <div
+                        className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-amber-500 transition-all duration-300 rounded-full"
+                        style={{ width: `${(subStep / 4) * 100}%` }}
+                      />
+                    </div>
+
+                    {/* Interactive Section Pills */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-semibold">
+                      {SUB_STEPS.map((s) => {
+                        const isCurrent = s.id === subStep;
+                        const isDone = s.id < subStep;
+                        return (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => {
+                              setSubStep(s.id);
+                              window.scrollTo({ top: 300, behavior: "smooth" });
+                            }}
+                            className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                              isCurrent
+                                ? "bg-white dark:bg-slate-800/90 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-sm ring-1 ring-emerald-500/20"
+                                : isDone
+                                ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300/50 dark:border-emerald-800/50 text-slate-700 dark:text-slate-300"
+                                : "bg-transparent border-transparent text-slate-400 dark:text-slate-500 hover:border-slate-300 dark:hover:border-slate-700"
+                            }`}
+                          >
+                            <span
+                              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono shrink-0 ${
+                                isCurrent
+                                  ? "bg-emerald-500 text-white font-bold"
+                                  : isDone
+                                  ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                                  : "bg-slate-200 dark:bg-slate-800 text-slate-500"
+                              }`}
+                            >
+                              {isDone ? <Check className="w-3 h-3" /> : s.id}
+                            </span>
+                            <span className="truncate text-xs font-bold">{s.shortTitle}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Products & Services */}
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Main Products or Services Offered
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Luxury Handcrafted Jewellery, D2C Wellness Supplements, B2B SaaS"
-                        value={formData.productsServices}
-                        onChange={(e) => setFormData({ ...formData, productsServices: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
-                      />
-                    </div>
-
-                    {/* Target Audience */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Target Audience & Demographics
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Age 22-45, HNI luxury buyers, Tier-1 Metro cities"
-                        value={formData.targetAudience}
-                        onChange={(e) => setFormData({ ...formData, targetAudience: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
-                      />
-                    </div>
-
-                    {/* Unique Selling Proposition (USP) */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Unique Selling Proposition (USP)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="What makes your brand different? (e.g. 100% Organic, 24hr delivery)"
-                        value={formData.usp}
-                        onChange={(e) => setFormData({ ...formData, usp: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
-                      />
-                    </div>
-
-                    {/* Competitors */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Top Competitors (Names or Handles)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Brand A, Competitor B, @competitor_handle"
-                        value={formData.competitors}
-                        onChange={(e) => setFormData({ ...formData, competitors: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
-                      />
-                    </div>
-
-                    {/* Social Media Handles */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Current Social Media Handles / Links
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Instagram: @mybrand, YouTube: @mychannel"
-                        value={formData.socialHandles}
-                        onChange={(e) => setFormData({ ...formData, socialHandles: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
-                      />
-                    </div>
-
-                    {/* Google Drive Link for Brand Assets */}
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                        <span>Google Drive Link (Raw Footage / Brand Guidelines / Product Shoots)</span>
-                        <span className="text-[10px] text-slate-400 font-mono">Optional</span>
-                      </label>
-                      <input
-                        type="url"
-                        placeholder="https://drive.google.com/drive/folders/..."
-                        value={formData.googleDriveLink}
-                        onChange={(e) => setFormData({ ...formData, googleDriveLink: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-mono text-xs"
-                      />
-                    </div>
-
-                    {/* Detailed Brief */}
-                    <div className="space-y-1.5 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                        Project Scope Brief / Specific Requirements
-                      </label>
-                      <textarea
-                        rows={3}
-                        placeholder="Tell us any specific timelines, campaign vision, current pain points, or expected deliverables..."
-                        value={formData.additionalDetails}
-                        onChange={(e) => setFormData({ ...formData, additionalDetails: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium resize-none"
-                      />
-                    </div>
-
-                    {/* Drag & Drop File Upload Area */}
-                    <div className="space-y-2 sm:col-span-2">
-                      <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
-                        <span>Attach Brand Assets / Brief Documents</span>
-                        <span className="text-[10px] text-slate-400 font-mono">Max 25MB each</span>
-                      </label>
-
-                      <div
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-400 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-900/40 group"
-                      >
-                        <UploadCloud className="w-8 h-8 mx-auto text-slate-400 group-hover:text-emerald-500 transition-colors mb-2" />
-                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                          Click to upload or drag & drop files here
+                  {/* SUB-SECTION 1: BRIEF & ASSETS */}
+                  {subStep === 1 && (
+                    <div className="space-y-4 animate-in fade-in duration-150">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                          Brand Context, Products & Files
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Tell us about what you sell, your audience, and upload relevant materials.
                         </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          PDF, DOCX, PNG, JPG, ZIP (Stored securely in Google Drive)
-                        </p>
-                        <input
-                          type="file"
-                          ref={fileInputRef}
-                          onChange={handleFileChange}
-                          multiple
-                          className="hidden"
-                        />
                       </div>
 
-                      {/* File preview list */}
-                      {attachedFiles.length > 0 && (
-                        <div className="space-y-2 pt-2">
-                          {attachedFiles.map((file, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-xs font-medium border border-slate-200 dark:border-slate-700"
-                            >
-                              <div className="flex items-center gap-2 truncate">
-                                <FileIcon className="w-4 h-4 text-emerald-500 shrink-0" />
-                                <span className="truncate">{file.name}</span>
-                                <span className="text-[10px] font-mono text-slate-400 shrink-0">
-                                  ({(file.size / (1024 * 1024)).toFixed(2)} MB)
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeFile(idx);
-                                }}
-                                className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ))}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Products & Services */}
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Main Products or Services Offered
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Luxury Handcrafted Jewellery, D2C Wellness Supplements, B2B SaaS"
+                            value={formData.productsServices}
+                            onChange={(e) => setFormData({ ...formData, productsServices: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                          />
                         </div>
-                      )}
-                    </div>
 
-                    {/* Brand Voice & Tone Guide (21-Section Guide) */}
-                    <div className="sm:col-span-2 pt-6 mt-2 border-t border-slate-200 dark:border-slate-800">
-                      <BrandVoiceGuideForm
-                        value={formData.brandVoiceGuide}
-                        onChange={(guide) => setFormData((prev) => ({ ...prev, brandVoiceGuide: guide }))}
-                      />
-                    </div>
+                        {/* Target Audience */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Target Audience & Demographics
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Age 22-45, HNI luxury buyers, Tier-1 Metro cities"
+                            value={formData.targetAudience}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData((prev) => ({
+                                ...prev,
+                                targetAudience: val,
+                                brandVoiceGuide: { ...prev.brandVoiceGuide, targetAudience: val },
+                              }));
+                            }}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                          />
+                        </div>
 
-                    {/* Campaign Planner (18-Section Guide) */}
-                    <div className="sm:col-span-2 pt-4">
-                      <CampaignPlannerForm
-                        value={formData.campaignPlanner}
-                        onChange={(planner) => setFormData((prev) => ({ ...prev, campaignPlanner: planner }))}
-                      />
-                    </div>
+                        {/* Unique Selling Proposition (USP) */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Unique Selling Proposition (USP)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="What makes your brand different? (e.g. 100% Organic, 24hr delivery)"
+                            value={formData.usp}
+                            onChange={(e) => setFormData({ ...formData, usp: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                          />
+                        </div>
 
-                    {/* Client Expectations & Scope Document (22-Section Guide) */}
-                    <div className="sm:col-span-2 pt-4">
-                      <ClientScopeDocumentForm
-                        value={formData.scopeDocument}
-                        onChange={(scopeDoc) => setFormData((prev) => ({ ...prev, scopeDocument: scopeDoc }))}
-                      />
-                    </div>
+                        {/* Top Competitors */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Top Competitors (Names or Handles)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Brand A, Competitor B, @competitor_handle"
+                            value={formData.competitors}
+                            onChange={(e) => setFormData({ ...formData, competitors: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                          />
+                        </div>
 
-                    {/* Client Onboarding Form (13-Section Form) */}
-                    <div className="sm:col-span-2 pt-4">
-                      <ClientOnboardingForm
-                        value={formData.onboardingForm}
-                        onChange={(onboarding) => setFormData((prev) => ({ ...prev, onboardingForm: onboarding }))}
-                      />
-                    </div>
+                        {/* Social Media Handles */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Current Social Media Handles / Links
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Instagram: @mybrand, YouTube: @mychannel"
+                            value={formData.socialHandles}
+                            onChange={(e) => setFormData({ ...formData, socialHandles: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium"
+                          />
+                        </div>
 
-                    {/* Competitor Analysis Sheet (28-Metric Comparative Matrix) */}
-                    <div className="sm:col-span-2 pt-4">
-                      <CompetitorAnalysisForm
-                        value={formData.competitorAnalysis}
-                        onChange={(analysis) =>
-                          setFormData((prev) => {
-                            const compNames = [
-                              analysis.competitor1?.name,
-                              analysis.competitor2?.name,
-                              analysis.competitor3?.name,
-                            ]
-                              .filter(Boolean)
-                              .join(", ");
-                            return {
+                        {/* Google Drive Link for Brand Assets */}
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                            <span>Google Drive Link (Raw Footage / Brand Guidelines / Product Shoots)</span>
+                            <span className="text-[10px] text-slate-400 font-mono">Optional</span>
+                          </label>
+                          <input
+                            type="url"
+                            placeholder="https://drive.google.com/drive/folders/..."
+                            value={formData.googleDriveLink}
+                            onChange={(e) => setFormData({ ...formData, googleDriveLink: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-mono text-xs"
+                          />
+                        </div>
+
+                        {/* Detailed Scope Notes */}
+                        <div className="space-y-1.5 sm:col-span-2">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Project Scope Brief / Specific Requirements
+                          </label>
+                          <textarea
+                            rows={3}
+                            placeholder="Tell us any specific timelines, campaign vision, current pain points, or expected deliverables..."
+                            value={formData.additionalDetails}
+                            onChange={(e) => setFormData({ ...formData, additionalDetails: e.target.value })}
+                            className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-sm focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 outline-none transition-all font-medium resize-none"
+                          />
+                        </div>
+
+                        {/* Drag & Drop File Upload Area */}
+                        <div className="space-y-2 sm:col-span-2">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                            <span>Attach Brand Assets / Brief Documents</span>
+                            <span className="text-[10px] text-slate-400 font-mono">Max 25MB each</span>
+                          </label>
+
+                          <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-400 rounded-2xl p-6 text-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-900/40 group"
+                          >
+                            <UploadCloud className="w-8 h-8 mx-auto text-slate-400 group-hover:text-emerald-500 transition-colors mb-2" />
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                              Click to upload or drag & drop files here
+                            </p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              PDF, DOCX, PNG, JPG, ZIP (Stored securely in Google Drive)
+                            </p>
+                            <input
+                              type="file"
+                              ref={fileInputRef}
+                              onChange={handleFileChange}
+                              multiple
+                              className="hidden"
+                            />
+                          </div>
+
+                          {/* File preview list */}
+                          {attachedFiles.length > 0 && (
+                            <div className="space-y-2 pt-2">
+                              {attachedFiles.map((file, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center justify-between p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-xs font-medium border border-slate-200 dark:border-slate-700"
+                                >
+                                  <div className="flex items-center gap-2 truncate">
+                                    <FileIcon className="w-4 h-4 text-emerald-500 shrink-0" />
+                                    <span className="truncate">{file.name}</span>
+                                    <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                                      ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeFile(idx);
+                                    }}
+                                    className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/50 transition-colors"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUB-SECTION 2: BRAND VOICE & PERSONA */}
+                  {subStep === 2 && (
+                    <div className="space-y-5 animate-in fade-in duration-150">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                          Brand Voice, Personality & Tone
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Define how your brand speaks, feels, and communicates with your audience.
+                        </p>
+                      </div>
+
+                      {/* 1. Personality Traits */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Select Main Personality Traits (Multi-select)
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {BRAND_PERSONALITIES.map((trait) => {
+                            const isSelected = formData.brandVoiceGuide.personalityTraits?.includes(trait);
+                            return (
+                              <button
+                                key={trait}
+                                type="button"
+                                onClick={() => toggleBrandVoiceArray("personalityTraits", trait)}
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? "bg-rose-50 dark:bg-rose-950/50 border-rose-500 text-rose-700 dark:text-rose-300 shadow-sm"
+                                    : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />}
+                                {trait}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 2. Brand Voice */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Brand Voice (How the brand communicates overall)
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {BRAND_VOICES.map((v) => {
+                            const isSelected = formData.brandVoiceGuide.voiceTypes?.includes(v);
+                            return (
+                              <button
+                                key={v}
+                                type="button"
+                                onClick={() => toggleBrandVoiceArray("voiceTypes", v)}
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? "bg-blue-50 dark:bg-blue-950/50 border-blue-500 text-blue-700 dark:text-blue-300 shadow-sm"
+                                    : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                                {v}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 3. Tone Spectrum */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Tone Spectrum
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {TONE_SPECTRUM.map((t) => {
+                            const isSelected = formData.brandVoiceGuide.toneTypes?.includes(t);
+                            return (
+                              <button
+                                key={t}
+                                type="button"
+                                onClick={() => toggleBrandVoiceArray("toneTypes", t)}
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? "bg-amber-50 dark:bg-amber-950/50 border-amber-500 text-amber-700 dark:text-amber-300 shadow-sm"
+                                    : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />}
+                                {t}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 4. Communication Style */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Communication Style
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {COMM_STYLES.map((cs) => {
+                            const isSelected = formData.brandVoiceGuide.commStyles?.includes(cs);
+                            return (
+                              <button
+                                key={cs}
+                                type="button"
+                                onClick={() => toggleBrandVoiceArray("commStyles", cs)}
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? "bg-purple-50 dark:bg-purple-950/50 border-purple-500 text-purple-700 dark:text-purple-300 shadow-sm"
+                                    : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />}
+                                {cs}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 5. Brand Character Persona */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Character Age Range (if brand was a person)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 28-40 years"
+                            value={formData.brandVoiceGuide.characterAge || ""}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                brandVoiceGuide: { ...prev.brandVoiceGuide, characterAge: e.target.value },
+                              }))
+                            }
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Character Role / Profession
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Expert / Mentor / Creative Innovator"
+                            value={formData.brandVoiceGuide.characterProfession || ""}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                brandVoiceGuide: { ...prev.brandVoiceGuide, characterProfession: e.target.value },
+                              }))
+                            }
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 6. Words to Use & Words to Avoid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Words / Phrasing to Use
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="e.g. Transformative, seamless, bespoke, elevated..."
+                            value={formData.brandVoiceGuide.wordsToUse || ""}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                brandVoiceGuide: { ...prev.brandVoiceGuide, wordsToUse: e.target.value },
+                              }))
+                            }
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none resize-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Words / Slang to Avoid
+                          </label>
+                          <textarea
+                            rows={2}
+                            placeholder="e.g. Cheap, discount, guaranteed 100x, spammy jargon..."
+                            value={formData.brandVoiceGuide.wordsToAvoid || ""}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                brandVoiceGuide: { ...prev.brandVoiceGuide, wordsToAvoid: e.target.value },
+                              }))
+                            }
+                            className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none resize-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* 7. Preferred Languages */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Preferred Content Languages
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {CONTENT_LANGUAGES.map((lang) => {
+                            const isSelected = formData.brandVoiceGuide.preferredLanguages?.includes(lang);
+                            return (
+                              <button
+                                key={lang}
+                                type="button"
+                                onClick={() => toggleBrandVoiceArray("preferredLanguages", lang)}
+                                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                  isSelected
+                                    ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-sm"
+                                    : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                                {lang}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUB-SECTION 3: DELIVERABLES & SCOPE PREFERENCES */}
+                  {subStep === 3 && (
+                    <div className="space-y-5 animate-in fade-in duration-150">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                          Deliverable Estimates & Workflow Expectations
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Specify your target monthly asset volumes and preferred agency collaboration protocols.
+                        </p>
+                      </div>
+
+                      {/* Deliverables Targets */}
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Target Monthly Deliverables (Assets / Month)
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1 text-center">
+                            <span className="text-[11px] font-bold text-slate-500">Short-form Reels</span>
+                            <input
+                              type="number"
+                              min={0}
+                              placeholder="e.g. 20"
+                              value={formData.scopeDocument.deliverablesReels || ""}
+                              onChange={(e) => updateScopeQuota("deliverablesReels", Number(e.target.value))}
+                              className="w-full text-center text-lg font-black font-mono bg-transparent outline-none text-emerald-600 dark:text-emerald-400"
+                            />
+                            <span className="text-[10px] text-slate-400 block">reels/month</span>
+                          </div>
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1 text-center">
+                            <span className="text-[11px] font-bold text-slate-500">Carousels</span>
+                            <input
+                              type="number"
+                              min={0}
+                              placeholder="e.g. 10"
+                              value={formData.scopeDocument.deliverablesCarousels || ""}
+                              onChange={(e) => updateScopeQuota("deliverablesCarousels", Number(e.target.value))}
+                              className="w-full text-center text-lg font-black font-mono bg-transparent outline-none text-emerald-600 dark:text-emerald-400"
+                            />
+                            <span className="text-[10px] text-slate-400 block">carousels/month</span>
+                          </div>
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1 text-center">
+                            <span className="text-[11px] font-bold text-slate-500">Single Posts / Statics</span>
+                            <input
+                              type="number"
+                              min={0}
+                              placeholder="e.g. 5"
+                              value={formData.scopeDocument.deliverablesStatics || ""}
+                              onChange={(e) => updateScopeQuota("deliverablesStatics", Number(e.target.value))}
+                              className="w-full text-center text-lg font-black font-mono bg-transparent outline-none text-emerald-600 dark:text-emerald-400"
+                            />
+                            <span className="text-[10px] text-slate-400 block">posts/month</span>
+                          </div>
+                          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-1 text-center">
+                            <span className="text-[11px] font-bold text-slate-500">Stories</span>
+                            <input
+                              type="number"
+                              min={0}
+                              placeholder="e.g. 30"
+                              value={formData.scopeDocument.deliverablesStories || ""}
+                              onChange={(e) => updateScopeQuota("deliverablesStories", Number(e.target.value))}
+                              className="w-full text-center text-lg font-black font-mono bg-transparent outline-none text-emerald-600 dark:text-emerald-400"
+                            />
+                            <span className="text-[10px] text-slate-400 block">stories/month</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Publishing & Posting SLA */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Publishing Responsibility
+                          </label>
+                          <select
+                            value={formData.scopeDocument.postingResponsibility}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                scopeDocument: {
+                                  ...prev.scopeDocument,
+                                  postingResponsibility: e.target.value as any,
+                                },
+                              }))
+                            }
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          >
+                            <option value="we_post">Agency handles direct publishing & scheduling</option>
+                            <option value="client_posts">Client posts internally (Agency delivers ready assets)</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Client Approval SLA Turnaround
+                          </label>
+                          <select
+                            value={formData.scopeDocument.reviewTimeline || "24-48 Hours"}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                scopeDocument: {
+                                  ...prev.scopeDocument,
+                                  reviewTimeline: e.target.value,
+                                },
+                              }))
+                            }
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          >
+                            <option value="24-48 Hours">Standard (24 to 48 Hours)</option>
+                            <option value="Within 24 Hours">Fast-track (Within 24 Hours)</option>
+                            <option value="Same Day Priority">Priority (Same Day Review)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Revisions & Ad Spend Management */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Revisions Policy Preference
+                          </label>
+                          <select
+                            value={formData.scopeDocument.revisionsIncluded || "2 Rounds included per deliverable"}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                scopeDocument: {
+                                  ...prev.scopeDocument,
+                                  revisionsIncluded: e.target.value,
+                                },
+                              }))
+                            }
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          >
+                            <option value="2 Rounds included per deliverable">2 Rounds included per deliverable</option>
+                            <option value="Unlimited minor revisions">Unlimited minor revisions</option>
+                            <option value="3 Rounds included">3 Rounds included per deliverable</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                            Ad Spend Management (Meta / Google)
+                          </label>
+                          <select
+                            value={formData.scopeDocument.adSpendResponsibility}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                scopeDocument: {
+                                  ...prev.scopeDocument,
+                                  adSpendResponsibility: e.target.value as any,
+                                },
+                              }))
+                            }
+                            className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          >
+                            <option value="we_manage_client_pays">Agency manages campaigns; Client pays ad budget directly</option>
+                            <option value="client_manages">Client manages ads internally</option>
+                            <option value="not_applicable">Organic social only (No paid advertising)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* SUB-SECTION 4: COMPETITORS & STRATEGY FOCUS */}
+                  {subStep === 4 && (
+                    <div className="space-y-5 animate-in fade-in duration-150">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                          Competitor Benchmarking & Content Mix (Optional)
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          Provide key competitor details and your ideal content pillar distribution.
+                        </p>
+                      </div>
+
+                      {/* Competitor 1 Breakdown */}
+                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                          <Target className="w-3.5 h-3.5 text-emerald-500" />
+                          Key Competitor #1
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <input
+                            type="text"
+                            placeholder="Competitor Name or URL"
+                            value={formData.competitorAnalysis?.competitor1?.name || ""}
+                            onChange={(e) => updateCompetitorField("competitor1", "name", e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          />
+                          <input
+                            type="text"
+                            placeholder="What they do well (Strengths)"
+                            value={formData.competitorAnalysis?.competitor1?.strengths || ""}
+                            onChange={(e) => updateCompetitorField("competitor1", "strengths", e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          />
+                          <input
+                            type="text"
+                            placeholder="What they miss / Content gaps"
+                            value={formData.competitorAnalysis?.competitor1?.whatTheyAreMissing || ""}
+                            onChange={(e) => updateCompetitorField("competitor1", "whatTheyAreMissing", e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Competitor 2 Breakdown */}
+                      <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 space-y-3">
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                          <Target className="w-3.5 h-3.5 text-blue-500" />
+                          Key Competitor #2
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <input
+                            type="text"
+                            placeholder="Competitor Name or URL"
+                            value={formData.competitorAnalysis?.competitor2?.name || ""}
+                            onChange={(e) => updateCompetitorField("competitor2", "name", e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          />
+                          <input
+                            type="text"
+                            placeholder="What they do well (Strengths)"
+                            value={formData.competitorAnalysis?.competitor2?.strengths || ""}
+                            onChange={(e) => updateCompetitorField("competitor2", "strengths", e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          />
+                          <input
+                            type="text"
+                            placeholder="What they miss / Content gaps"
+                            value={formData.competitorAnalysis?.competitor2?.whatTheyAreMissing || ""}
+                            onChange={(e) => updateCompetitorField("competitor2", "whatTheyAreMissing", e.target.value)}
+                            className="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Strategy Focus & Launch Offer Notes */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          Upcoming Launch, Offers or Immediate Campaign Focus
+                        </label>
+                        <textarea
+                          rows={2}
+                          placeholder="e.g. Launching new festive collection next month; looking to push lead generation webinar; scaling brand awareness..."
+                          value={formData.campaignPlanner.campaignOffer || ""}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
                               ...prev,
-                              competitorAnalysis: analysis,
-                              competitors: compNames || prev.competitors,
-                            };
-                          })
-                        }
-                      />
+                              campaignPlanner: {
+                                ...prev.campaignPlanner,
+                                campaignOffer: e.target.value,
+                              },
+                            }))
+                          }
+                          className="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-emerald-500/30 outline-none resize-none"
+                        />
+                      </div>
                     </div>
-
-                    {/* Content Pillars Sheet (5-Pillar Strategy Matrix) */}
-                    <div className="sm:col-span-2 pt-4">
-                      <ContentPillarsForm
-                        value={formData.contentPillars}
-                        onChange={(pillars) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            contentPillars: pillars,
-                          }))
-                        }
-                      />
-                    </div>
-
-                    {/* Meeting / Call Notes Sheet (15-Section Intake) */}
-                    <div className="sm:col-span-2 pt-4">
-                      <MeetingNotesForm
-                        value={formData.meetingNotes}
-                        onChange={(notes) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            meetingNotes: notes,
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -1532,7 +2090,7 @@ export default function PublicInquiryPage() {
               )}
 
               {/* Navigation Controls Bar */}
-              <div className="pt-6 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between">
+              <div className="pt-6 border-t border-stone-200 dark:border-stone-800 flex flex-wrap items-center justify-between gap-3">
                 {currentStep > 1 ? (
                   <button
                     type="button"
@@ -1541,10 +2099,25 @@ export default function PublicInquiryPage() {
                     className="px-5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <ArrowLeft className="w-4 h-4" />
-                    Back
+                    {currentStep === 6 && subStep > 1 ? "Previous Section" : "Back"}
                   </button>
                 ) : (
                   <div />
+                )}
+
+                {currentStep === 6 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrors({});
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                      setCurrentStep(7);
+                    }}
+                    className="text-xs text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 font-bold flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800 transition-all cursor-pointer"
+                  >
+                    Skip to Review & Confirm
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 )}
 
                 {currentStep < totalSteps ? (
@@ -1553,7 +2126,11 @@ export default function PublicInquiryPage() {
                     onClick={handleNext}
                     className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-95 transition-all cursor-pointer ml-auto"
                   >
-                    Next Step
+                    {currentStep === 6 && subStep < 4
+                      ? `Next: ${SUB_STEPS[subStep].shortTitle}`
+                      : currentStep === 6 && subStep === 4
+                      ? "Review & Confirm"
+                      : "Next Step"}
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
