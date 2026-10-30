@@ -315,14 +315,17 @@ export default function PublicInquiryPage() {
 
     // 3. Mobile / WhatsApp Number
     const digits = trimmedPhone.replace(/\D/g, "");
+    let coreDigits = digits;
+    if (coreDigits.length === 12 && coreDigits.startsWith("91")) {
+      coreDigits = coreDigits.slice(2);
+    } else if (coreDigits.length === 11 && coreDigits.startsWith("0")) {
+      coreDigits = coreDigits.slice(1);
+    }
+
     if (!trimmedPhone) {
       errs.phone = "Mobile or WhatsApp number is required";
-    } else if (digits.length < 10) {
-      errs.phone = "Phone number must contain at least 10 digits";
-    } else if (digits.length > 15) {
-      errs.phone = "Phone number cannot exceed 15 digits";
-    } else if (/^(\d)\1+$/.test(digits)) {
-      errs.phone = "Please enter a valid mobile number (not all identical digits)";
+    } else if (coreDigits.length !== 10) {
+      errs.phone = "Please enter a valid 10-digit mobile number";
     }
 
     // 4. Business Email Address
@@ -860,7 +863,7 @@ export default function PublicInquiryPage() {
                           <Phone className="w-3.5 h-3.5 text-emerald-500" />
                           Mobile / WhatsApp <span className="text-rose-500">*</span>
                         </span>
-                        <span className="text-[10px] text-slate-400 font-normal">10–15 digits</span>
+                        <span className="text-[10px] text-slate-400 font-normal">10 digits</span>
                       </label>
                       <input
                         type="tel"
@@ -875,10 +878,11 @@ export default function PublicInquiryPage() {
                         }}
                         onBlur={() => {
                           const digits = formData.phone.replace(/\D/g, "");
-                          if (digits && digits.length < 10) {
-                            setErrors((prev) => ({ ...prev, phone: "Phone number must contain at least 10 digits" }));
-                          } else if (digits && /^(\d)\1+$/.test(digits)) {
-                            setErrors((prev) => ({ ...prev, phone: "Please enter a valid mobile number (not repetitive digits)" }));
+                          let core = digits;
+                          if (core.length === 12 && core.startsWith("91")) core = core.slice(2);
+                          else if (core.length === 11 && core.startsWith("0")) core = core.slice(1);
+                          if (core && core.length !== 10) {
+                            setErrors((prev) => ({ ...prev, phone: "Please enter a valid 10-digit mobile number" }));
                           }
                         }}
                         className={`w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900/90 border ${

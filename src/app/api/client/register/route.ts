@@ -85,37 +85,16 @@ export async function POST(request: Request) {
     }
 
     const phoneDigits = phone.replace(/\D/g, "");
-    if (phoneDigits.length < 10) {
-      return NextResponse.json(
-        { success: false, error: "Phone number must contain at least 10 digits." },
-        { status: 400 }
-      );
+    let coreDigits = phoneDigits;
+    if (coreDigits.length === 12 && coreDigits.startsWith("91")) {
+      coreDigits = coreDigits.slice(2);
+    } else if (coreDigits.length === 11 && coreDigits.startsWith("0")) {
+      coreDigits = coreDigits.slice(1);
     }
 
-    if (phoneDigits.length > 15) {
+    if (coreDigits.length !== 10) {
       return NextResponse.json(
-        { success: false, error: "Phone number cannot exceed 15 digits." },
-        { status: 400 }
-      );
-    }
-
-    if (/^(\d)\1+$/.test(phoneDigits)) {
-      return NextResponse.json(
-        { success: false, error: "Please enter a valid, non-repeating phone number." },
-        { status: 400 }
-      );
-    }
-
-    let checkDigits = phoneDigits;
-    if (phoneDigits.length === 12 && phoneDigits.startsWith("91")) {
-      checkDigits = phoneDigits.slice(2);
-    } else if (phoneDigits.length === 11 && phoneDigits.startsWith("0")) {
-      checkDigits = phoneDigits.slice(1);
-    }
-
-    if (checkDigits.length === 10 && !/^[6-9]\d{9}$/.test(checkDigits)) {
-      return NextResponse.json(
-        { success: false, error: "Indian mobile numbers must start with 6, 7, 8, or 9." },
+        { success: false, error: "Please enter a valid 10-digit mobile number." },
         { status: 400 }
       );
     }

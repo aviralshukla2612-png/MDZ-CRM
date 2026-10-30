@@ -165,18 +165,14 @@ export default function ClientRegisterPage() {
     const trimmed = rawPhone.trim();
     if (!trimmed) return "Phone number is required.";
     const digits = trimmed.replace(/\D/g, "");
-    if (digits.length < 10) return "Phone number must contain at least 10 digits.";
-    if (digits.length > 15) return "Phone number cannot exceed 15 digits.";
-    if (/^(\d)\1+$/.test(digits)) return "Please enter a valid, non-repetitive phone number.";
-
-    let checkDigits = digits;
-    if (digits.length === 12 && digits.startsWith("91")) {
-      checkDigits = digits.slice(2);
-    } else if (digits.length === 11 && digits.startsWith("0")) {
-      checkDigits = digits.slice(1);
+    let coreDigits = digits;
+    if (coreDigits.length === 12 && coreDigits.startsWith("91")) {
+      coreDigits = coreDigits.slice(2);
+    } else if (coreDigits.length === 11 && coreDigits.startsWith("0")) {
+      coreDigits = coreDigits.slice(1);
     }
-    if (checkDigits.length === 10 && !/^[6-9]\d{9}$/.test(checkDigits)) {
-      return "Indian mobile numbers must start with 6, 7, 8, or 9.";
+    if (coreDigits.length !== 10) {
+      return "Please enter a valid 10-digit mobile number.";
     }
     return null;
   };
