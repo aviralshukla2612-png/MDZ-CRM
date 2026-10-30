@@ -196,7 +196,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
   return (
     <header className={`sticky top-0 z-40 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-b ${themeStyle.sidebarBorder} px-2.5 sm:px-4 md:px-6 py-2 flex items-center justify-between shadow-xs dark:shadow-2xl transition-all shrink-0 h-14 sm:h-16 w-full max-w-full overflow-hidden`}>
       {/* Left Brand Logo & Context */}
-      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Mobile Menu Toggle Button */}
         {onToggleMobileMenu && (
           <button
@@ -220,7 +220,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
               ? "/sales"
               : "/employee"
           }
-          className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 select-none group"
+          className="flex items-center gap-1.5 sm:gap-2 select-none group shrink-0"
         >
           {branding.logoUrl ? (
             <img
@@ -237,12 +237,12 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
               {branding.companyName.charAt(0)}
             </div>
           )}
-          <span className="font-extrabold text-sm sm:text-base md:text-lg tracking-tight font-sans flex items-center gap-1 sm:gap-1.5 select-none min-w-0">
-            <span className={`${themeStyle.primaryGradient} bg-clip-text text-transparent font-black truncate max-w-[95px] xs:max-w-[130px] sm:max-w-none`}>
+          <span className="font-extrabold text-sm sm:text-base md:text-lg tracking-tight font-sans flex items-center gap-1 select-none shrink-0">
+            <span className={`${themeStyle.primaryGradient} bg-clip-text text-transparent font-black shrink-0`}>
               {branding.companyName}
             </span>
             {branding.brandTagline && (
-              <span className={`${themeStyle.secondaryGradient} bg-clip-text text-transparent font-black hidden xs:inline shrink-0`}>
+              <span className={`${themeStyle.secondaryGradient} bg-clip-text text-transparent font-black hidden sm:inline shrink-0`}>
                 {branding.brandTagline}
               </span>
             )}
@@ -276,19 +276,19 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
             <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               <button
                 onClick={() => setIsBreakSheetOpen(true)}
-                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-sm dark:shadow-lg dark:shadow-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-sm dark:shadow-lg dark:shadow-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
                 title="Active Stopwatch (Click for Break Menu)"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
                 <span className="font-mono text-xs">{formatHMS(workSeconds)}</span>
               </button>
 
-              {/* Direct 1-Click Lunch Break Button */}
+              {/* Direct 1-Click Lunch Break Button (Tablet & Desktop) */}
               <button
                 type="button"
                 disabled={isBreakActionLoading}
                 onClick={() => startBreak("Lunch")}
-                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 ${
+                className={`hidden sm:flex px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-white font-bold text-xs items-center gap-1 sm:gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 ${
                   isBreakActionLoading
                     ? "bg-amber-400 cursor-not-allowed opacity-80"
                     : "bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer"
@@ -305,7 +305,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
 
               <button
                 onClick={handlePunchOutClick}
-                className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-rose-600/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
+                className="hidden sm:flex px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs items-center gap-1 shadow-md shadow-rose-600/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
                 title="Punch Out for Today"
               >
                 <Power className="w-3.5 h-3.5 shrink-0" />
@@ -340,7 +340,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                 ) : (
                   <Play className="w-3.5 h-3.5 fill-white shrink-0" />
                 )}
-                <span className="hidden md:inline">{isBreakActionLoading ? "Resuming..." : "Resume"}</span>
+                <span className="hidden sm:inline">{isBreakActionLoading ? "Resuming..." : "Resume"}</span>
               </button>
             </div>
           )}
@@ -349,7 +349,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
             <button
               onClick={handlePunchInClick}
               disabled={isPunchingIn}
-              className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl text-white font-extrabold text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-target shrink-0 ${isPunchingIn ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'}`}
+              className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-white font-extrabold text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-target shrink-0 ${isPunchingIn ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'}`}
               title="Punch In to Work Clock"
             >
               <Play className="w-3.5 h-3.5 fill-white shrink-0" />
@@ -359,10 +359,10 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
 
           {status === "DAY_COMPLETE" && (
             <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-              <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold text-xs flex items-center gap-1 sm:gap-1.5 border border-slate-200 dark:border-slate-700/80 cursor-default shrink-0 select-none">
+              <div className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold text-xs flex items-center gap-1 sm:gap-1.5 border border-slate-200 dark:border-slate-700/80 cursor-default shrink-0 select-none">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="hidden xs:inline">Shift Complete</span>
-                <span className="xs:hidden">Done</span>
+                <span className="hidden sm:inline">Shift Complete</span>
+                <span className="sm:hidden">Done</span>
               </div>
               {isVideographerUser && (
                 <>
@@ -390,9 +390,9 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
         </div>
         )}
 
-        {/* Mobile Search Button */}
+        {/* Mobile Search Button (Visible on mobile for roles without work clock, and on tablet for all) */}
         {currentUser.role !== "CLIENT" && (
-          <div className="lg:hidden shrink-0">
+          <div className={`${(currentUser.role === "EMPLOYEE" || currentUser.role === "SALES") ? "hidden md:block lg:hidden" : "lg:hidden"} shrink-0`}>
             <button
               onClick={onOpenSearch}
               className="relative w-8 h-8 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center touch-target"
