@@ -75,7 +75,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
             m.employee?.userId === authRes.id) &&
           m.isActive
       );
-      if (!isAssigned) {
+      const isTaskAssignee = project.tasks?.some(
+        (t) =>
+          t.assignedToId === authRes.id ||
+          (authRes.employeeId && t.assignedToId === authRes.employeeId)
+      );
+      const isCreator = project.createdById === authRes.id;
+      if (!isAssigned && !isTaskAssignee && !isCreator) {
         return NextResponse.json({ success: false, error: "Forbidden: You are not assigned to this project" }, { status: 403 });
       }
     }

@@ -11,7 +11,7 @@ export async function GET() {
     return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
   }
 
-  let whereClause = {};
+  let whereClause: any = {};
   if (authRes.activeRole === "EMPLOYEE") {
     let empId = authRes.employeeId;
     if (!empId) {
@@ -20,6 +20,9 @@ export async function GET() {
       });
       empId = emp?.id;
     }
+    const assigneeIds = [authRes.id];
+    if (empId) assigneeIds.push(empId);
+
     whereClause = {
       OR: [
         {
@@ -32,18 +35,14 @@ export async function GET() {
             },
           },
         },
-        ...(empId ? [{ assignedEmployeeId: empId }] : []),
         {
           tasks: {
             some: {
-              OR: [
-                ...(empId ? [{ assignedToId: empId }] : []),
-                { assignedToId: authRes.id },
-                { assignedTo: { userId: authRes.id } },
-              ],
+              assignedToId: { in: assigneeIds },
             },
           },
         },
+        { createdById: authRes.id },
       ],
     };
   }
@@ -180,8 +179,12 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, data: formatted });
-  } catch (error) {
-    return NextResponse.json({ success: false, error: "Failed to fetch projects from database" }, { status: 500 });
+  } catch (error: any) {
+    console.error("GET /api/projects error:", error);
+    return NextResponse.json(
+      { success: false, error: error?.message || "Failed to fetch projects from database" },
+      { status: 500 }
+    );
   }
 }
 
