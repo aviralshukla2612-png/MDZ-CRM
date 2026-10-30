@@ -194,17 +194,17 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
   };
 
   return (
-    <header className={`sticky top-0 z-40 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-b ${themeStyle.sidebarBorder} px-4 sm:px-6 py-2.5 flex items-center justify-between shadow-xs dark:shadow-2xl transition-all shrink-0 h-16 w-full`}>
+    <header className={`sticky top-0 z-40 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-b ${themeStyle.sidebarBorder} px-2.5 sm:px-4 md:px-6 py-2 flex items-center justify-between shadow-xs dark:shadow-2xl transition-all shrink-0 h-14 sm:h-16 w-full max-w-full overflow-hidden`}>
       {/* Left Brand Logo & Context */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink">
         {/* Mobile Menu Toggle Button */}
         {onToggleMobileMenu && (
           <button
             onClick={onToggleMobileMenu}
-            className={`md:hidden p-2 rounded-xl ${themeStyle.accentBadge} hover:opacity-80 transition-all touch-target`}
+            className={`md:hidden w-8 h-8 flex items-center justify-center rounded-xl ${themeStyle.accentBadge} hover:opacity-80 transition-all touch-target shrink-0`}
             title="Toggle Menu"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
@@ -220,29 +220,29 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
               ? "/sales"
               : "/employee"
           }
-          className="flex items-center gap-3 select-none group"
+          className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 select-none group"
         >
           {branding.logoUrl ? (
             <img
               src={branding.logoUrl}
               alt={`${branding.companyName} Logo`}
-              className={`w-8 h-8 sm:w-9 sm:h-9 object-contain rounded-lg shadow-sm ring-1 ${themeStyle.ringClass} group-hover:scale-105 transition-all bg-white dark:bg-slate-900 p-0.5`}
+              className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 object-contain rounded-lg shadow-sm ring-1 ${themeStyle.ringClass} group-hover:scale-105 transition-all bg-white dark:bg-slate-900 p-0.5 shrink-0`}
               onError={(e) => {
                 // Fallback to default if custom image fails to load
                 (e.target as HTMLImageElement).src = "/mdz-crm/mdz-logo.jpg";
               }}
             />
           ) : (
-            <div className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-gradient-to-br ${themeStyle.swatchBg} text-white font-black flex items-center justify-center text-sm shadow-sm`}>
+            <div className={`w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-lg bg-gradient-to-br ${themeStyle.swatchBg} text-white font-black flex items-center justify-center text-xs sm:text-sm shadow-sm shrink-0`}>
               {branding.companyName.charAt(0)}
             </div>
           )}
-          <span className="font-extrabold text-base sm:text-lg tracking-tight font-sans flex items-center gap-1.5 select-none">
-            <span className={`${themeStyle.primaryGradient} bg-clip-text text-transparent font-black`}>
+          <span className="font-extrabold text-sm sm:text-base md:text-lg tracking-tight font-sans flex items-center gap-1 sm:gap-1.5 select-none min-w-0">
+            <span className={`${themeStyle.primaryGradient} bg-clip-text text-transparent font-black truncate max-w-[95px] xs:max-w-[130px] sm:max-w-none`}>
               {branding.companyName}
             </span>
             {branding.brandTagline && (
-              <span className={`${themeStyle.secondaryGradient} bg-clip-text text-transparent font-black`}>
+              <span className={`${themeStyle.secondaryGradient} bg-clip-text text-transparent font-black hidden xs:inline shrink-0`}>
                 {branding.brandTagline}
               </span>
             )}
@@ -267,15 +267,16 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
       )}
 
       {/* Right Controls & Live Work Session Stopwatch (Always shrink-0, never overlapped) */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+      {/* Right Controls & Live Work Session Stopwatch */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 md:gap-3 shrink-0 ml-auto">
         {/* Work Clock Controls Bar (Employees & Sales only, never for Clients or Owner) */}
         {(currentUser.role === "EMPLOYEE" || currentUser.role === "SALES") && (
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {status === "WORKING" && (
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               <button
                 onClick={() => setIsBreakSheetOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-sm dark:shadow-lg dark:shadow-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
+                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-emerald-400 shadow-sm dark:shadow-lg dark:shadow-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
                 title="Active Stopwatch (Click for Break Menu)"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping shrink-0" />
@@ -287,7 +288,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                 type="button"
                 disabled={isBreakActionLoading}
                 onClick={() => startBreak("Lunch")}
-                className={`px-3 py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 ${
                   isBreakActionLoading
                     ? "bg-amber-400 cursor-not-allowed opacity-80"
                     : "bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer"
@@ -299,25 +300,25 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                 ) : (
                   <Coffee className="w-3.5 h-3.5 shrink-0" />
                 )}
-                <span className="hidden sm:inline">{isBreakActionLoading ? "Starting Lunch..." : "Lunch Break"}</span>
+                <span className="hidden md:inline">{isBreakActionLoading ? "Starting Lunch..." : "Lunch Break"}</span>
               </button>
 
               <button
                 onClick={handlePunchOutClick}
-                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-rose-600/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-rose-600/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
                 title="Punch Out for Today"
               >
                 <Power className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline">Punch Out</span>
+                <span className="hidden md:inline">Punch Out</span>
               </button>
             </div>
           )}
 
           {status === "ON_BREAK" && (
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               <button
                 onClick={() => setIsBreakSheetOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/30 text-xs font-bold text-violet-700 dark:text-violet-400 shadow-sm dark:shadow-lg dark:shadow-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 active:scale-95 transition-all touch-target shrink-0"
+                className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-violet-50 dark:bg-violet-500/10 border border-violet-200 dark:border-violet-500/30 text-xs font-bold text-violet-700 dark:text-violet-400 shadow-sm dark:shadow-lg dark:shadow-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20 active:scale-95 transition-all touch-target shrink-0"
                 title="Click for Break Controls"
               >
                 <span className="w-2 h-2 rounded-full bg-violet-500 animate-pulse shrink-0" />
@@ -327,7 +328,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
               <button
                 onClick={resumeWork}
                 disabled={isBreakActionLoading}
-                className={`px-3 py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-indigo-600/20 active:scale-95 transition-all touch-target shrink-0 ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-indigo-600/20 active:scale-95 transition-all touch-target shrink-0 ${
                   isBreakActionLoading
                     ? "bg-indigo-400 cursor-not-allowed opacity-80"
                     : "bg-indigo-600 hover:bg-indigo-500 active:scale-95 cursor-pointer"
@@ -339,7 +340,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                 ) : (
                   <Play className="w-3.5 h-3.5 fill-white shrink-0" />
                 )}
-                <span className="hidden sm:inline">{isBreakActionLoading ? "Resuming..." : "Resume"}</span>
+                <span className="hidden md:inline">{isBreakActionLoading ? "Resuming..." : "Resume"}</span>
               </button>
             </div>
           )}
@@ -348,26 +349,27 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
             <button
               onClick={handlePunchInClick}
               disabled={isPunchingIn}
-              className={`px-4 py-1.5 rounded-xl text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-target shrink-0 ${isPunchingIn ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'}`}
+              className={`px-3 sm:px-4 py-1 sm:py-1.5 rounded-xl text-white font-extrabold text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-target shrink-0 ${isPunchingIn ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'}`}
               title="Punch In to Work Clock"
             >
               <Play className="w-3.5 h-3.5 fill-white shrink-0" />
-              <span>{isPunchingIn ? "Punching In..." : "Punch In"}</span>
+              <span>{isPunchingIn ? "Punching..." : "Punch In"}</span>
             </button>
           )}
 
           {status === "DAY_COMPLETE" && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <div className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold text-xs flex items-center gap-1.5 border border-slate-200 dark:border-slate-700/80 cursor-default shrink-0 select-none">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              <div className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-extrabold text-xs flex items-center gap-1 sm:gap-1.5 border border-slate-200 dark:border-slate-700/80 cursor-default shrink-0 select-none">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span>Shift Complete</span>
+                <span className="hidden xs:inline">Shift Complete</span>
+                <span className="xs:hidden">Done</span>
               </div>
               {isVideographerUser && (
                 <>
                   <button
                     onClick={handlePunchInClick}
                     disabled={isPunchingIn}
-                    className="px-3 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-orange-600/20 active:scale-95 transition-all touch-target shrink-0"
+                    className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-orange-600/20 active:scale-95 transition-all touch-target shrink-0"
                     title="Punch in for next shoot anytime"
                   >
                     <Play className="w-3 h-3 fill-white shrink-0" />
@@ -375,7 +377,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                   </button>
                   <button
                     onClick={() => setIsVideographerUploadModalOpen(true)}
-                    className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-1.5 hover:bg-amber-500/20 active:scale-95 transition-all shrink-0"
+                    className="px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-1.5 hover:bg-amber-500/20 active:scale-95 transition-all shrink-0"
                     title="Upload Raw Shoot Footage for Video Editors"
                   >
                     <Film className="w-3.5 h-3.5 text-amber-500" />
@@ -398,10 +400,10 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           <div className="shrink-0">
             <Link
               href="/chat"
-              className="relative p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center touch-target"
+              className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center touch-target"
               title="Internal Chat"
             >
-              <MessageSquare className="w-5 h-5" />
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
             </Link>
           </div>
         )}
@@ -415,21 +417,21 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
         <div className="relative shrink-0">
           <button
             onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-            className="flex items-center gap-2 p-1 rounded-xl bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800/80 transition-all active:scale-95 touch-target"
+            className="flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 rounded-xl bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800/80 transition-all active:scale-95 touch-target"
             title="Account & Profile"
           >
             {currentPhoto ? (
               <img
                 src={currentPhoto}
                 alt={currentUser.name}
-                className="w-7 h-7 rounded-lg object-cover shadow-xs border border-indigo-200 dark:border-indigo-800"
+                className="w-7 h-7 sm:w-7 sm:h-7 rounded-lg object-cover shadow-xs border border-indigo-200 dark:border-indigo-800"
               />
             ) : (
-              <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+              <div className="w-7 h-7 sm:w-7 sm:h-7 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
                 {currentUser.name[0]?.toUpperCase() || "U"}
               </div>
             )}
-            <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-slate-500 dark:text-slate-400 mr-0.5" />
           </button>
 
           {isProfileMenuOpen && (

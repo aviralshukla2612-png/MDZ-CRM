@@ -290,7 +290,7 @@ export function NotificationBell({ currentUserId }: Props) {
             Notification.requestPermission().then((perm) => setPushStatus(perm as any)).catch(() => {});
           }
         }}
-        className="relative p-2 rounded-xl bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95 touch-target flex items-center justify-center group"
+        className="relative w-8 h-8 sm:w-9 sm:h-9 p-1.5 sm:p-2 rounded-xl bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800/80 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-all active:scale-95 touch-target flex items-center justify-center group"
         title="Notifications"
         aria-label="View notifications"
       >
