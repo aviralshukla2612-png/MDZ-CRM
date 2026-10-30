@@ -165,13 +165,7 @@ export default function ClientRegisterPage() {
     const trimmed = rawPhone.trim();
     if (!trimmed) return "Phone number is required.";
     const digits = trimmed.replace(/\D/g, "");
-    let coreDigits = digits;
-    if (coreDigits.length === 12 && coreDigits.startsWith("91")) {
-      coreDigits = coreDigits.slice(2);
-    } else if (coreDigits.length === 11 && coreDigits.startsWith("0")) {
-      coreDigits = coreDigits.slice(1);
-    }
-    if (coreDigits.length !== 10) {
+    if (digits.length !== 10) {
       return "Please enter a valid 10-digit mobile number.";
     }
     return null;
@@ -216,8 +210,8 @@ export default function ClientRegisterPage() {
 
     if (type === "checkbox") {
       cleanVal = (e.target as HTMLInputElement).checked;
-    } else if (name === "phone" || name === "whatsapp") {
-      cleanVal = value.replace(/[^\d+\s-]/g, "").slice(0, 16);
+    } else if (name === "phone" || name === "whatsapp" || name === "pocRapidApprovals") {
+      cleanVal = value.replace(/\D/g, "").slice(0, 10);
     } else if (name === "reelsQuota" || name === "carouselsQuota" || name === "storiesQuota") {
       cleanVal = Math.max(0, Number(value) || 0);
     }
@@ -601,8 +595,9 @@ export default function ClientRegisterPage() {
                       <span>Mobile Number *</span>
                     </label>
                     <input
-                      type="text"
+                      type="tel"
                       name="phone"
+                      maxLength={10}
                       value={formData.phone}
                       onChange={handleChange}
                       onBlur={() => handleBlur("phone")}
@@ -1204,8 +1199,9 @@ export default function ClientRegisterPage() {
                           Dedicated WhatsApp for 24h Approvals
                         </label>
                         <input
-                          type="text"
+                          type="tel"
                           name="pocRapidApprovals"
+                          maxLength={10}
                           value={formData.pocRapidApprovals}
                           onChange={handleChange}
                           placeholder={formData.phone || "e.g. 9876543210"}

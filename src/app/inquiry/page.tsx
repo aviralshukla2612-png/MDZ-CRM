@@ -867,21 +867,18 @@ export default function PublicInquiryPage() {
                       </label>
                       <input
                         type="tel"
-                        maxLength={16}
-                        placeholder="e.g. +91 98765 43210"
+                        maxLength={10}
+                        placeholder="e.g. 9876543210"
                         value={formData.phone}
                         onChange={(e) => {
                           const raw = e.target.value;
-                          const filtered = raw.replace(/[^\d+\s-]/g, "");
+                          const filtered = raw.replace(/\D/g, "").slice(0, 10);
                           setFormData({ ...formData, phone: filtered });
                           if (errors.phone) setErrors((prev) => ({ ...prev, phone: "" }));
                         }}
                         onBlur={() => {
                           const digits = formData.phone.replace(/\D/g, "");
-                          let core = digits;
-                          if (core.length === 12 && core.startsWith("91")) core = core.slice(2);
-                          else if (core.length === 11 && core.startsWith("0")) core = core.slice(1);
-                          if (core && core.length !== 10) {
+                          if (digits && digits.length !== 10) {
                             setErrors((prev) => ({ ...prev, phone: "Please enter a valid 10-digit mobile number" }));
                           }
                         }}
