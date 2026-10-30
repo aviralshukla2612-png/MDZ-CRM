@@ -283,12 +283,12 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                 <span className="font-mono text-xs">{formatHMS(workSeconds)}</span>
               </button>
 
-              {/* Direct 1-Click Lunch Break Button (Tablet & Desktop) */}
+              {/* Direct 1-Click Lunch Break Button */}
               <button
                 type="button"
                 disabled={isBreakActionLoading}
                 onClick={() => startBreak("Lunch")}
-                className={`hidden sm:flex px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-white font-bold text-xs items-center gap-1 sm:gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-amber-500/20 transition-all touch-target shrink-0 ${
                   isBreakActionLoading
                     ? "bg-amber-400 cursor-not-allowed opacity-80"
                     : "bg-amber-500 hover:bg-amber-600 active:scale-95 cursor-pointer"
@@ -305,7 +305,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
 
               <button
                 onClick={handlePunchOutClick}
-                className="hidden sm:flex px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs items-center gap-1 shadow-md shadow-rose-600/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
+                className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-rose-600/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer"
                 title="Punch Out for Today"
               >
                 <Power className="w-3.5 h-3.5 shrink-0" />
@@ -340,7 +340,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                 ) : (
                   <Play className="w-3.5 h-3.5 fill-white shrink-0" />
                 )}
-                <span className="hidden sm:inline">{isBreakActionLoading ? "Resuming..." : "Resume"}</span>
+                <span className="hidden md:inline">{isBreakActionLoading ? "Resuming..." : "Resume"}</span>
               </button>
             </div>
           )}
@@ -349,11 +349,17 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
             <button
               onClick={handlePunchInClick}
               disabled={isPunchingIn}
-              className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-white font-extrabold text-xs flex items-center gap-1 sm:gap-1.5 shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-target shrink-0 ${isPunchingIn ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-500'}`}
+              className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl text-white font-bold text-xs flex items-center gap-1 shadow-md shadow-emerald-600/20 active:scale-95 transition-all touch-target shrink-0 cursor-pointer ${
+                isPunchingIn ? "bg-emerald-400 cursor-not-allowed" : "bg-emerald-600 hover:bg-emerald-500"
+              }`}
               title="Punch In to Work Clock"
             >
-              <Play className="w-3.5 h-3.5 fill-white shrink-0" />
-              <span>{isPunchingIn ? "Punching..." : "Punch In"}</span>
+              {isPunchingIn ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+              ) : (
+                <Play className="w-3.5 h-3.5 fill-white shrink-0" />
+              )}
+              <span className="hidden md:inline">{isPunchingIn ? "Punching..." : "Punch In"}</span>
             </button>
           )}
 
