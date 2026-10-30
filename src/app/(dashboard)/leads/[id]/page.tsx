@@ -362,10 +362,10 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setIsEditModalOpen(true)}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 touch-target cursor-pointer shadow-xs"
+              className="px-3 sm:px-3.5 py-2 sm:py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs transition-colors flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 touch-target cursor-pointer shadow-xs shrink-0"
               title="Edit Lead Details & Scope"
             >
               <Edit3 className="w-4 h-4 text-amber-500" />
@@ -375,13 +375,14 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             {lead.stage !== "WON" ? (
               <button
                 onClick={handleConvertLead}
-                className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 touch-target cursor-pointer"
+                className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 touch-target cursor-pointer shrink-0"
               >
                 <Sparkles className="w-4 h-4" />
-                <span>Convert to Client & Project</span>
+                <span className="hidden xs:inline">Convert to Client & Project</span>
+                <span className="xs:hidden">Convert to Client</span>
               </button>
             ) : (
-              <span className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center gap-1">
+              <span className="px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-xs font-bold flex items-center gap-1 shrink-0">
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Converted to Client</span>
               </span>
@@ -648,14 +649,14 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
       {/* Tab 2: Activity Timeline */}
       {activeTab === "timeline" && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4 w-full min-w-0 max-w-full overflow-hidden">
           <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Audit & Change History Timeline</h3>
-          <div className="space-y-3 text-xs">
+          <div className="space-y-3 text-xs w-full min-w-0">
             {lead.timeline?.map((act: any) => (
-              <div key={act.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-start gap-3">
+              <div key={act.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-start gap-3 w-full min-w-0">
                 <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 shrink-0" />
-                <div className="space-y-0.5">
-                  <div className="font-bold text-slate-900 dark:text-slate-100">{act.text}</div>
+                <div className="space-y-0.5 min-w-0 flex-1">
+                  <div className="font-bold text-slate-900 dark:text-slate-100 break-words break-all [overflow-wrap:anywhere]">{act.text}</div>
                   <div className="text-[10px] font-mono text-slate-400">{act.time}</div>
                 </div>
               </div>
@@ -666,7 +667,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
       {/* Tab 3: Call History */}
       {activeTab === "calls" && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4 w-full min-w-0 max-w-full overflow-hidden">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Call & Meeting History Log</h3>
             <button
@@ -676,14 +677,14 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
               + Log New Call
             </button>
           </div>
-          <div className="space-y-3 text-xs">
+          <div className="space-y-3 text-xs w-full min-w-0">
             {lead.calls?.map((call: any) => (
-              <div key={call.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+              <div key={call.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1 w-full min-w-0">
                 <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100">
                   <span>Caller: {call.callerName}</span>
                   <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">{call.outcome}</span>
                 </div>
-                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{call.notes}</p>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed break-words break-all [overflow-wrap:anywhere]">{call.notes}</p>
                 <div className="text-[10px] font-mono text-slate-400">{call.createdAt}</div>
               </div>
             ))}
@@ -693,7 +694,7 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
 
       {/* Tab 4: Internal Notes */}
       {activeTab === "notes" && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4 w-full min-w-0 max-w-full overflow-hidden">
           <div className="flex items-center justify-between">
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Internal Deal Notes</h3>
             <button
@@ -703,11 +704,11 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
               + Add Note
             </button>
           </div>
-          <div className="space-y-3 text-xs">
+          <div className="space-y-3 text-xs w-full min-w-0">
             {lead.notes?.map((n: any) => (
-              <div key={n.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1">
+              <div key={n.id} className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1 w-full min-w-0">
                 <div className="font-bold text-slate-900 dark:text-slate-100">{n.authorName}</div>
-                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{n.content}</p>
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed break-words break-all [overflow-wrap:anywhere]">{n.content}</p>
                 <div className="text-[10px] font-mono text-slate-400">{n.createdAt}</div>
               </div>
             ))}

@@ -442,8 +442,8 @@ export default function ClientRegisterPage() {
       </div>
 
       {/* Main Registration Card */}
-      <div className="max-w-3xl mx-auto w-full my-4 sm:my-6">
-        <div className="bg-white dark:bg-[#161411] rounded-2xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 shadow-xl space-y-5">
+      <div className="max-w-3xl mx-auto w-full my-3 sm:my-6">
+        <div className="bg-white dark:bg-[#161411] rounded-2xl border border-stone-200 dark:border-stone-800 p-4 sm:p-6 md:p-7 shadow-xl space-y-5">
           {/* Header & Step Wizard Indicator */}
           <div className="space-y-3 text-left">
             <div className="flex items-center justify-between">
