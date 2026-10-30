@@ -93,14 +93,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Body Layout: Desktop Fixed Sidebar + Main Scrollable Workspace */}
-      <div className="flex flex-1 overflow-hidden relative w-full">
+      <div className="flex flex-1 overflow-hidden relative w-full min-w-0 max-w-full">
         <Sidebar
           role={currentRole}
           isMobileOpen={false}
           onCloseMobile={() => setIsMobileMenuOpen(false)}
         />
 
-        <main className="flex-1 overflow-y-auto p-2 sm:p-3 md:p-3.5 w-full max-w-full pb-8">
+        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-2 sm:p-3 md:p-3.5 w-full max-w-full pb-8">
           {shouldGate ? (
             <div className="p-8 bg-white dark:bg-slate-900 rounded-2xl border border-amber-200 dark:border-amber-900/60 shadow-lg space-y-4 text-center max-w-xl mx-auto my-12">
               <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto">

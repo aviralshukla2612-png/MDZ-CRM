@@ -22,22 +22,149 @@ import {
   ShieldCheck,
   Edit3,
 } from "lucide-react";
+import { useParams } from "next/navigation";
 import { EditLeadModal } from "@/components/sales/EditLeadModal";
 
+function parseLeadDetailsClean(raw: string) {
+  if (!raw) return { sections: [], payloads: [] };
+
+  const payloads: { key: string; json: string }[] = [];
+  let workingText = raw;
+
+  // Find all [SOMETHING_DATA]: markers and extract them safely
+  while (true) {
+    const match = workingText.match(/\[([A-Z_]+_DATA)\]:\s*(\{[\s\S]*)/);
+    if (!match || match.index === undefined) break;
+
+    const key = match[1];
+    const markerIndex = match.index;
+    const startBraceIndex = workingText.indexOf("{", markerIndex);
+    if (startBraceIndex === -1) break;
+
+    const afterStart = workingText.slice(startBraceIndex);
+    const nextSectionIndex = afterStart.search(/\n?\s*===|\n?\s*\[[A-Z_]+_DATA\]:/);
+
+    let jsonEndIndex: number;
+    if (nextSectionIndex !== -1) {
+      const segment = afterStart.slice(0, nextSectionIndex);
+      const lastBrace = segment.lastIndexOf("}");
+      if (lastBrace !== -1) {
+        jsonEndIndex = startBraceIndex + lastBrace + 1;
+      } else {
+        jsonEndIndex = startBraceIndex + nextSectionIndex;
+      }
+    } else {
+      const lastBrace = afterStart.lastIndexOf("}");
+      if (lastBrace !== -1) {
+        jsonEndIndex = startBraceIndex + lastBrace + 1;
+      } else {
+        jsonEndIndex = workingText.length;
+      }
+    }
+
+    const payloadContent = workingText.slice(startBraceIndex, jsonEndIndex).trim();
+    payloads.push({ key, json: payloadContent });
+
+    workingText = workingText.slice(0, markerIndex) + " " + workingText.slice(jsonEndIndex);
+  }
+
+  // Split remainder into sections by === TITLE ===
+  const rawSections = workingText.split(/===+\s*([^=]+?)\s*===+/g);
+  const sections: { title: string; content: string }[] = [];
+
+  if (rawSections[0] && rawSections[0].trim()) {
+    sections.push({ title: "Inquiry Brief & Notes", content: rawSections[0].trim() });
+  }
+
+  for (let i = 1; i < rawSections.length; i += 2) {
+    const title = (rawSections[i] || "").trim();
+    const content = (rawSections[i + 1] || "").trim();
+    if (title || content) {
+      sections.push({ title, content });
+    }
+  }
+
+  return { sections, payloads };
+}
+
+function renderCleanDetails(rawText: string) {
+  if (!rawText) return null;
+
+  const { sections, payloads } = parseLeadDetailsClean(rawText);
+
+  return (
+    <div className="space-y-3.5 w-full min-w-0 max-w-full overflow-hidden">
+      {sections.map((sec, idx) => (
+        <div
+          key={idx}
+          className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-1.5 w-full min-w-0 overflow-hidden"
+        >
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            <span className="text-[11px] font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
+              {sec.title}
+            </span>
+          </div>
+          <div className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">
+            {sec.content
+              .replace(/\s*(\[[^\]]+\]:)\s*/g, "\n$1 ")
+              .replace(/^\n+/, "")
+              .trim()}
+          </div>
+        </div>
+      ))}
+
+      {payloads.length > 0 && (
+        <details className="text-[11px] text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-800 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 overflow-hidden">
+          <summary className="cursor-pointer font-bold hover:text-slate-700 dark:hover:text-slate-300 select-none px-3.5 py-2.5 flex items-center justify-between transition-colors">
+            <span className="flex items-center gap-1.5">
+              <span>⚙️ Technical System Payloads</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
+                {payloads.length}
+              </span>
+            </span>
+            <span className="text-[10px] text-slate-400">Click to expand</span>
+          </summary>
+          <div className="p-3 space-y-2.5 border-t border-slate-200 dark:border-slate-800">
+            {payloads.map((item, idx) => (
+              <div
+                key={idx}
+                className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 font-mono text-[10px] break-all max-h-48 overflow-y-auto"
+              >
+                <span className="font-bold text-slate-700 dark:text-slate-300 block mb-1">
+                  [{item.key}]
+                </span>
+                <pre className="whitespace-pre-wrap break-all text-slate-600 dark:text-slate-400 font-mono [overflow-wrap:anywhere]">
+                  {item.json}
+                </pre>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
 export default function LeadDetailPage({ params }: { params: { id: string } }) {
+  const routeParams = useParams();
+  const effectiveId = (params?.id || routeParams?.id) as string;
   const { showToast } = useToast();
   const [lead, setLead] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   React.useEffect(() => {
-    fetchLead();
-  }, []);
+    if (effectiveId) {
+      fetchLead();
+    }
+  }, [effectiveId]);
 
   const fetchLead = async () => {
+    if (!effectiveId) return;
     try {
       setLoading(true);
-      const res = await fetch(`/mdz-crm/api/leads/${params.id}`);
+      const res = await fetch(`/mdz-crm/api/leads/${effectiveId}`);
       const json = await res.json();
       if (json.success && json.data) {
         const l = json.data;
@@ -192,13 +319,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
     }
   };
 
-  if (loading) return <div className="p-12 text-center text-slate-400 animate-pulse">Loading Lead...</div>;
-  if (!lead) return <div className="p-12 text-center text-rose-400">Lead Not Found</div>;
+  if (loading) return <div className="p-12 text-center text-slate-400 animate-pulse">Loading Lead Details...</div>;
+  if (!lead) return <div className="p-12 text-center text-rose-400">Lead Not Found or Access Restricted</div>;
 
   return (
-    <div className="space-y-6 pb-16">
+    <div className="space-y-6 pb-16 w-full max-w-full min-w-0 overflow-x-hidden">
       {/* Back Navigation Bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between min-w-0">
         <Link
           href="/leads"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
@@ -212,9 +339,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
       </div>
 
       {/* Lead Hero Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div className="space-y-1">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-xs space-y-4 w-full min-w-0 overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4 min-w-0">
+          <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-mono">
                 {lead.leadPriority} PRIORITY
@@ -223,13 +350,13 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 {lead.stage} STAGE
               </span>
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight break-words">
               {lead.clientName}
             </h1>
-            <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-3">
+            <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-1 break-words">
               <span>👤 <strong>{lead.contactPerson}</strong></span>
               <span>•</span>
-              <span>✉️ {lead.email}</span>
+              <span className="break-all">✉️ {lead.email}</span>
               <span>•</span>
               <span>📞 {lead.phone}</span>
             </div>
@@ -340,8 +467,8 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         } catch {}
 
         return (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full min-w-0 max-w-full">
+          <div className="lg:col-span-2 space-y-6 w-full min-w-0 max-w-full">
             {/* Public Inquiry / Client Requirements Section */}
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between">
@@ -424,11 +551,11 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
                 </div>
               )}
 
-              {/* Additional Details */}
+              {/* Additional Details with Clean Payload Formatting */}
               {lead.additionalDetails && (
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs">
-                  <span className="text-[10px] uppercase font-bold text-slate-400 block">Additional Brief / Notes</span>
-                  <p className="text-slate-700 dark:text-slate-300 mt-0.5 leading-relaxed">{lead.additionalDetails}</p>
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700 text-xs w-full min-w-0 max-w-full overflow-hidden">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Additional Brief / Notes</span>
+                  {renderCleanDetails(lead.additionalDetails)}
                 </div>
               )}
 
@@ -464,9 +591,9 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
             </div>
 
             {/* Scope Summary */}
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4 w-full min-w-0 overflow-hidden">
               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">Project Scope & Scope of Work</h3>
-              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+              <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-medium p-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 break-words break-all whitespace-pre-wrap">
                 {lead.projectScope || lead.interestedService || "Full-Service Engagement"}
               </p>
 
