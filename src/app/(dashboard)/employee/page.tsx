@@ -295,6 +295,11 @@ export default function EmployeeDeskPage() {
       if (json.success) {
         showToast(`✓ Task updated to ${nextStatus}`, "success");
         fetchEmployeeProjects();
+        if (nextStatus === "COMPLETED") {
+          handleIncrementMyTarget(1);
+        } else if (s === "COMPLETED" || s === "DONE") {
+          handleIncrementMyTarget(-1);
+        }
       } else {
         showToast(json.error || "Failed to update task", "error");
       }
@@ -315,6 +320,9 @@ export default function EmployeeDeskPage() {
       if (json.success) {
         showToast(`✓ Task moved to ${targetStatus}`, "success");
         fetchEmployeeProjects();
+        if (targetStatus === "COMPLETED" || targetStatus === "DONE") {
+          handleIncrementMyTarget(1);
+        }
       } else {
         showToast(json.error || "Failed to update task", "error");
       }
@@ -607,83 +615,152 @@ export default function EmployeeDeskPage() {
       </div>
 
       {/* Daily Work Target Reminder & Live Quota Progress */}
-      {myTarget && myTarget.dailyTargetCount > 0 && (
-        <div className="bg-gradient-to-r from-indigo-900/90 via-indigo-950/95 to-slate-900 text-white rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 shadow-xl border border-indigo-500/30 space-y-2.5 sm:space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-500/20 border border-amber-400/40 text-amber-400 flex items-center justify-center shrink-0">
-                <Target className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="text-[9px] sm:text-[10px] font-mono font-black tracking-wider uppercase px-1.5 sm:px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                    DAILY TARGET REMINDER
-                  </span>
-                  <span className="text-[11px] sm:text-xs text-indigo-200">
-                    Goal: {myTarget.dailyTargetCount} {myTarget.dailyTargetUnit || "units"} / day
-                  </span>
+      {myTarget && myTarget.dailyTargetCount > 0 && (() => {
+        const targetGoal = myTarget.dailyTargetCount || 0;
+        const achieved = myTarget.today?.achievedCount || 0;
+        const unit = myTarget.today?.unit || myTarget.dailyTargetUnit || "tasks";
+        const remaining = Math.max(0, targetGoal - achieved);
+        const extraWork = Math.max(0, achieved - targetGoal);
+        const progressPct = targetGoal > 0 ? Math.round((achieved / targetGoal) * 100) : 0;
+        const isOverachieved = extraWork > 0;
+        const isTargetMet = achieved >= targetGoal;
+
+        return (
+          <div className="bg-gradient-to-r from-indigo-900/90 via-indigo-950/95 to-slate-900 text-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl border border-indigo-500/30 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 border ${
+                  isOverachieved
+                    ? "bg-amber-500/25 border-amber-400/50 text-amber-300"
+                    : isTargetMet
+                    ? "bg-emerald-500/25 border-emerald-400/50 text-emerald-300"
+                    : "bg-indigo-500/20 border-indigo-400/40 text-indigo-300"
+                }`}>
+                  <Target className="w-5 h-5" />
                 </div>
-                <h3 className="text-sm sm:text-lg font-black tracking-tight text-white mt-0.5">
-                  {myTarget.today?.targetTitle || myTarget.dailyTargetTitle || "Daily Goal"}
-                </h3>
+                <div>
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <span className="text-[10px] font-mono font-black tracking-wider uppercase px-2 py-0.5 rounded bg-indigo-400/20 text-indigo-300 border border-indigo-400/30">
+                      DAILY TARGET REMINDER
+                    </span>
+                    {isOverachieved ? (
+                      <span className="text-[10px] font-mono font-black tracking-wider uppercase px-2 py-0.5 rounded bg-amber-400/25 text-amber-300 border border-amber-400/40 animate-pulse">
+                        🔥 +{extraWork} {unit} OVERACHIEVED
+                      </span>
+                    ) : isTargetMet ? (
+                      <span className="text-[10px] font-mono font-black tracking-wider uppercase px-2 py-0.5 rounded bg-emerald-400/20 text-emerald-300 border border-emerald-400/30">
+                        ✓ TARGET MET
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-mono font-black tracking-wider uppercase px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        ⏳ {remaining} {unit} REMAINING
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black tracking-tight text-white mt-1">
+                    {myTarget.today?.targetTitle || myTarget.dailyTargetTitle || "Daily Goal"}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto">
+                <button
+                  onClick={() => handleIncrementMyTarget(1)}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Manually log +1 completed"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+1 Completed</span>
+                </button>
+                <button
+                  onClick={() => handleIncrementMyTarget(-1)}
+                  className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs transition-all cursor-pointer"
+                  title="Decrement -1"
+                >
+                  -1
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <button
-                onClick={() => handleIncrementMyTarget(1)}
-                className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 active:scale-95 text-slate-950 font-extrabold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+1 {myTarget.today?.unit || "unit"}</span>
-              </button>
-              <button
-                onClick={() => handleIncrementMyTarget(-1)}
-                className="px-2.5 py-1.5 sm:px-2.5 sm:py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs transition-all"
-                title="Decrement"
-              >
-                -1
-              </button>
+            {/* Target Breakdown Grid: Target, Achieved, Remaining / Extra */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-indigo-300 tracking-wider">Daily Goal</span>
+                <p className="font-mono text-base font-black text-white">{targetGoal} <span className="text-[11px] font-normal text-slate-400">{unit}</span></p>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-indigo-300 tracking-wider">Completed</span>
+                <p className="font-mono text-base font-black text-emerald-400">{achieved} <span className="text-[11px] font-normal text-slate-400">({progressPct}%)</span></p>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-indigo-300 tracking-wider">Remaining</span>
+                <p className={`font-mono text-base font-black ${remaining > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+                  {remaining > 0 ? remaining : 0} <span className="text-[11px] font-normal text-slate-400">{remaining > 0 ? unit : "None ✓"}</span>
+                </p>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-0.5">
+                <span className="text-[10px] uppercase font-bold text-indigo-300 tracking-wider">Extra / Surplus</span>
+                <p className={`font-mono text-base font-black ${extraWork > 0 ? "text-amber-300" : "text-slate-400"}`}>
+                  {extraWork > 0 ? `+${extraWork}` : "0"} <span className="text-[11px] font-normal text-slate-400">{extraWork > 0 ? "bonus" : "units"}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Progress Bar & Status Text */}
+            <div className="space-y-2 bg-white/5 rounded-xl sm:rounded-2xl p-3 border border-white/10">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-indigo-200 font-medium text-[11px] sm:text-xs">
+                  {isOverachieved
+                    ? `🔥 Target Exceeded by ${extraWork} extra ${unit}!`
+                    : isTargetMet
+                    ? "✓ Target 100% Completed!"
+                    : `${remaining} ${unit} needed to reach today's quota`}
+                </span>
+                <span className="font-mono font-black text-amber-300 text-xs sm:text-sm">
+                  {achieved} / {targetGoal} {unit} ({progressPct}%)
+                </span>
+              </div>
+
+              <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    isOverachieved
+                      ? "bg-gradient-to-r from-emerald-500 via-amber-400 to-amber-300"
+                      : isTargetMet
+                      ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                      : progressPct >= 50
+                      ? "bg-gradient-to-r from-amber-500 to-amber-300"
+                      : "bg-gradient-to-r from-indigo-500 to-sky-400"
+                  }`}
+                  style={{ width: `${Math.min(100, progressPct)}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] pt-0.5">
+                <span className={`font-semibold line-clamp-1 sm:line-clamp-none ${
+                  isOverachieved
+                    ? "text-amber-300"
+                    : isTargetMet
+                    ? "text-emerald-400"
+                    : "text-indigo-300"
+                }`}>
+                  {isOverachieved
+                    ? `🔥 Outstanding! +${extraWork} extra ${unit} completed beyond the daily target.`
+                    : isTargetMet
+                    ? "🎉 Daily target completed! Great work today."
+                    : `🎯 ${remaining} ${unit} remaining to achieve today's goal.`}
+                </span>
+                <span className="text-slate-400 font-mono text-[10px] shrink-0">
+                  Resets midnight
+                </span>
+              </div>
             </div>
           </div>
-
-          {/* Progress Bar & Metric */}
-          <div className="space-y-1.5 sm:space-y-2 bg-white/5 rounded-xl sm:rounded-2xl p-2.5 sm:p-4 border border-white/10">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-indigo-200 font-medium text-[11px] sm:text-xs">
-                Today's Completed Output
-              </span>
-              <span className="font-mono font-black text-amber-300 text-xs sm:text-sm">
-                {myTarget.today?.achievedCount || 0} / {myTarget.dailyTargetCount} {myTarget.today?.unit} ({myTarget.today?.progressPercentage || 0}%)
-              </span>
-            </div>
-
-            <div className="w-full bg-white/10 rounded-full h-2.5 sm:h-3 overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  (myTarget.today?.progressPercentage || 0) >= 100
-                    ? "bg-gradient-to-r from-emerald-500 to-teal-400"
-                    : (myTarget.today?.progressPercentage || 0) >= 50
-                    ? "bg-gradient-to-r from-amber-500 to-amber-300"
-                    : "bg-gradient-to-r from-indigo-500 to-sky-400"
-                }`}
-                style={{ width: `${Math.min(100, myTarget.today?.progressPercentage || 0)}%` }}
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-[10px] sm:text-[11px] pt-0.5">
-              <span className={`font-semibold line-clamp-1 sm:line-clamp-none ${(myTarget.today?.progressPercentage || 0) >= 100 ? "text-emerald-400" : "text-indigo-300"}`}>
-                {(myTarget.today?.progressPercentage || 0) >= 100
-                  ? "🎉 Daily target completed!"
-                  : `🎯 ${myTarget.today?.remaining || 0} ${myTarget.today?.unit} remaining.`}
-              </span>
-              <span className="text-slate-400 font-mono text-[9px] sm:text-[10px] shrink-0">
-                Midnight reset
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Summary Metrics Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">

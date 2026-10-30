@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { RoleContext } from "@/lib/auth";
 import {
   LayoutDashboard,
@@ -47,7 +48,22 @@ interface NavItem {
 
 export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const { branding, themeStyle } = useBranding();
+
+  const userDesignation = ((session?.user as any)?.designation || "").toLowerCase();
+  const userDepartment = ((session?.user as any)?.department || "").toLowerCase();
+
+  const isHeadOfPersonalBrand =
+    (userDesignation.includes("head") || userDesignation.includes("lead") || userDesignation.includes("manager")) &&
+      (userDesignation.includes("personal") || userDesignation.includes("brand")) ||
+    userDepartment.includes("personal brand") ||
+    userDepartment.includes("personal branding");
+
+  const isHeadOfEvents =
+    (userDesignation.includes("head") || userDesignation.includes("lead") || userDesignation.includes("manager") || userDesignation.includes("producer")) &&
+      userDesignation.includes("event") ||
+    userDepartment.includes("event");
 
   const [subAdminAllowedHrefs, setSubAdminAllowedHrefs] = React.useState<string[] | null>(() => {
     if (typeof window !== "undefined") {
@@ -155,8 +171,8 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
         return subAdminAllItems;
       }
 
-      case "SALES":
-        return [
+      case "SALES": {
+        const salesItems: NavItem[] = [
           { title: "Sales Overview", href: "/sales", icon: <LayoutDashboard className="w-4 h-4" /> },
           { title: "My Personal Notes", href: "/sales/notes", icon: <Notebook className="w-4 h-4" /> },
           { title: "My Work Sessions", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
@@ -165,19 +181,33 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "Proposals / Quotes", href: "/quotes", icon: <FileText className="w-4 h-4" /> },
           { title: "Follow-ups Today", href: "/sales/followups", icon: <PhoneCall className="w-4 h-4" /> },
           { title: "Clients Directory", href: "/clients", icon: <Users className="w-4 h-4" /> },
-          { title: "Personal Branding", href: "/personal-brands", icon: <Sparkles className="w-4 h-4" /> },
-          { title: "Event Management", href: "/events", icon: <Calendar className="w-4 h-4" /> },
+        ];
+        if (isHeadOfPersonalBrand) {
+          salesItems.push({ title: "Personal Branding", href: "/personal-brands", icon: <Sparkles className="w-4 h-4" /> });
+        }
+        if (isHeadOfEvents) {
+          salesItems.push({ title: "Event Management", href: "/events", icon: <Calendar className="w-4 h-4" /> });
+        }
+        salesItems.push(
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Notifications", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
-          { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
-        ];
+          { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> }
+        );
+        return salesItems;
+      }
 
-      case "EMPLOYEE":
-        return [
+      case "EMPLOYEE": {
+        const empItems: NavItem[] = [
           { title: "My Desk", href: "/employee", icon: <LayoutDashboard className="w-4 h-4" /> },
           { title: "Projects", href: "/projects", icon: <FolderKanban className="w-4 h-4" /> },
-          { title: "Personal Branding", href: "/personal-brands", icon: <Sparkles className="w-4 h-4" /> },
-          { title: "Event Management", href: "/events", icon: <Calendar className="w-4 h-4" /> },
+        ];
+        if (isHeadOfPersonalBrand) {
+          empItems.push({ title: "Personal Branding", href: "/personal-brands", icon: <Sparkles className="w-4 h-4" /> });
+        }
+        if (isHeadOfEvents) {
+          empItems.push({ title: "Event Management", href: "/events", icon: <Calendar className="w-4 h-4" /> });
+        }
+        empItems.push(
           { title: "Drive Storage & Files", href: "/docs", icon: <Cloud className="w-4 h-4" /> },
           { title: "Daily Updates", href: "/employee/updates", icon: <Send className="w-4 h-4" /> },
           { title: "Notifications", href: "/notifications", icon: <Bell className="w-4 h-4" /> },
@@ -185,8 +215,10 @@ export function Sidebar({ role, isMobileOpen = false, onCloseMobile }: Props) {
           { title: "My Work Sessions", href: "/attendance", icon: <Clock className="w-4 h-4" /> },
           { title: "Leave Applications", href: "/attendance/leave", icon: <UserCheck className="w-4 h-4" /> },
           { title: "Terms & Conditions", href: "/employee/terms", icon: <BookOpen className="w-4 h-4" /> },
-          { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> },
-        ];
+          { title: "Settings", href: "/settings", icon: <Settings className="w-4 h-4" /> }
+        );
+        return empItems;
+      }
 
       case "CLIENT":
         return [

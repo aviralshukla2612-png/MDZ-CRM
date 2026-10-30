@@ -6,6 +6,21 @@ export async function GET(req: Request) {
   const authRes = await requireAuth();
   if (authRes instanceof NextResponse) return authRes;
 
+  const userRole = authRes.activeRole;
+  const userDesig = (authRes.designation || "").toLowerCase();
+  const userDept = (authRes.department || "").toLowerCase();
+  const isHeadOfEvents =
+    (userDesig.includes("head") || userDesig.includes("lead") || userDesig.includes("manager") || userDesig.includes("producer")) &&
+      userDesig.includes("event") ||
+    userDept.includes("event");
+
+  if (!["ADMIN", "OWNER", "SUB_ADMIN"].includes(userRole) && !isHeadOfEvents) {
+    return NextResponse.json(
+      { success: false, error: "Event Management section is restricted to Admin, Sub-Admin, and Head of Event Management." },
+      { status: 403 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");

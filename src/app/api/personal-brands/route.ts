@@ -6,6 +6,22 @@ export async function GET(req: Request) {
   const authRes = await requireAuth();
   if (authRes instanceof NextResponse) return authRes;
 
+  const userRole = authRes.activeRole;
+  const userDesig = (authRes.designation || "").toLowerCase();
+  const userDept = (authRes.department || "").toLowerCase();
+  const isHeadOfPersonalBrand =
+    (userDesig.includes("head") || userDesig.includes("lead") || userDesig.includes("manager")) &&
+      (userDesig.includes("personal") || userDesig.includes("brand")) ||
+    userDept.includes("personal brand") ||
+    userDept.includes("personal branding");
+
+  if (!["ADMIN", "OWNER", "SUB_ADMIN"].includes(userRole) && !isHeadOfPersonalBrand) {
+    return NextResponse.json(
+      { success: false, error: "Personal Brand section is restricted to Admin, Sub-Admin, and Head of Personal Brand." },
+      { status: 403 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");

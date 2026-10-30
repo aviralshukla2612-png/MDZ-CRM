@@ -198,6 +198,7 @@ export const authOptions: NextAuthOptions = {
             name: user.name,
             role: user.activeRole,
             designation: user.designation,
+            department: user.department,
             employeeId: user.employeeProfile?.id || undefined,
             avatarUrl: safeAvatarUrl,
           };
@@ -214,6 +215,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.role = user.role;
         token.designation = (user as any).designation;
+        token.department = (user as any).department;
         token.employeeId = user.employeeId;
         const avatar = (user as any).avatarUrl;
         token.avatarUrl = avatar && !avatar.startsWith("data:") && avatar.length < 500 ? avatar : null;
@@ -227,6 +229,7 @@ export const authOptions: NextAuthOptions = {
         }
         if (session.name !== undefined) token.name = session.name;
         if (session.designation !== undefined) token.designation = session.designation;
+        if (session.department !== undefined) token.department = session.department;
       }
       return token;
     },
@@ -235,6 +238,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         (session.user as any).designation = token.designation as string | undefined;
+        (session.user as any).department = token.department as string | undefined;
         session.user.employeeId = token.employeeId as string | undefined;
         (session.user as any).avatarUrl = token.avatarUrl as string | undefined;
       }

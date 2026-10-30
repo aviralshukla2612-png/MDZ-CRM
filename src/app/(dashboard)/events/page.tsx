@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   Calendar,
   Clock,
@@ -77,12 +79,28 @@ interface EventProject {
 }
 
 export default function EventManagementPage() {
+  const { data: session, status: sessionStatus } = useSession();
   const { showToast } = useToast();
   const toast = {
     success: (msg: string) => showToast(msg, "success"),
     error: (msg: string) => showToast(msg, "error"),
     info: (msg: string) => showToast(msg, "info"),
   };
+
+  const userRole = (session?.user as any)?.role;
+  const userDesig = ((session?.user as any)?.designation || "").toLowerCase();
+  const userDept = ((session?.user as any)?.department || "").toLowerCase();
+
+  const isHeadOfEvents =
+    (userDesig.includes("head") || userDesig.includes("lead") || userDesig.includes("manager") || userDesig.includes("producer")) &&
+      userDesig.includes("event") ||
+    userDept.includes("event");
+
+  const canAccess =
+    userRole === "ADMIN" ||
+    userRole === "OWNER" ||
+    userRole === "SUB_ADMIN" ||
+    isHeadOfEvents;
 
   const [events, setEvents] = useState<EventProject[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
@@ -126,7 +144,7 @@ export default function EventManagementPage() {
     venueName: "",
     venueAddress: "",
     clientName: "",
-    eventOwner: "Lead Producer",
+    eventOwner: "",
     productionManager: "",
     estimatedBudget: 0,
     approvedBudget: 0,
@@ -153,7 +171,7 @@ export default function EventManagementPage() {
     activity: "",
     responsiblePerson: "",
     department: "Stage",
-    stageLocation: "Main Stage",
+    stageLocation: "",
     status: "UPCOMING",
     cueNotes: "",
   });
@@ -178,7 +196,7 @@ export default function EventManagementPage() {
     quoteAmount: 0,
     approvedAmount: 0,
     advancePaid: 0,
-    paymentMilestones: "50% Advance, 50% Post-Event",
+    paymentMilestones: "",
     deliverablesTracked: "",
     arrivalStatus: "EXPECTED",
   });
@@ -660,6 +678,28 @@ export default function EventManagementPage() {
       toast.error("Failed to save closure");
     }
   };
+
+  if (sessionStatus !== "loading" && !canAccess) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+        <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
+          <AlertTriangle className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
+          Access Restricted
+        </h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mt-2">
+          The Event Management section is only accessible to the Admin, Sub-Admin, and Head of Event Management.
+        </p>
+        <Link
+          href="/employee"
+          className="mt-6 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold text-xs transition-colors shadow-sm"
+        >
+          Return to My Desk
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0B0F17] text-slate-900 dark:text-slate-100 p-4 md:p-8 space-y-6">

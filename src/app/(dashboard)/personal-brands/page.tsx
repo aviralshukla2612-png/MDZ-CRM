@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/Toast";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -41,7 +42,24 @@ import {
 } from "lucide-react";
 
 export default function PersonalBrandsPage() {
+  const { data: session, status: sessionStatus } = useSession();
   const { showToast } = useToast();
+
+  const userRole = (session?.user as any)?.role;
+  const userDesig = ((session?.user as any)?.designation || "").toLowerCase();
+  const userDept = ((session?.user as any)?.department || "").toLowerCase();
+
+  const isHeadOfPersonalBrand =
+    (userDesig.includes("head") || userDesig.includes("lead") || userDesig.includes("manager")) &&
+      (userDesig.includes("personal") || userDesig.includes("brand")) ||
+    userDept.includes("personal brand") ||
+    userDept.includes("personal branding");
+
+  const canAccess =
+    userRole === "ADMIN" ||
+    userRole === "OWNER" ||
+    userRole === "SUB_ADMIN" ||
+    isHeadOfPersonalBrand;
 
   const [profiles, setProfiles] = useState<any[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("");
@@ -67,8 +85,8 @@ export default function PersonalBrandsPage() {
   const [newGeography, setNewGeography] = useState("");
   const [newTone, setNewTone] = useState("");
   const [newGuidelines, setNewGuidelines] = useState("");
-  const [newMonthlyPackage, setNewMonthlyPackage] = useState("16 Reels + 8 LinkedIn Articles + 4 Carousels");
-  const [newMonthlyCommitments, setNewMonthlyCommitments] = useState("Weekly 4 video shoots, daily content publishing");
+  const [newMonthlyPackage, setNewMonthlyPackage] = useState("");
+  const [newMonthlyCommitments, setNewMonthlyCommitments] = useState("");
   const [newBrandAudit, setNewBrandAudit] = useState("");
   const [newCompetitors, setNewCompetitors] = useState("");
   const [newKpis, setNewKpis] = useState("");
@@ -584,6 +602,28 @@ export default function PersonalBrandsPage() {
     { key: "SCHEDULED", label: "Scheduled for Posting", color: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300" },
     { key: "PUBLISHED", label: "Live Published", color: "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300" },
   ];
+
+  if (sessionStatus !== "loading" && !canAccess) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+        <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4">
+          <AlertTriangle className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-stone-900 dark:text-stone-100">
+          Access Restricted
+        </h2>
+        <p className="text-sm text-stone-500 dark:text-stone-400 max-w-md mt-2">
+          The Personal Brand Department section is only accessible to the Admin, Sub-Admin, and Head of Personal Brand.
+        </p>
+        <Link
+          href="/employee"
+          className="mt-6 px-5 py-2.5 rounded-xl bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-stone-200 text-white dark:text-stone-900 font-bold text-xs transition-colors shadow-sm"
+        >
+          Return to My Desk
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20">

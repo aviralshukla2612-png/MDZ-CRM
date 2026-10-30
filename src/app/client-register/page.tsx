@@ -32,6 +32,8 @@ import {
   MessageSquare,
   KeyRound,
   FileCheck2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import {
@@ -39,16 +41,9 @@ import {
   BrandVoiceGuideData,
   DEFAULT_BRAND_VOICE_GUIDE,
 } from "@/components/brand/BrandVoiceGuideForm";
+import { DEFAULT_CAMPAIGN_PLANNER } from "@/components/campaign/CampaignPlannerForm";
+import { DEFAULT_SCOPE_DOCUMENT } from "@/components/scope/ClientScopeDocumentForm";
 import {
-  CampaignPlannerForm,
-  DEFAULT_CAMPAIGN_PLANNER,
-} from "@/components/campaign/CampaignPlannerForm";
-import {
-  ClientScopeDocumentForm,
-  DEFAULT_SCOPE_DOCUMENT,
-} from "@/components/scope/ClientScopeDocumentForm";
-import {
-  ClientOnboardingForm,
   ClientOnboardingData,
   DEFAULT_ONBOARDING_DATA,
 } from "@/components/onboarding/ClientOnboardingForm";
@@ -63,7 +58,6 @@ import {
   DEFAULT_CONTENT_PILLARS,
 } from "@/components/pillars/ContentPillarsForm";
 import {
-  MeetingNotesForm,
   MeetingNotesData,
   DEFAULT_MEETING_NOTES,
 } from "@/components/meeting/MeetingNotesForm";
@@ -80,24 +74,33 @@ const GOAL_OPTIONS = [
 ];
 
 const ACCESS_ITEMS = [
-  { id: "Instagram (Professional Account Invite)", label: "Instagram Account Access / Professional Invite", icon: Instagram },
-  { id: "Facebook Page & Meta Business Suite", label: "Facebook Page & Meta Business Suite Portfolio Access", icon: Globe },
-  { id: "Meta Ads Manager & Pixel Dataset", label: "Meta Ads Manager & Pixel / Dataset Access", icon: Target },
-  { id: "Google Business Profile Access", label: "Google Business Profile (Manager / Review Rights)", icon: Building2 },
-  { id: "Google Drive Assets Folder Access", label: "Central Google Drive Assets Folder Access", icon: FolderOpen },
-  { id: "Canva Team Workspace Invite", label: "Canva Team Invite / Brand Kit Access", icon: Sparkles },
+  { id: "Instagram (Professional Account Invite)", label: "Instagram Account Access / Professional Invite", icon: Instagram, hint: "Grant Partner / Analyst permissions in Meta Business Suite" },
+  { id: "Facebook Page & Meta Business Suite", label: "Facebook Page & Meta Business Suite Portfolio Access", icon: Globe, hint: "Allows automated posting and community engagement" },
+  { id: "Meta Ads Manager & Pixel Dataset", label: "Meta Ads Manager & Pixel / Dataset Access", icon: Target, hint: "Required if running performance paid campaigns" },
+  { id: "Google Business Profile Access", label: "Google Business Profile (Manager / Review Rights)", icon: Building2, hint: "For local SEO, reviews, and verified profile updates" },
+  { id: "Google Drive Assets Folder Access", label: "Central Google Drive Assets Folder Access", icon: FolderOpen, hint: "Shared folder for editor footage & high-res outputs" },
+  { id: "Canva Team Workspace Invite", label: "Canva Team Invite / Brand Kit Access", icon: Sparkles, hint: "For fast typography, graphic templates & color palettes" },
+];
+
+const ONBOARDING_SUB_STEPS = [
+  { id: 1, title: "Platform & Social Access Permissions", shortTitle: "Platform Access", icon: "🔑", desc: "Select which business accounts and tools you grant our team permission to operate." },
+  { id: 2, title: "Central Brand Assets & Media Drive", shortTitle: "Drive & Media", icon: "📁", desc: "Provide your central raw footage drive folder, brand guidelines, and visual assets." },
+  { id: 3, title: "Kickoff Protocols & Fast Approvals", shortTitle: "Kickoff Protocols", icon: "🚀", desc: "Specify communication channels, rapid approval point of contact, and target launch timeline." },
 ];
 
 export default function ClientRegisterPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [onboardingSubStep, setOnboardingSubStep] = useState<1 | 2 | 3>(1);
+  const [showAdvancedStrategy, setShowAdvancedStrategy] = useState(false);
+  const [showBrandVoiceGuide, setShowBrandVoiceGuide] = useState(false);
 
   const [formData, setFormData] = useState({
     // Step 1: Company & Credentials
     companyName: "",
     brandName: "",
     contactName: "",
-    designation: "Founder / Managing Director",
+    designation: "",
     email: "",
     password: "",
     phone: "",
@@ -107,7 +110,7 @@ export default function ClientRegisterPage() {
 
     // Step 2: Client Strategic Brief & Objectives (from Client Brief Sheet)
     productsServices: "",
-    goals: ["Increase Brand Awareness", "Generate Qualified Leads"] as string[],
+    goals: [] as string[],
     targetAudience: "",
     usp: "",
     competitors: "",
@@ -124,28 +127,30 @@ export default function ClientRegisterPage() {
     youtubeHandle: "",
     facebookUrl: "",
     linkedinUrl: "",
-    brandVoiceTone: "Luxury, aesthetic, high-authority",
+    brandVoiceTone: "",
     preferredLanguage: "English & Hinglish",
     brandVoiceGuide: DEFAULT_BRAND_VOICE_GUIDE,
 
     // Step 4: Client Onboarding Form & Access Checklist
-    accessChecklist: [
-      "Instagram (Professional Account Invite)",
-      "Facebook Page & Meta Business Suite",
-      "Google Drive Assets Folder Access",
-    ] as string[],
+    accessChecklist: [] as string[],
+    accessNotes: "",
+    brandAssetDriveUrl: "",
+    preferredChannel: "WhatsApp VIP Group",
+    pocRapidApprovals: "",
+    targetLaunchDate: "",
+    onboardingNotes: "",
     onboardingForm: DEFAULT_ONBOARDING_DATA,
     meetingNotes: DEFAULT_MEETING_NOTES,
 
     // Step 5: Monthly Deliverables Quota & Scope (from Scope Document)
-    reelsQuota: 30,
-    carouselsQuota: 15,
-    storiesQuota: 15,
-    approvalSlaAcknowledged: true,
-    revisionPolicyAcknowledged: true,
+    reelsQuota: 0,
+    carouselsQuota: 0,
+    storiesQuota: 0,
+    approvalSlaAcknowledged: false,
+    revisionPolicyAcknowledged: false,
     campaignPlanner: DEFAULT_CAMPAIGN_PLANNER,
     scopeDocument: DEFAULT_SCOPE_DOCUMENT,
-    termsAccepted: true,
+    termsAccepted: false,
   });
 
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
@@ -283,9 +288,31 @@ export default function ClientRegisterPage() {
       }
       setError(null);
       setCurrentStep(2);
+      if (typeof window !== "undefined") window.scrollTo({ top: 120, behavior: "smooth" });
+    } else if (currentStep === 4) {
+      if (onboardingSubStep < 3) {
+        setOnboardingSubStep((prev) => (prev + 1) as any);
+        if (typeof window !== "undefined") window.scrollTo({ top: 140, behavior: "smooth" });
+      } else {
+        setError(null);
+        setCurrentStep(5);
+        if (typeof window !== "undefined") window.scrollTo({ top: 120, behavior: "smooth" });
+      }
     } else {
       setError(null);
       setCurrentStep((prev) => Math.min(prev + 1, 5) as any);
+      if (typeof window !== "undefined") window.scrollTo({ top: 120, behavior: "smooth" });
+    }
+  };
+
+  const handlePrev = () => {
+    setError(null);
+    if (currentStep === 4 && onboardingSubStep > 1) {
+      setOnboardingSubStep((prev) => (prev - 1) as any);
+      if (typeof window !== "undefined") window.scrollTo({ top: 140, behavior: "smooth" });
+    } else {
+      setCurrentStep((prev) => Math.max(prev - 1, 1) as any);
+      if (typeof window !== "undefined") window.scrollTo({ top: 120, behavior: "smooth" });
     }
   };
 
@@ -307,10 +334,46 @@ export default function ClientRegisterPage() {
     setLoading(true);
 
     try {
+      const payload = {
+        ...formData,
+        onboardingForm: {
+          ...formData.onboardingForm,
+          clientName: formData.companyName,
+          businessBrandName: formData.brandName || formData.companyName,
+          contactNumber: formData.phone,
+          emailAddress: formData.email,
+          website: formData.websiteUrl,
+          instagramHandle: formData.instagramHandle,
+          facebookHandle: formData.facebookUrl,
+          youtubeHandle: formData.youtubeHandle,
+          linkedinHandle: formData.linkedinUrl,
+          googleDriveFolderLink: formData.rawFootageDriveUrl || formData.brandAssetDriveUrl,
+          brandAssetsDriveLink: formData.brandAssetDriveUrl || formData.rawFootageDriveUrl,
+          productServiceInfo: formData.productsServices,
+          contentStyleTone: formData.brandVoiceTone,
+          preferredLanguage: formData.preferredLanguage,
+          accountAccess: formData.accessChecklist,
+          accessNotes: formData.accessNotes,
+          communicationChannels: [formData.preferredChannel || "WhatsApp VIP Group"],
+          targetLaunchDate: formData.targetLaunchDate,
+          pocName: formData.contactName,
+          pocDesignation: formData.designation,
+          pocContactNumber: formData.pocRapidApprovals || formData.whatsapp || formData.phone,
+          pocEmailAddress: formData.email,
+          onboardingNotes: formData.onboardingNotes,
+        },
+        scopeDocument: {
+          ...formData.scopeDocument,
+          deliverablesReels: Number(formData.reelsQuota) || 0,
+          deliverablesCarousels: Number(formData.carouselsQuota) || 0,
+          deliverablesStories: Number(formData.storiesQuota) || 0,
+        },
+      };
+
       const res = await fetch("/mdz-crm/api/client/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -703,40 +766,58 @@ export default function ClientRegisterPage() {
                   </div>
                 </div>
 
-                {/* Competitor Analysis Matrix (28-Metric Comparative Matrix) */}
+                {/* Optional Advanced Strategy Collapsible */}
                 <div className="pt-2">
-                  <CompetitorAnalysisForm
-                    value={formData.competitorAnalysis}
-                    onChange={(analysis) =>
-                      setFormData((prev) => {
-                        const compNames = [
-                          analysis.competitor1?.name,
-                          analysis.competitor2?.name,
-                          analysis.competitor3?.name,
-                        ]
-                          .filter(Boolean)
-                          .join(", ");
-                        return {
-                          ...prev,
-                          competitorAnalysis: analysis,
-                          competitors: compNames || prev.competitors,
-                        };
-                      })
-                    }
-                  />
-                </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedStrategy(!showAdvancedStrategy)}
+                    className="w-full flex items-center justify-between p-3.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-[#1a1713] text-stone-700 dark:text-stone-300 text-xs font-bold hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4 text-emerald-600" />
+                      <span>Optional: In-Depth Competitor Matrix & Content Pillars</span>
+                    </div>
+                    <span className="flex items-center gap-1 text-emerald-600 font-semibold text-[11px]">
+                      {showAdvancedStrategy ? "Hide Details" : "Show Details"}
+                      {showAdvancedStrategy ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </span>
+                  </button>
 
-                {/* Content Pillars Sheet (5-Pillar Strategy Matrix) */}
-                <div className="pt-2">
-                  <ContentPillarsForm
-                    value={formData.contentPillars}
-                    onChange={(pillars) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        contentPillars: pillars,
-                      }))
-                    }
-                  />
+                  {showAdvancedStrategy && (
+                    <div className="space-y-4 pt-3 animate-fade-in">
+                      {/* Competitor Analysis Matrix */}
+                      <CompetitorAnalysisForm
+                        value={formData.competitorAnalysis}
+                        onChange={(analysis) =>
+                          setFormData((prev) => {
+                            const compNames = [
+                              analysis.competitor1?.name,
+                              analysis.competitor2?.name,
+                              analysis.competitor3?.name,
+                            ]
+                              .filter(Boolean)
+                              .join(", ");
+                            return {
+                              ...prev,
+                              competitorAnalysis: analysis,
+                              competitors: compNames || prev.competitors,
+                            };
+                          })
+                        }
+                      />
+
+                      {/* Content Pillars Sheet */}
+                      <ContentPillarsForm
+                        value={formData.contentPillars}
+                        onChange={(pillars) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            contentPillars: pillars,
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -744,28 +825,6 @@ export default function ClientRegisterPage() {
             {/* ================= STEP 3: BRAND ASSETS & CREATIVE IDENTITY ================= */}
             {currentStep === 3 && (
               <div className="space-y-4 animate-fade-in">
-                {/* Google Drive Raw Footage & Assets Folder */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Google Drive Folder (Raw Footage & Brand Assets)</span>
-                    </span>
-                    <span className="text-[10px] text-stone-400 font-mono">Recommended</span>
-                  </label>
-                  <input
-                    type="url"
-                    name="rawFootageDriveUrl"
-                    value={formData.rawFootageDriveUrl}
-                    onChange={handleChange}
-                    placeholder="https://drive.google.com/drive/folders/..."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
-                  />
-                  <p className="text-[10px] text-stone-400">
-                    Your editors will directly fetch camera footage and upload final 4K deliverables to this Google Drive link.
-                  </p>
-                </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Website */}
                   <div className="space-y-1">
@@ -834,7 +893,30 @@ export default function ClientRegisterPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Brand Accent Color */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                      Brand Accent Color
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        name="primaryColorHex"
+                        value={formData.primaryColorHex}
+                        onChange={handleChange}
+                        className="w-10 h-10 rounded-lg border border-stone-200 dark:border-stone-700 cursor-pointer p-0.5 bg-white dark:bg-stone-800"
+                      />
+                      <input
+                        type="text"
+                        name="primaryColorHex"
+                        value={formData.primaryColorHex}
+                        onChange={handleChange}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+
                   {/* Brand Voice / Tone */}
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
@@ -872,19 +954,38 @@ export default function ClientRegisterPage() {
                   </div>
                 </div>
 
-                {/* 21-Section Brand Voice & Tone Guide */}
-                <div className="pt-5 border-t border-stone-200 dark:border-stone-800">
-                  <BrandVoiceGuideForm
-                    value={formData.brandVoiceGuide}
-                    onChange={(guide) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        brandVoiceGuide: guide,
-                        brandVoiceTone: guide.toneTypes?.length ? guide.toneTypes.join(", ") : prev.brandVoiceTone,
-                        preferredLanguage: guide.preferredLanguages?.length ? guide.preferredLanguages.join(", ") : prev.preferredLanguage,
-                      }))
-                    }
-                  />
+                {/* Optional 21-Section Brand Voice Guide Collapsible */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowBrandVoiceGuide(!showBrandVoiceGuide)}
+                    className="w-full flex items-center justify-between p-3.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-[#1a1713] text-stone-700 dark:text-stone-300 text-xs font-bold hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-colors cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-500" />
+                      <span>Optional: Detailed Brand Voice & Content Persona Guide</span>
+                    </div>
+                    <span className="flex items-center gap-1 text-emerald-600 font-semibold text-[11px]">
+                      {showBrandVoiceGuide ? "Hide Details" : "Show Details"}
+                      {showBrandVoiceGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </span>
+                  </button>
+
+                  {showBrandVoiceGuide && (
+                    <div className="pt-3 animate-fade-in border-t border-stone-200 dark:border-stone-800 mt-2">
+                      <BrandVoiceGuideForm
+                        value={formData.brandVoiceGuide}
+                        onChange={(guide) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            brandVoiceGuide: guide,
+                            brandVoiceTone: guide.toneTypes?.length ? guide.toneTypes.join(", ") : prev.brandVoiceTone,
+                            preferredLanguage: guide.preferredLanguages?.length ? guide.preferredLanguages.join(", ") : prev.preferredLanguage,
+                          }))
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -892,86 +993,258 @@ export default function ClientRegisterPage() {
             {/* ================= STEP 4: CLIENT ONBOARDING & ACCESS CENTER ================= */}
             {currentStep === 4 && (
               <div className="space-y-6 animate-fade-in">
-                <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 dark:from-emerald-950/40 dark:via-teal-950/30 dark:to-blue-950/40 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-950 dark:text-emerald-200 text-xs space-y-1.5 shadow-xs">
-                  <div className="flex items-center gap-2">
-                    <KeyRound className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <span className="font-extrabold text-sm text-stone-900 dark:text-stone-100">
-                      Client Onboarding Form (13-Section Full Sheet)
+                {/* Step 4 Sub-Stepper Header */}
+                <div className="rounded-2xl bg-stone-50 dark:bg-[#1a1713] border border-stone-200 dark:border-stone-800 p-4 sm:p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-mono">
+                        Onboarding Phase {onboardingSubStep} of 3
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black text-stone-900 dark:text-stone-100 tracking-tight">
+                        {ONBOARDING_SUB_STEPS[onboardingSubStep - 1].title}
+                      </h3>
+                      <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
+                        {ONBOARDING_SUB_STEPS[onboardingSubStep - 1].desc}
+                      </p>
+                    </div>
+                    <span className="text-xs font-mono font-bold text-stone-400">
+                      {Math.round((onboardingSubStep / 3) * 100)}% Complete
                     </span>
                   </div>
-                  <p className="text-[12px] opacity-90 leading-relaxed text-stone-700 dark:text-stone-300">
-                    Complete all 13 onboarding sections below. Any company details or contact information you entered in previous steps are already pre-filled. Changes made here will update your master workspace profile.
-                  </p>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-stone-200 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300 rounded-full"
+                      style={{ width: `${(onboardingSubStep / 3) * 100}%` }}
+                    />
+                  </div>
+
+                  {/* Sub-Step Pills */}
+                  <div className="grid grid-cols-3 gap-2 pt-1 text-[11px] font-semibold">
+                    {ONBOARDING_SUB_STEPS.map((s) => {
+                      const isCurrent = s.id === onboardingSubStep;
+                      const isDone = s.id < onboardingSubStep;
+                      return (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setOnboardingSubStep(s.id as any)}
+                          className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                            isCurrent
+                              ? "bg-white dark:bg-stone-900 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs ring-1 ring-emerald-500/20"
+                              : isDone
+                              ? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300/50 dark:border-emerald-800/50 text-stone-700 dark:text-stone-300"
+                              : "bg-transparent border-transparent text-stone-400 hover:border-stone-300 dark:hover:border-stone-700"
+                          }`}
+                        >
+                          <span
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-mono shrink-0 ${
+                              isCurrent
+                                ? "bg-emerald-600 text-white font-bold"
+                                : isDone
+                                ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300"
+                                : "bg-stone-200 dark:bg-stone-800 text-stone-500"
+                            }`}
+                          >
+                            {isDone ? <Check className="w-3 h-3" /> : s.id}
+                          </span>
+                          <span className="truncate text-xs font-bold">{s.shortTitle}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <ClientOnboardingForm
-                  value={{
-                    ...formData.onboardingForm,
-                    clientName: formData.onboardingForm.clientName || formData.companyName,
-                    businessBrandName: formData.onboardingForm.businessBrandName || formData.brandName || formData.companyName,
-                    contactNumber: formData.onboardingForm.contactNumber || formData.phone,
-                    emailAddress: formData.onboardingForm.emailAddress || formData.email,
-                    website: formData.onboardingForm.website || formData.websiteUrl,
-                    instagramHandle: formData.onboardingForm.instagramHandle || formData.instagramHandle,
-                    facebookHandle: formData.onboardingForm.facebookHandle || formData.facebookUrl,
-                    youtubeHandle: formData.onboardingForm.youtubeHandle || formData.youtubeHandle,
-                    linkedinHandle: formData.onboardingForm.linkedinHandle || formData.linkedinUrl,
-                    googleDriveFolderLink: formData.onboardingForm.googleDriveFolderLink || formData.rawFootageDriveUrl,
-                    productServiceInfo: formData.onboardingForm.productServiceInfo || formData.productsServices,
-                    contentStyleTone: formData.onboardingForm.contentStyleTone || formData.brandVoiceTone,
-                    preferredLanguage: formData.onboardingForm.preferredLanguage || formData.preferredLanguage,
-                    pocName: formData.onboardingForm.pocName || formData.contactName,
-                    pocDesignation: formData.onboardingForm.pocDesignation || formData.designation,
-                    pocContactNumber: formData.onboardingForm.pocContactNumber || formData.phone,
-                    pocEmailAddress: formData.onboardingForm.pocEmailAddress || formData.email,
-                  }}
-                  onChange={(updatedOnboarding) => {
-                    setFormData((prev) => ({
-                      ...prev,
-                      onboardingForm: updatedOnboarding,
-                      companyName: updatedOnboarding.clientName || prev.companyName,
-                      brandName: updatedOnboarding.businessBrandName || prev.brandName,
-                      phone: updatedOnboarding.contactNumber || prev.phone,
-                      email: updatedOnboarding.emailAddress || prev.email,
-                      websiteUrl: updatedOnboarding.website || prev.websiteUrl,
-                      instagramHandle: updatedOnboarding.instagramHandle || prev.instagramHandle,
-                      facebookUrl: updatedOnboarding.facebookHandle || prev.facebookUrl,
-                      youtubeHandle: updatedOnboarding.youtubeHandle || prev.youtubeHandle,
-                      linkedinUrl: updatedOnboarding.linkedinHandle || prev.linkedinUrl,
-                      rawFootageDriveUrl: updatedOnboarding.googleDriveFolderLink || prev.rawFootageDriveUrl,
-                      productsServices: updatedOnboarding.productServiceInfo || prev.productsServices,
-                      brandVoiceTone: updatedOnboarding.contentStyleTone || prev.brandVoiceTone,
-                      preferredLanguage: updatedOnboarding.preferredLanguage || prev.preferredLanguage,
-                      accessChecklist: updatedOnboarding.accountAccess || prev.accessChecklist,
-                    }));
-                  }}
-                />
+                {/* Sub-Step 1: Platform & Social Media Access */}
+                {onboardingSubStep === 1 && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Platform Access Permissions (Select all applicable)
+                      </label>
+                      <p className="text-[11px] text-stone-500 dark:text-stone-400">
+                        Select the accounts your dedicated marketing team will manage or run campaigns on.
+                      </p>
+                    </div>
 
-                {/* Meeting / Call Notes Sheet (15-Section Intake) */}
-                <div className="pt-2">
-                  <MeetingNotesForm
-                    value={formData.meetingNotes}
-                    onChange={(notes) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        meetingNotes: notes,
-                      }))
-                    }
-                  />
-                </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {ACCESS_ITEMS.map((item) => {
+                        const Icon = item.icon;
+                        const isSelected = formData.accessChecklist.includes(item.id);
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => toggleAccessItem(item.id)}
+                            className={`p-3.5 rounded-xl border text-left cursor-pointer transition-all flex items-start gap-3 ${
+                              isSelected
+                                ? "bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-500 text-emerald-950 dark:text-emerald-200 shadow-xs"
+                                : "bg-stone-50 dark:bg-[#1f1c18] border-stone-200 dark:border-stone-800 text-stone-600 dark:text-stone-400 hover:border-stone-300"
+                            }`}
+                          >
+                            <div
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                isSelected
+                                  ? "bg-emerald-600 text-white"
+                                  : "bg-stone-200 dark:bg-stone-800 text-stone-500"
+                              }`}
+                            >
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div className="space-y-0.5 min-w-0 flex-1">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold truncate text-stone-900 dark:text-stone-100">
+                                  {item.id}
+                                </span>
+                                {isSelected && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                              </div>
+                              <p className="text-[10px] text-stone-500 dark:text-stone-400 line-clamp-2">
+                                {item.hint}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="space-y-1 pt-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Account Access Notes or User Credentials (Optional)
+                      </label>
+                      <textarea
+                        rows={2}
+                        name="accessNotes"
+                        value={formData.accessNotes}
+                        onChange={handleChange}
+                        placeholder="e.g. Sent invite to team@millionairedizital.com, or password manager vault link..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-Step 2: Central Brand Assets & Drive Setup */}
+                {onboardingSubStep === 2 && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <FolderOpen className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Central Google Drive Folder (Raw Footage & High-Res Assets)</span>
+                        </span>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-bold">Recommended</span>
+                      </label>
+                      <input
+                        type="url"
+                        name="rawFootageDriveUrl"
+                        value={formData.rawFootageDriveUrl}
+                        onChange={handleChange}
+                        placeholder="https://drive.google.com/drive/folders/..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                      />
+                      <p className="text-[10px] text-stone-400">
+                        Our video editing and animation team will fetch raw footage from here and upload 4K ready-to-post deliverables.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Brand Guidelines / Canva Brand Kit / Figma Link (Optional)</span>
+                        </span>
+                      </label>
+                      <input
+                        type="url"
+                        name="brandGuideUrl"
+                        value={formData.brandGuideUrl}
+                        onChange={handleChange}
+                        placeholder="https://canva.com/brand-kit/... or Google Drive link"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Brand Colors, Typography or Visual Preferences (Optional)
+                      </label>
+                      <textarea
+                        rows={2}
+                        name="onboardingNotes"
+                        value={formData.onboardingNotes}
+                        onChange={handleChange}
+                        placeholder="e.g. Primary Hex: #059669, Fonts: Inter & Outfit, clean luxury aesthetic with high contrast..."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-Step 3: Kickoff Protocols & Fast Approvals */}
+                {onboardingSubStep === 3 && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Preferred Channel */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                          Preferred Communication Channel
+                        </label>
+                        <select
+                          name="preferredChannel"
+                          value={formData.preferredChannel}
+                          onChange={handleChange}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                        >
+                          <option value="WhatsApp VIP Group">WhatsApp VIP Dedicated Group (Fastest)</option>
+                          <option value="Email Thread">Email Official Thread</option>
+                          <option value="MDZ Client Portal">MDZ Client Portal Direct Chat</option>
+                          <option value="Slack Channel">Slack Dedicated Channel</option>
+                        </select>
+                      </div>
+
+                      {/* Rapid Approvals Contact */}
+                      <div className="space-y-1">
+                        <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                          Dedicated WhatsApp for 24h Approvals
+                        </label>
+                        <input
+                          type="text"
+                          name="pocRapidApprovals"
+                          value={formData.pocRapidApprovals}
+                          onChange={handleChange}
+                          placeholder={formData.phone || "e.g. 9876543210"}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Target Campaign Launch / First Deliverable Live Date
+                      </label>
+                      <input
+                        type="date"
+                        name="targetLaunchDate"
+                        value={formData.targetLaunchDate}
+                        onChange={handleChange}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {/* ================= STEP 5: MONTHLY SCOPE & SLAS ================= */}
             {currentStep === 5 && (
-              <div className="space-y-4 animate-fade-in">
-                <div className="p-3.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-purple-900 dark:text-purple-200 text-xs space-y-1">
+              <div className="space-y-5 animate-fade-in">
+                <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs space-y-1">
                   <p className="font-bold flex items-center gap-1.5">
-                    <Film className="w-4 h-4 text-purple-600" />
-                    <span>Monthly Production Quota & Retainer Scope</span>
+                    <Film className="w-4 h-4 text-emerald-600" />
+                    <span>Monthly Content Quota & Retainer Scope</span>
                   </p>
                   <p className="text-[11px] opacity-80">
-                    Define your monthly content target. This automatically establishes your brand's live delivery matrix and production deadlines.
+                    Define your target monthly assets. This establishes your production pipeline and live delivery tracking spreadsheet.
                   </p>
                 </div>
 
@@ -986,8 +1259,9 @@ export default function ClientRegisterPage() {
                         type="number"
                         min="0"
                         name="reelsQuota"
-                        value={formData.reelsQuota}
+                        value={formData.reelsQuota || ""}
                         onChange={handleChange}
+                        placeholder="e.g. 20"
                         className="w-20 text-center font-mono font-bold text-xl py-1 rounded bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700"
                       />
                     </div>
@@ -1004,8 +1278,9 @@ export default function ClientRegisterPage() {
                         type="number"
                         min="0"
                         name="carouselsQuota"
-                        value={formData.carouselsQuota}
+                        value={formData.carouselsQuota || ""}
                         onChange={handleChange}
+                        placeholder="e.g. 10"
                         className="w-20 text-center font-mono font-bold text-xl py-1 rounded bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700"
                       />
                     </div>
@@ -1022,8 +1297,9 @@ export default function ClientRegisterPage() {
                         type="number"
                         min="0"
                         name="storiesQuota"
-                        value={formData.storiesQuota}
+                        value={formData.storiesQuota || ""}
                         onChange={handleChange}
+                        placeholder="e.g. 30"
                         className="w-20 text-center font-mono font-bold text-xl py-1 rounded bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700"
                       />
                     </div>
@@ -1046,38 +1322,6 @@ export default function ClientRegisterPage() {
                   </span>
                 </div>
 
-                {/* 18-Module Campaign Planner Blueprint */}
-                <div className="pt-2">
-                  <CampaignPlannerForm
-                    value={formData.campaignPlanner}
-                    onChange={(planner) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        campaignPlanner: planner,
-                        reelsQuota: planner.reelsQty ?? prev.reelsQuota,
-                        carouselsQuota: planner.carouselsQty ?? prev.carouselsQuota,
-                        storiesQuota: planner.storiesQty ?? prev.storiesQuota,
-                      }))
-                    }
-                  />
-                </div>
-
-                {/* 22-Section Client Expectations & Scope Document */}
-                <div className="pt-2">
-                  <ClientScopeDocumentForm
-                    value={formData.scopeDocument}
-                    onChange={(scopeDoc) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        scopeDocument: scopeDoc,
-                        reelsQuota: scopeDoc.deliverablesReels || prev.reelsQuota,
-                        carouselsQuota: scopeDoc.deliverablesCarousels || prev.carouselsQuota,
-                        storiesQuota: scopeDoc.deliverablesStories || prev.storiesQuota,
-                      }))
-                    }
-                  />
-                </div>
-
                 {/* Operational SLA Policies */}
                 <div className="space-y-2 p-3.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs">
                   <div className="flex items-center gap-2 font-bold text-stone-800 dark:text-stone-200">
@@ -1087,7 +1331,7 @@ export default function ClientRegisterPage() {
                   <ul className="list-disc pl-5 space-y-1 text-stone-600 dark:text-stone-400 text-[11px]">
                     <li><strong>Review SLA:</strong> Client reviews drafts within 24-48 hours via portal or drive.</li>
                     <li><strong>Revision Policy:</strong> 2 rounds of creative revisions included per content deliverable.</li>
-                    <li><strong>IP Ownership:</strong> Full commercial content ownership transfers to client upon final invoice settlement.</li>
+                    <li><strong>IP Ownership:</strong> Full commercial content ownership transfers to client upon invoice clearance.</li>
                   </ul>
                 </div>
 
@@ -1115,14 +1359,16 @@ export default function ClientRegisterPage() {
 
             {/* Navigation & Submission Controls */}
             <div className="flex items-center justify-between pt-4 border-t border-stone-100 dark:border-stone-800">
-              {currentStep > 1 ? (
+              {currentStep > 1 || (currentStep === 4 && onboardingSubStep > 1) ? (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep((prev) => (prev - 1) as any)}
+                  onClick={handlePrev}
                   className="px-4 py-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-700 dark:text-stone-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Previous</span>
+                  <span>
+                    {currentStep === 4 && onboardingSubStep > 1 ? "Previous Section" : "Previous"}
+                  </span>
                 </button>
               ) : (
                 <Link
@@ -1139,7 +1385,9 @@ export default function ClientRegisterPage() {
                   onClick={handleNext}
                   className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black flex items-center gap-2 shadow-md transition-all cursor-pointer"
                 >
-                  <span>Continue</span>
+                  <span>
+                    {currentStep === 4 && onboardingSubStep < 3 ? "Next Section" : "Continue"}
+                  </span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               ) : (

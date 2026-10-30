@@ -96,8 +96,9 @@ export async function GET(req: Request) {
       const todayAchieved = todayLog?.achievedCount ?? 0;
       const todayUnit = todayLog?.unit || emp.dailyTargetUnit || "units";
       const todayTitle = todayLog?.targetTitle || emp.dailyTargetTitle || "Daily Target";
-      const todayProgress = todayTarget > 0 ? Math.min(100, Math.round((todayAchieved / todayTarget) * 100)) : 0;
+      const todayProgress = todayTarget > 0 ? Math.round((todayAchieved / todayTarget) * 100) : 0;
       const todayRemaining = Math.max(0, todayTarget - todayAchieved);
+      const todayExtra = Math.max(0, todayAchieved - todayTarget);
       const isTargetMetToday = todayTarget > 0 && todayAchieved >= todayTarget;
 
       // Monthly calculations
@@ -166,6 +167,7 @@ export async function GET(req: Request) {
           unit: todayUnit,
           progressPercentage: todayProgress,
           remaining: todayRemaining,
+          extraCount: todayExtra,
           isCompleted: isTargetMetToday,
           notes: todayLog?.notes || "",
           logId: todayLog?.id || null,
