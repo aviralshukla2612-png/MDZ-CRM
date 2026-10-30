@@ -109,6 +109,56 @@ export const DEFAULT_BRAND_VOICE_GUIDE: BrandVoiceGuideData = {
   mission: "",
   vision: "",
   targetAudience: "",
+  personalityTraits: [],
+  personalityOther: "",
+  voiceTypes: [],
+  voiceOther: "",
+  toneTypes: [],
+  toneOther: "",
+  commStyles: [],
+  commStyleOther: "",
+  characterAge: "",
+  characterProfession: "",
+  characterPersonality: "",
+  characterInterests: "",
+  characterValues: "",
+  shouldSound: "",
+  shouldNotSound: "",
+  wordsToUse: "",
+  wordsToAvoid: "",
+  preferredLanguages: [],
+  languageOther: "",
+  languageGuidelines: "",
+  formalityLevel: "",
+  sentenceStyles: [],
+  sentenceStyleOther: "",
+  captionStyles: [],
+  captionStyleOther: "",
+  ctaStyles: [],
+  ctaStyleOther: "",
+  emojiUsage: "",
+  preferredEmojis: "",
+  punctuationRules: [],
+  punctuationOther: "",
+  correctVoiceExamples: "",
+  incorrectVoiceExamples: "",
+  platformTones: {
+    instagram: "",
+    facebook: "",
+    youtube: "",
+    linkedin: "",
+    tiktok: "",
+    pinterest: "",
+  },
+};
+
+export const SAMPLE_BRAND_VOICE_GUIDE: BrandVoiceGuideData = {
+  brandName: "Acme Tech Solutions",
+  industryNiche: "SaaS & AI Productivity",
+  tagline: "Engineering Tomorrow, Today",
+  mission: "Empower high-ticket creators with data-driven workflows",
+  vision: "To be the undisputed benchmark in commercial video storytelling",
+  targetAudience: "Founders, CXOs, High-Net-Worth Buyers aged 25-45",
   personalityTraits: ["Professional", "Trustworthy", "Modern"],
   personalityOther: "",
   voiceTypes: ["Professional", "Conversational"],
@@ -268,9 +318,31 @@ export function BrandVoiceGuideForm({ value, onChange }: Props) {
           </p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 max-w-md border border-white/10 text-[11px] text-emerald-100/90 leading-relaxed">
-          <strong className="text-white block mb-0.5">Purpose:</strong>
-          This guide helps maintain a consistent brand voice and tone across all platforms and content, so the brand always sounds aligned and recognizable.
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5">
+          <div className="bg-white/10 backdrop-blur-md rounded-xl p-2.5 max-w-md border border-white/10 text-[11px] text-emerald-100/90 leading-relaxed">
+            <strong className="text-white inline mr-1">Purpose:</strong>
+            Maintain consistent brand voice across platforms and content deliverables.
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => onChange(SAMPLE_BRAND_VOICE_GUIDE)}
+              className="px-2.5 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 active:scale-95 text-white text-[11px] font-bold border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Load sample guide for inspiration"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Load Sample</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(DEFAULT_BRAND_VOICE_GUIDE)}
+              className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/15 active:scale-95 text-white/80 hover:text-white text-[11px] font-semibold border border-white/10 transition-all cursor-pointer"
+              title="Clear all fields"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       </div>
 

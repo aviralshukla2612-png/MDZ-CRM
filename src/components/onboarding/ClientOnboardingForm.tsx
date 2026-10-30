@@ -105,7 +105,7 @@ export interface ClientOnboardingData {
   importantClientNotes: string;
 }
 
-export const DEFAULT_ONBOARDING_DATA: ClientOnboardingData = {
+export const SAMPLE_ONBOARDING_DATA: ClientOnboardingData = {
   clientName: "",
   businessBrandName: "",
   contactNumber: "",
@@ -184,6 +184,68 @@ export const DEFAULT_ONBOARDING_DATA: ClientOnboardingData = {
   communicationMethodOther: "",
 
   importantClientNotes: "Review SLA within 24-48 hours. Target launch ready before 1st of upcoming month.",
+};
+
+export const DEFAULT_ONBOARDING_DATA: ClientOnboardingData = {
+  clientName: "",
+  businessBrandName: "",
+  contactNumber: "",
+  emailAddress: "",
+  website: "",
+  businessLocation: "",
+
+  instagramHandle: "",
+  facebookHandle: "",
+  youtubeHandle: "",
+  linkedinHandle: "",
+  tiktokHandle: "",
+  pinterestHandle: "",
+  otherSocialHandle: "",
+
+  servicesRequired: [],
+  servicesRequiredOther: "",
+
+  packageName: "",
+  startDate: "",
+  endDate: "",
+  contractDuration: "",
+
+  postsPerWeek: 0,
+  reelsPerWeek: 0,
+  storiesPerWeek: 0,
+  deliverablesChecklist: [],
+  deliverablesChecklistOther: "",
+
+  contentStyleTone: "",
+  preferredLanguage: "",
+  contentReferences: "",
+  specialRequirements: "",
+
+  brandAssets: {
+    logo: { available: false, linkOrLocation: "" },
+    brandGuidelines: { available: false, linkOrLocation: "" },
+    photosImages: { available: false, linkOrLocation: "" },
+    videosReels: { available: false, linkOrLocation: "" },
+    productImages: { available: false, linkOrLocation: "" },
+    otherAssets: { available: false, linkOrLocation: "" },
+  },
+
+  productServiceInfo: "",
+
+  googleDriveFolderLink: "",
+
+  accountAccess: [],
+  accountAccessOther: "",
+
+  pocName: "",
+  pocDesignation: "",
+  pocContactNumber: "",
+  pocEmailAddress: "",
+
+  communicationMethods: [],
+  communicationMethodOther: "",
+
+  importantClientNotes: "",
 };
 
 const SERVICES_OPTIONS = [

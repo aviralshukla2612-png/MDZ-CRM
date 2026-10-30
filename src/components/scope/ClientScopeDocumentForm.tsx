@@ -126,7 +126,7 @@ export interface ClientScopeDocumentData {
   disclaimerAcknowledged: boolean;
 }
 
-export const DEFAULT_SCOPE_DOCUMENT: ClientScopeDocumentData = {
+export const SAMPLE_SCOPE_DOCUMENT: ClientScopeDocumentData = {
   clientName: "",
   brandName: "",
   projectStartDate: "",
@@ -225,6 +225,81 @@ export const DEFAULT_SCOPE_DOCUMENT: ClientScopeDocumentData = {
   rawFilesSpecific: "Final rendered 4K MP4 and high-res PNG/PDF included. Raw Premiere/AfterEffects projects on request.",
 
   disclaimerAcknowledged: true,
+};
+
+export const DEFAULT_SCOPE_DOCUMENT: ClientScopeDocumentData = {
+  clientName: "",
+  brandName: "",
+  projectStartDate: "",
+  projectDuration: "",
+  primaryContactPerson: "",
+  email: "",
+  phoneNumber: "",
+
+  scopeOfWork: "",
+  servicesIncluded: [],
+  servicesNotIncluded: [],
+
+  deliverablesReels: 0,
+  deliverablesStatics: 0,
+  deliverablesCarousels: 0,
+  deliverablesStories: 0,
+  deliverablesOther: "",
+
+  contentSupport: [],
+  contentSupportOther: "",
+
+  postingResponsibility: "client_posts",
+  postingDetails: "",
+
+  clientResponsibilities: [],
+  clientResponsibilitiesOther: "",
+
+  submissionFormat: "",
+  submissionFrequency: "",
+  submissionDeadline: "",
+
+  approvalProcessAcknowledged: false,
+
+  reviewTimeline: "",
+  noResponseWithin: "",
+  noResponseAction: "",
+
+  revisionsIncluded: "",
+  revisionsCovered: "",
+  additionalRevisionCharge: "",
+
+  paymentTerms: "monthly",
+  paymentTermsOther: "",
+
+  hourlyRateOrTask: "",
+  additionalWorkExamples: "",
+
+  adSpendResponsibility: "client_manages",
+
+  communicationChannels: [],
+  communicationOther: "",
+
+  expectedResponseTime: "",
+  workingHours: "",
+  emergencyContact: "",
+
+  monthlyCalendarShareDate: "",
+  contentSubmissionDeadline: "",
+  finalApprovalDeadline: "",
+
+  noticePeriod: "",
+  refundPolicy: "",
+  pauseOption: "",
+  otherCancellationTerms: "",
+
+  ownershipOption: "transferred_after_payment",
+  ownershipOther: "",
+
+  rawFileOption: "available_on_request",
+  rawFilesSpecific: "",
+
+  disclaimerAcknowledged: false,
 };
 
 const CONTENT_SUPPORT_OPTIONS = [

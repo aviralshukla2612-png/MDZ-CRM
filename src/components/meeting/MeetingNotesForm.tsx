@@ -96,7 +96,7 @@ export interface MeetingNotesData {
   importantNotes: string;
 }
 
-export const DEFAULT_MEETING_NOTES: MeetingNotesData = {
+export const SAMPLE_MEETING_NOTES: MeetingNotesData = {
   clientBrandName: "",
   meetingDate: "",
   meetingTime: "11:00 AM - 12:00 PM",
@@ -187,6 +187,36 @@ export const DEFAULT_MEETING_NOTES: MeetingNotesData = {
   nextMeetingTypeOther: "",
 
   importantNotes: "Client was very enthusiastic about high-pacing reels. Priority this month is driving inbound DM inquiries rather than just vanity likes.",
+};
+
+export const DEFAULT_MEETING_NOTES: MeetingNotesData = {
+  clientBrandName: "",
+  meetingDate: "",
+  meetingTime: "",
+  meetingTypes: [],
+  meetingTypeOther: "",
+
+  participants: [],
+
+  meetingObjective: "",
+  discussionPoints: [],
+  keyUpdates: [],
+  clientFeedback: [],
+  clientRequirements: [],
+  decisionsMade: [],
+  approvedIdeas: [],
+  changesRequested: [],
+  pendingQuestions: [],
+  actionItems: [],
+  followUpsRequired: [],
+  followUpOther: "",
+
+  nextMeetingDate: "",
+  nextMeetingTime: "",
+  nextMeetingTypes: [],
+  nextMeetingTypeOther: "",
+
+  importantNotes: "",
 };
 
 const MEETING_TYPE_OPTIONS = ["Discovery Call", "Strategy Call", "Progress Update", "Review Call"];

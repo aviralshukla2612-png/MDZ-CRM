@@ -71,7 +71,23 @@ const createDefaultPillar = (
   plannedFrequency: frequency,
 });
 
-export const DEFAULT_CONTENT_PILLARS: ContentPillarsData = {
+const createEmptyPillar = (name: string): PillarItem => ({
+  pillarName: name,
+  description: "",
+  purpose: "",
+  targetAudience: "",
+  topicsCovered: [],
+  subTopics: [],
+  formats: [],
+  formatsOther: "",
+  contentExamples: [],
+  ctaIdeas: "",
+  priority: "Medium",
+  keywords: "",
+  plannedFrequency: "",
+});
+
+export const SAMPLE_CONTENT_PILLARS: ContentPillarsData = {
   educational: createDefaultPillar(
     "Tips, How-to, Guides",
     "Actionable industry insights, step-by-step tutorials and best practices.",
@@ -144,6 +160,15 @@ export const DEFAULT_CONTENT_PILLARS: ContentPillarsData = {
   ),
   overallNotes:
     "Maintain a balanced 40% Educational, 20% Trust, 20% Engagement, 10% Promotional, 10% Entertainment distribution across all channels.",
+};
+
+export const DEFAULT_CONTENT_PILLARS: ContentPillarsData = {
+  educational: createEmptyPillar("Tips, How-to, Guides"),
+  promotional: createEmptyPillar("Product / Service Promotion"),
+  engagement: createEmptyPillar("Polls, Questions, Trends"),
+  trustAuthority: createEmptyPillar("Case Studies, Reviews, Behind the Scenes"),
+  entertainment: createEmptyPillar("Memes, Day in Life, Relatable Content"),
+  overallNotes: "",
 };
 
 const FORMAT_OPTIONS = [

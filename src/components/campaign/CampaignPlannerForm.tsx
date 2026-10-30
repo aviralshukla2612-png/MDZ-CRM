@@ -164,6 +164,98 @@ export const DEFAULT_CAMPAIGN_PLANNER: CampaignPlannerData = {
   campaignName: "",
   campaignType: "Product Launch",
   campaignTheme: "",
+  campaignDuration: "",
+  startDate: "",
+  endDate: "",
+
+  objectives: [],
+  objectiveOther: "",
+
+  audienceAgeGroup: "",
+  audienceGender: "All",
+  audienceLocation: "",
+  audienceInterests: "",
+  audiencePainPoints: "",
+  audienceGoals: "",
+
+  campaignOffer: "",
+  keyMessage: "",
+  usp: "",
+  campaignCta: "",
+
+  platforms: [],
+  platformOther: "",
+  contentFormats: [],
+  contentFormatOther: "",
+
+  reelsQty: 0,
+  staticPostsQty: 0,
+  carouselsQty: 0,
+  storiesQty: 0,
+  bannersQty: 0,
+  adCreativesQty: 0,
+  otherContentQty: 0,
+  otherContentLabel: "",
+
+  creativeRequirements: "",
+  copyRequirements: "",
+
+  campaignHashtag: "",
+  additionalHashtags: "",
+  influencerRequirements: "",
+
+  runPaidAds: false,
+  adPlatforms: [],
+  adPlatformOther: "",
+  adObjectives: "",
+  adCreativeRequirements: "",
+  budget: "",
+
+  preLaunchActivities: [],
+  preLaunchOther: "",
+  launchActivities: [],
+  launchOther: "",
+
+  contentSchedule: [],
+  teamResponsibilities: [],
+  approvalDeadlines: [],
+
+  currentStatus: "Planning",
+  stages: ["Planning"],
+
+  targetMetrics: {
+    reachImpressions: "",
+    engagementRate: "",
+    websiteTraffic: "",
+    leadsGenerated: "",
+    salesConversions: "",
+    followerGrowth: "",
+    other: "",
+  },
+
+  actualResults: {
+    reachImpressions: "",
+    engagementRate: "",
+    websiteTraffic: "",
+    leadsGenerated: "",
+    salesConversions: "",
+    followerGrowth: "",
+    other: "",
+  },
+
+  learningsWorkedWell: "",
+  learningsDidntWork: "",
+  keyLearnings: "",
+
+  actionsForFuture: "",
+  recommendations: "",
+  ideasToExplore: "",
+};
+
+export const SAMPLE_CAMPAIGN_PLANNER: CampaignPlannerData = {
+  campaignName: "Q4 Brand Elevation & Lead Push",
+  campaignType: "Product Launch",
+  campaignTheme: "Redefining Industry Standards",
   campaignDuration: "30 Days",
   startDate: "",
   endDate: "",
