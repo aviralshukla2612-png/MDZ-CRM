@@ -92,8 +92,6 @@ export default function ClientRegisterPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [onboardingSubStep, setOnboardingSubStep] = useState<1 | 2 | 3>(1);
-  const [showAdvancedStrategy, setShowAdvancedStrategy] = useState(false);
-  const [showBrandVoiceGuide, setShowBrandVoiceGuide] = useState(false);
 
   const [formData, setFormData] = useState({
     // Step 1: Company & Credentials
@@ -757,58 +755,40 @@ export default function ClientRegisterPage() {
                   </div>
                 </div>
 
-                {/* Optional Advanced Strategy Collapsible */}
+                {/* Competitor Analysis Matrix */}
                 <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvancedStrategy(!showAdvancedStrategy)}
-                    className="w-full flex items-center justify-between p-3.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-[#1a1713] text-stone-700 dark:text-stone-300 text-xs font-bold hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Target className="w-4 h-4 text-emerald-600" />
-                      <span>Optional: In-Depth Competitor Matrix & Content Pillars</span>
-                    </div>
-                    <span className="flex items-center gap-1 text-emerald-600 font-semibold text-[11px]">
-                      {showAdvancedStrategy ? "Hide Details" : "Show Details"}
-                      {showAdvancedStrategy ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    </span>
-                  </button>
+                  <CompetitorAnalysisForm
+                    value={formData.competitorAnalysis}
+                    onChange={(analysis) =>
+                      setFormData((prev) => {
+                        const compNames = [
+                          analysis.competitor1?.name,
+                          analysis.competitor2?.name,
+                          analysis.competitor3?.name,
+                        ]
+                          .filter(Boolean)
+                          .join(", ");
+                        return {
+                          ...prev,
+                          competitorAnalysis: analysis,
+                          competitors: compNames || prev.competitors,
+                        };
+                      })
+                    }
+                  />
+                </div>
 
-                  {showAdvancedStrategy && (
-                    <div className="space-y-4 pt-3 animate-fade-in">
-                      {/* Competitor Analysis Matrix */}
-                      <CompetitorAnalysisForm
-                        value={formData.competitorAnalysis}
-                        onChange={(analysis) =>
-                          setFormData((prev) => {
-                            const compNames = [
-                              analysis.competitor1?.name,
-                              analysis.competitor2?.name,
-                              analysis.competitor3?.name,
-                            ]
-                              .filter(Boolean)
-                              .join(", ");
-                            return {
-                              ...prev,
-                              competitorAnalysis: analysis,
-                              competitors: compNames || prev.competitors,
-                            };
-                          })
-                        }
-                      />
-
-                      {/* Content Pillars Sheet */}
-                      <ContentPillarsForm
-                        value={formData.contentPillars}
-                        onChange={(pillars) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            contentPillars: pillars,
-                          }))
-                        }
-                      />
-                    </div>
-                  )}
+                {/* Content Pillars Sheet */}
+                <div className="pt-2">
+                  <ContentPillarsForm
+                    value={formData.contentPillars}
+                    onChange={(pillars) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        contentPillars: pillars,
+                      }))
+                    }
+                  />
                 </div>
               </div>
             )}
@@ -945,38 +925,19 @@ export default function ClientRegisterPage() {
                   </div>
                 </div>
 
-                {/* Optional 21-Section Brand Voice Guide Collapsible */}
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowBrandVoiceGuide(!showBrandVoiceGuide)}
-                    className="w-full flex items-center justify-between p-3.5 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-[#1a1713] text-stone-700 dark:text-stone-300 text-xs font-bold hover:bg-stone-100 dark:hover:bg-stone-800/60 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
-                      <span>Optional: Detailed Brand Voice & Content Persona Guide</span>
-                    </div>
-                    <span className="flex items-center gap-1 text-emerald-600 font-semibold text-[11px]">
-                      {showBrandVoiceGuide ? "Hide Details" : "Show Details"}
-                      {showBrandVoiceGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                    </span>
-                  </button>
-
-                  {showBrandVoiceGuide && (
-                    <div className="pt-3 animate-fade-in border-t border-stone-200 dark:border-stone-800 mt-2">
-                      <BrandVoiceGuideForm
-                        value={formData.brandVoiceGuide}
-                        onChange={(guide) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            brandVoiceGuide: guide,
-                            brandVoiceTone: guide.toneTypes?.length ? guide.toneTypes.join(", ") : prev.brandVoiceTone,
-                            preferredLanguage: guide.preferredLanguages?.length ? guide.preferredLanguages.join(", ") : prev.preferredLanguage,
-                          }))
-                        }
-                      />
-                    </div>
-                  )}
+                {/* Brand Voice & Tone Architecture Guide */}
+                <div className="pt-4 border-t border-stone-200 dark:border-stone-800">
+                  <BrandVoiceGuideForm
+                    value={formData.brandVoiceGuide}
+                    onChange={(guide) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        brandVoiceGuide: guide,
+                        brandVoiceTone: guide.toneTypes?.length ? guide.toneTypes.join(", ") : prev.brandVoiceTone,
+                        preferredLanguage: guide.preferredLanguages?.length ? guide.preferredLanguages.join(", ") : prev.preferredLanguage,
+                      }))
+                    }
+                  />
                 </div>
               </div>
             )}
