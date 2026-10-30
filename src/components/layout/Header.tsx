@@ -390,14 +390,27 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
         </div>
         )}
 
+        {/* Mobile Search Button */}
+        {currentUser.role !== "CLIENT" && (
+          <div className="lg:hidden shrink-0">
+            <button
+              onClick={onOpenSearch}
+              className="relative w-8 h-8 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center touch-target"
+              title="Search"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Notification Bell Center */}
         <div className="shrink-0">
           <NotificationBell currentUserId={currentUser.id} />
         </div>
 
-        {/* Chat Shortcut (Internal only) */}
+        {/* Chat Shortcut (Internal only, visible on tablet/desktop) */}
         {currentUser.role !== "CLIENT" && (
-          <div className="shrink-0">
+          <div className="hidden sm:block shrink-0">
             <Link
               href="/chat"
               className="relative w-8 h-8 sm:w-9 sm:h-9 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center touch-target"
@@ -417,7 +430,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
         <div className="relative shrink-0">
           <button
             onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-            className="flex items-center gap-1 sm:gap-2 p-0.5 sm:p-1 rounded-xl bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800/80 transition-all active:scale-95 touch-target"
+            className="flex items-center gap-1 sm:gap-1.5 p-0.5 sm:p-1 rounded-xl bg-slate-100 dark:bg-slate-900/60 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800/80 transition-all active:scale-95 touch-target"
             title="Account & Profile"
           >
             {currentPhoto ? (
@@ -427,11 +440,11 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
                 className="w-7 h-7 sm:w-7 sm:h-7 rounded-lg object-cover shadow-xs border border-indigo-200 dark:border-indigo-800"
               />
             ) : (
-              <div className="w-7 h-7 sm:w-7 sm:h-7 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
-                {currentUser.name[0]?.toUpperCase() || "U"}
+              <div className="w-7 h-7 sm:w-7 sm:h-7 rounded-lg bg-amber-600 dark:bg-amber-700 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+                {currentUser.name[0]?.toUpperCase() || "V"}
               </div>
             )}
-            <ChevronDown className="hidden sm:block w-3.5 h-3.5 text-slate-500 dark:text-slate-400 mr-0.5" />
+            <ChevronDown className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 mr-0.5" />
           </button>
 
           {isProfileMenuOpen && (

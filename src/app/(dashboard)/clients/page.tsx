@@ -186,7 +186,7 @@ export default function ClientsPage() {
           {clientsList.map((c) => (
             <div
               key={c.id}
-              className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-6 shadow-xs dark:shadow-2xl hover:border-indigo-500/50 hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between group space-y-4"
+              className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-4 sm:p-6 shadow-xs dark:shadow-2xl hover:border-indigo-500/50 hover:-translate-y-1 transition-all duration-200 flex flex-col justify-between group space-y-4"
             >
               <Link href={`/clients/${c.id}`} className="space-y-3 block">
                 <div className="flex items-center justify-between">

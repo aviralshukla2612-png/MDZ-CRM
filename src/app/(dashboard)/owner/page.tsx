@@ -54,32 +54,34 @@ export default function OwnerDashboardPage() {
         badge="EXECUTIVE MODE"
         icon={<Crown className="w-7 h-7 text-amber-500 dark:text-amber-400" />}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
             <Link
               href="/docs"
-              className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs flex items-center gap-1.5"
+              className="px-3 sm:px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs flex items-center gap-1.5 touch-target shrink-0"
             >
-              <Cloud className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Upload to Drive</span>
+              <Cloud className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
+              <span className="hidden sm:inline">Upload to </span>
+              <span>Drive</span>
             </Link>
             <button
               onClick={handleExportExecutiveBrief}
               disabled={isExporting}
-              className="px-3.5 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs flex items-center gap-1.5 disabled:opacity-60 cursor-pointer"
+              className="px-3 sm:px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs flex items-center gap-1.5 disabled:opacity-60 cursor-pointer touch-target shrink-0"
             >
               {isExporting ? (
-                <Loader2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin" />
+                <Loader2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 animate-spin shrink-0" />
               ) : (
-                <Download className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                <Download className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
               )}
-              <span>{isExporting ? "Exporting PDF..." : "Export Executive Brief"}</span>
+              <span className="hidden xs:inline">Export </span>
+              <span>Brief</span>
             </button>
             <Link
               href="/leads"
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-3.5 sm:px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 touch-target shrink-0"
             >
-              <Plus className="w-4 h-4" />
-              <span>New Lead / Project</span>
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>New Lead</span>
             </Link>
           </div>
         }

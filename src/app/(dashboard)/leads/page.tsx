@@ -261,33 +261,35 @@ export default function LeadsPage() {
         badge="OMNI-CHANNEL CRM"
         icon={<Target className="w-7 h-7 text-indigo-600 dark:text-indigo-400 animate-pulse" />}
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
             <button
               onClick={() => setIsIntegrationsOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 active:scale-95 text-purple-700 dark:text-purple-300 font-bold text-xs border border-purple-200 dark:border-purple-800 transition-all flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 active:scale-95 text-purple-700 dark:text-purple-300 font-bold text-xs border border-purple-200 dark:border-purple-800 transition-all flex items-center gap-1.5 shrink-0 touch-target"
             >
-              <Webhook className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              <span>Multi-Channel Webhooks</span>
+              <Webhook className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
+              <span className="hidden sm:inline">Multi-Channel </span>
+              <span>Webhooks</span>
             </button>
             <button
               onClick={() => setIsImportOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 font-semibold text-xs border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-2"
+              className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 font-semibold text-xs border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 shrink-0 touch-target"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>Import CSV/XLS</span>
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="hidden sm:inline">Import </span>
+              <span>CSV/XLS</span>
             </button>
             <button
               onClick={() => setIsAddOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-2"
+              className="px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 shrink-0 touch-target"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 shrink-0" />
               <span>New Lead</span>
             </button>
           </div>
         }
       />
 
-      <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-6 md:p-8 shadow-xl dark:shadow-2xl space-y-6">
+      <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 p-3.5 sm:p-6 md:p-8 shadow-xl dark:shadow-2xl space-y-4 sm:space-y-6 w-full min-w-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-4">
           <div className="space-y-1">
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">

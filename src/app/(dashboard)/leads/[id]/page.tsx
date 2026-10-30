@@ -434,6 +434,57 @@ export default function LeadDetailPage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
+      {/* 2-Column Mobile / 4-Column Desktop KPI Cards Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 w-full min-w-0">
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">Deal Value</span>
+            <span className="text-base sm:text-lg font-black text-slate-900 dark:text-slate-100 font-mono truncate block">
+              ₹{(Number(lead.leadValue) || 0).toLocaleString("en-IN")}
+            </span>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">Expected Value</span>
+            <span className="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400 font-mono truncate block">
+              ₹{(Number(lead.expectedRevenue) || 0).toLocaleString("en-IN")}
+            </span>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <User className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">Sales Rep</span>
+            <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
+              {lead.assignedSales || "Unassigned"}
+            </span>
+          </div>
+        </div>
+
+        <div className="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block truncate">Next Follow-up</span>
+            <span className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate block">
+              {lead.nextFollowupDate || "Pending"}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Section Tabs */}
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-1 overflow-x-auto">
         {[
