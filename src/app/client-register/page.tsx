@@ -92,6 +92,7 @@ export default function ClientRegisterPage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [onboardingSubStep, setOnboardingSubStep] = useState<1 | 2 | 3>(1);
+  const [step2Tab, setStep2Tab] = useState<"competitors" | "pillars">("competitors");
 
   const [formData, setFormData] = useState({
     // Step 1: Company & Credentials
@@ -385,7 +386,7 @@ export default function ClientRegisterPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0D0C0A] text-stone-900 dark:text-stone-100 flex flex-col justify-between p-4 sm:p-6 transition-colors font-sans">
       {/* Top Navbar */}
-      <div className="flex items-center justify-between max-w-3xl mx-auto w-full pt-2">
+      <div className="flex items-center justify-between max-w-6xl xl:max-w-7xl mx-auto w-full pt-2">
         <Link href="/login" className="flex items-center gap-2 font-bold text-base text-stone-900 dark:text-stone-100">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-800 text-white font-black flex items-center justify-center text-sm shadow-xs">
             M
@@ -400,7 +401,7 @@ export default function ClientRegisterPage() {
       </div>
 
       {/* Main Registration Card */}
-      <div className="max-w-3xl mx-auto w-full my-6">
+      <div className="max-w-6xl xl:max-w-7xl mx-auto w-full my-4 sm:my-6 transition-all duration-300">
         <div className="bg-white dark:bg-[#161411] rounded-2xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-xl space-y-6">
           {/* Header & Step Wizard Indicator */}
           <div className="space-y-3 text-left">
@@ -642,153 +643,195 @@ export default function ClientRegisterPage() {
                 <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 text-xs space-y-1">
                   <p className="font-bold flex items-center gap-1.5">
                     <FileText className="w-4 h-4 text-emerald-600" />
-                    <span>Client Strategic Brief (Initial Discovery)</span>
+                    <span>Client Strategic Brief & Market Intelligence</span>
                   </p>
                   <p className="text-[11px] opacity-80">
-                    This brief helps our strategy and content teams engineer the right reels, hooks, and messaging for your brand.
+                    Define your brand discovery brief on the left, and detail competitor metrics & content pillars on the right side-by-side.
                   </p>
                 </div>
 
-                {/* Main Products / Services */}
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                    Main Products or Services Offered
-                  </label>
-                  <input
-                    type="text"
-                    name="productsServices"
-                    value={formData.productsServices}
-                    onChange={handleChange}
-                    placeholder="e.g. Luxury Handcrafted Jewellery, D2C Wellness Supplements, Real Estate Advisory"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                  />
-                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left Column: Discovery Brief (5 cols) */}
+                  <div className="lg:col-span-5 space-y-4 bg-stone-50/60 dark:bg-[#1a1713] p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800">
+                    <div className="pb-2 border-b border-stone-200 dark:border-stone-800">
+                      <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                        <Target className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Core Discovery & Positioning</span>
+                      </h3>
+                      <p className="text-[10px] text-stone-400 mt-0.5">Offerings, goals, and roadblocks</p>
+                    </div>
 
-                {/* Business & Social Goals */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                    Primary Business & Social Media Goals
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {GOAL_OPTIONS.map((goal) => {
-                      const isSelected = formData.goals.includes(goal);
-                      return (
-                        <button
-                          key={goal}
-                          type="button"
-                          onClick={() => toggleGoal(goal)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer ${
-                            isSelected
-                              ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
-                              : "bg-stone-50 dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
-                          }`}
-                        >
-                          {isSelected ? <Check className="w-3 h-3" /> : <Target className="w-3 h-3 opacity-50" />}
-                          <span>{goal}</span>
-                        </button>
-                      );
-                    })}
+                    {/* Main Products / Services */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Main Products or Services Offered
+                      </label>
+                      <input
+                        type="text"
+                        name="productsServices"
+                        value={formData.productsServices}
+                        onChange={handleChange}
+                        placeholder="e.g. Luxury Handcrafted Jewellery, D2C Supplements"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+
+                    {/* Business & Social Goals */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Primary Business & Social Media Goals
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {GOAL_OPTIONS.map((goal) => {
+                          const isSelected = formData.goals.includes(goal);
+                          return (
+                            <button
+                              key={goal}
+                              type="button"
+                              onClick={() => toggleGoal(goal)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 border transition-all cursor-pointer ${
+                                isSelected
+                                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                                  : "bg-white dark:bg-[#1f1c18] text-stone-600 dark:text-stone-400 border-stone-200 dark:border-stone-700 hover:border-emerald-500"
+                              }`}
+                            >
+                              {isSelected ? <Check className="w-2.5 h-2.5" /> : <Target className="w-2.5 h-2.5 opacity-50" />}
+                              <span>{goal}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Target Audience */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Target Audience & Demographics
+                      </label>
+                      <input
+                        type="text"
+                        name="targetAudience"
+                        value={formData.targetAudience}
+                        onChange={handleChange}
+                        placeholder="e.g. Age 24-45, HNI luxury buyers, Tier-1 Metro cities"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+
+                    {/* USP */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Unique Selling Proposition (USP)
+                      </label>
+                      <input
+                        type="text"
+                        name="usp"
+                        value={formData.usp}
+                        onChange={handleChange}
+                        placeholder="What sets your brand apart? (e.g. 100% Handcrafted)"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+
+                    {/* Top Competitors */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Main Competitors (Names or Social Handles)
+                      </label>
+                      <input
+                        type="text"
+                        name="competitors"
+                        value={formData.competitors}
+                        onChange={handleChange}
+                        placeholder="e.g. Brand Alpha, @competitor_insta"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+
+                    {/* Current Challenges */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Current Content / Marketing Roadblocks
+                      </label>
+                      <input
+                        type="text"
+                        name="currentChallenges"
+                        value={formData.currentChallenges}
+                        onChange={handleChange}
+                        placeholder="e.g. Inconsistent posting, low reach, creative fatigue"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Target Audience */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                      Target Audience & Demographics
-                    </label>
-                    <input
-                      type="text"
-                      name="targetAudience"
-                      value={formData.targetAudience}
-                      onChange={handleChange}
-                      placeholder="e.g. Age 24-45, HNI luxury buyers, Tier-1 Metro cities"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
+                  {/* Right Column: Deep Strategy (Competitor Analysis & Content Pillars) (7 cols) */}
+                  <div className="lg:col-span-7 space-y-4">
+                    {/* Switcher Bar */}
+                    <div className="flex items-center gap-2 p-1.5 bg-stone-100 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-800">
+                      <button
+                        type="button"
+                        onClick={() => setStep2Tab("competitors")}
+                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          step2Tab === "competitors"
+                            ? "bg-white dark:bg-[#1f1c18] text-emerald-700 dark:text-emerald-300 shadow-xs border border-emerald-500/30 ring-1 ring-emerald-500/20"
+                            : "text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                        }`}
+                      >
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Competitor Intelligence Matrix</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setStep2Tab("pillars")}
+                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          step2Tab === "pillars"
+                            ? "bg-white dark:bg-[#1f1c18] text-emerald-700 dark:text-emerald-300 shadow-xs border border-emerald-500/30 ring-1 ring-emerald-500/20"
+                            : "text-stone-500 hover:text-stone-800 dark:hover:text-stone-200"
+                        }`}
+                      >
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>5 Content Pillars Strategy</span>
+                      </button>
+                    </div>
+
+                    {/* Active Form */}
+                    {step2Tab === "competitors" ? (
+                      <div className="animate-fade-in">
+                        <CompetitorAnalysisForm
+                          value={formData.competitorAnalysis}
+                          onChange={(analysis) =>
+                            setFormData((prev) => {
+                              const compNames = [
+                                analysis.competitor1?.name,
+                                analysis.competitor2?.name,
+                                analysis.competitor3?.name,
+                              ]
+                                .filter(Boolean)
+                                .join(", ");
+                              return {
+                                ...prev,
+                                competitorAnalysis: analysis,
+                                competitors: compNames || prev.competitors,
+                              };
+                            })
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <div className="animate-fade-in">
+                        <ContentPillarsForm
+                          value={formData.contentPillars}
+                          onChange={(pillars) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              contentPillars: pillars,
+                            }))
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
-
-                  {/* USP */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                      Unique Selling Proposition (USP)
-                    </label>
-                    <input
-                      type="text"
-                      name="usp"
-                      value={formData.usp}
-                      onChange={handleChange}
-                      placeholder="What sets your brand apart? (e.g. 100% Handcrafted, 24h dispatch)"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Top Competitors */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                      Main Competitors (Names or Social Handles)
-                    </label>
-                    <input
-                      type="text"
-                      name="competitors"
-                      value={formData.competitors}
-                      onChange={handleChange}
-                      placeholder="e.g. Brand Alpha, @competitor_insta"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                  </div>
-
-                  {/* Current Challenges */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                      Current Content / Marketing Roadblocks
-                    </label>
-                    <input
-                      type="text"
-                      name="currentChallenges"
-                      value={formData.currentChallenges}
-                      onChange={handleChange}
-                      placeholder="e.g. Inconsistent posting, low reach, creative fatigue"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* Competitor Analysis Matrix */}
-                <div className="pt-2">
-                  <CompetitorAnalysisForm
-                    value={formData.competitorAnalysis}
-                    onChange={(analysis) =>
-                      setFormData((prev) => {
-                        const compNames = [
-                          analysis.competitor1?.name,
-                          analysis.competitor2?.name,
-                          analysis.competitor3?.name,
-                        ]
-                          .filter(Boolean)
-                          .join(", ");
-                        return {
-                          ...prev,
-                          competitorAnalysis: analysis,
-                          competitors: compNames || prev.competitors,
-                        };
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Content Pillars Sheet */}
-                <div className="pt-2">
-                  <ContentPillarsForm
-                    value={formData.contentPillars}
-                    onChange={(pillars) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        contentPillars: pillars,
-                      }))
-                    }
-                  />
                 </div>
               </div>
             )}
@@ -796,148 +839,155 @@ export default function ClientRegisterPage() {
             {/* ================= STEP 3: BRAND ASSETS & CREATIVE IDENTITY ================= */}
             {currentStep === 3 && (
               <div className="space-y-4 animate-fade-in">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Website */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-sky-600" />
-                      <span>Official Website URL</span>
-                    </label>
-                    <input
-                      type="url"
-                      name="websiteUrl"
-                      value={formData.websiteUrl}
-                      onChange={handleChange}
-                      placeholder="https://yourbrand.com"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  {/* Left Column: Social Handles & Aesthetics (5 cols) */}
+                  <div className="lg:col-span-5 space-y-4 bg-stone-50/60 dark:bg-[#1a1713] p-4 sm:p-5 rounded-2xl border border-stone-200 dark:border-stone-800">
+                    <div className="pb-2 border-b border-stone-200 dark:border-stone-800">
+                      <h3 className="text-xs font-bold text-stone-900 dark:text-stone-100 flex items-center gap-2">
+                        <Globe className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Social Handles & Brand Aesthetic</span>
+                      </h3>
+                      <p className="text-[10px] text-stone-400 mt-0.5">Online channels, color palette, and tone</p>
+                    </div>
 
-                  {/* Instagram */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                      <Instagram className="w-3.5 h-3.5 text-pink-600" />
-                      <span>Instagram Handle</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="instagramHandle"
-                      value={formData.instagramHandle}
-                      onChange={handleChange}
-                      placeholder="@yourbrand.official"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* YouTube */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                      <Youtube className="w-3.5 h-3.5 text-rose-600" />
-                      <span>YouTube Channel Link / Handle</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="youtubeHandle"
-                      value={formData.youtubeHandle}
-                      onChange={handleChange}
-                      placeholder="@yourchannel"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                  </div>
-
-                  {/* LinkedIn */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
-                      <Linkedin className="w-3.5 h-3.5 text-blue-600" />
-                      <span>LinkedIn Company URL</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="linkedinUrl"
-                      value={formData.linkedinUrl}
-                      onChange={handleChange}
-                      placeholder="linkedin.com/company/yourbrand"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {/* Brand Accent Color */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                      Brand Accent Color
-                    </label>
-                    <div className="flex items-center gap-2">
+                    {/* Website */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                        <Globe className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Official Website URL</span>
+                      </label>
                       <input
-                        type="color"
-                        name="primaryColorHex"
-                        value={formData.primaryColorHex}
+                        type="url"
+                        name="websiteUrl"
+                        value={formData.websiteUrl}
                         onChange={handleChange}
-                        className="w-10 h-10 rounded-lg border border-stone-200 dark:border-stone-700 cursor-pointer p-0.5 bg-white dark:bg-stone-800"
+                        placeholder="https://yourbrand.com"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                       />
+                    </div>
+
+                    {/* Instagram */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                        <Instagram className="w-3.5 h-3.5 text-pink-600" />
+                        <span>Instagram Handle</span>
+                      </label>
                       <input
                         type="text"
-                        name="primaryColorHex"
-                        value={formData.primaryColorHex}
+                        name="instagramHandle"
+                        value={formData.instagramHandle}
                         onChange={handleChange}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                        placeholder="@yourbrand.official"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
                       />
+                    </div>
+
+                    {/* YouTube */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                        <Youtube className="w-3.5 h-3.5 text-rose-600" />
+                        <span>YouTube Channel Link / Handle</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="youtubeHandle"
+                        value={formData.youtubeHandle}
+                        onChange={handleChange}
+                        placeholder="@yourchannel"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+
+                    {/* LinkedIn */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+                        <Linkedin className="w-3.5 h-3.5 text-blue-600" />
+                        <span>LinkedIn Company URL</span>
+                      </label>
+                      <input
+                        type="text"
+                        name="linkedinUrl"
+                        value={formData.linkedinUrl}
+                        onChange={handleChange}
+                        placeholder="linkedin.com/company/yourbrand"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+
+                    {/* Brand Accent Color */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Brand Accent Color
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          name="primaryColorHex"
+                          value={formData.primaryColorHex}
+                          onChange={handleChange}
+                          className="w-10 h-10 rounded-lg border border-stone-200 dark:border-stone-700 cursor-pointer p-0.5 bg-white dark:bg-stone-800"
+                        />
+                        <input
+                          type="text"
+                          name="primaryColorHex"
+                          value={formData.primaryColorHex}
+                          onChange={handleChange}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Brand Voice / Tone */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Brand Voice & Persona Style
+                      </label>
+                      <select
+                        name="brandVoiceTone"
+                        value={formData.brandVoiceTone}
+                        onChange={handleChange}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      >
+                        <option value="Luxury, aesthetic, high-authority, polished">Luxury, Aesthetic & High-Authority</option>
+                        <option value="Bold, energetic, inspirational, modern">Bold, Energetic & Modern</option>
+                        <option value="Professional, trustworthy, expert, corporate">Professional, Trustworthy & Corporate</option>
+                        <option value="Relatable, friendly, humorous, community-first">Relatable, Friendly & Community-first</option>
+                        <option value="Educational, structured, value-driven">Educational, Structured & Value-driven</option>
+                      </select>
+                    </div>
+
+                    {/* Content Language */}
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                        Preferred Content Language
+                      </label>
+                      <select
+                        name="preferredLanguage"
+                        value={formData.preferredLanguage}
+                        onChange={handleChange}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                      >
+                        <option value="English & Hinglish">English & Hinglish (Recommended)</option>
+                        <option value="English Only">English Only (Global / Corporate)</option>
+                        <option value="Hindi Only">Hindi Only (Regional Reach)</option>
+                      </select>
                     </div>
                   </div>
 
-                  {/* Brand Voice / Tone */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                      Brand Voice & Persona Style
-                    </label>
-                    <select
-                      name="brandVoiceTone"
-                      value={formData.brandVoiceTone}
-                      onChange={handleChange}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    >
-                      <option value="Luxury, aesthetic, high-authority, polished">Luxury, Aesthetic & High-Authority</option>
-                      <option value="Bold, energetic, inspirational, modern">Bold, Energetic & Modern</option>
-                      <option value="Professional, trustworthy, expert, corporate">Professional, Trustworthy & Corporate</option>
-                      <option value="Relatable, friendly, humorous, community-first">Relatable, Friendly & Community-first</option>
-                      <option value="Educational, structured, value-driven">Educational, Structured & Value-driven</option>
-                    </select>
+                  {/* Right Column: Brand Voice Guide (7 cols) */}
+                  <div className="lg:col-span-7 space-y-4">
+                    <BrandVoiceGuideForm
+                      value={formData.brandVoiceGuide}
+                      onChange={(guide) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          brandVoiceGuide: guide,
+                          brandVoiceTone: guide.toneTypes?.length ? guide.toneTypes.join(", ") : prev.brandVoiceTone,
+                          preferredLanguage: guide.preferredLanguages?.length ? guide.preferredLanguages.join(", ") : prev.preferredLanguage,
+                        }))
+                      }
+                    />
                   </div>
-
-                  {/* Content Language */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
-                      Preferred Content Language
-                    </label>
-                    <select
-                      name="preferredLanguage"
-                      value={formData.preferredLanguage}
-                      onChange={handleChange}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-[#1f1c18] border border-stone-200 dark:border-stone-700 text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
-                    >
-                      <option value="English & Hinglish">English & Hinglish (Recommended)</option>
-                      <option value="English Only">English Only (Global / Corporate)</option>
-                      <option value="Hindi Only">Hindi Only (Regional Reach)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Brand Voice & Tone Architecture Guide */}
-                <div className="pt-4 border-t border-stone-200 dark:border-stone-800">
-                  <BrandVoiceGuideForm
-                    value={formData.brandVoiceGuide}
-                    onChange={(guide) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        brandVoiceGuide: guide,
-                        brandVoiceTone: guide.toneTypes?.length ? guide.toneTypes.join(", ") : prev.brandVoiceTone,
-                        preferredLanguage: guide.preferredLanguages?.length ? guide.preferredLanguages.join(", ") : prev.preferredLanguage,
-                      }))
-                    }
-                  />
                 </div>
               </div>
             )}
