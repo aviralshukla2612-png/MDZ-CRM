@@ -386,7 +386,11 @@ export default function ClientRegisterPage() {
   return (
     <div className="min-h-screen bg-[#FAF8F5] dark:bg-[#0D0C0A] text-stone-900 dark:text-stone-100 flex flex-col justify-between p-4 sm:p-6 transition-colors font-sans">
       {/* Top Navbar */}
-      <div className="flex items-center justify-between max-w-6xl xl:max-w-7xl mx-auto w-full pt-2">
+      <div
+        className={`flex items-center justify-between ${
+          currentStep === 2 || currentStep === 3 ? "max-w-6xl xl:max-w-7xl" : "max-w-3xl"
+        } mx-auto w-full pt-2 transition-all duration-300`}
+      >
         <Link href="/login" className="flex items-center gap-2 font-bold text-base text-stone-900 dark:text-stone-100">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-800 text-white font-black flex items-center justify-center text-sm shadow-xs">
             M
@@ -401,8 +405,12 @@ export default function ClientRegisterPage() {
       </div>
 
       {/* Main Registration Card */}
-      <div className="max-w-6xl xl:max-w-7xl mx-auto w-full my-4 sm:my-6 transition-all duration-300">
-        <div className="bg-white dark:bg-[#161411] rounded-2xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-xl space-y-6">
+      <div
+        className={`${
+          currentStep === 2 || currentStep === 3 ? "max-w-6xl xl:max-w-7xl" : "max-w-3xl"
+        } mx-auto w-full my-4 sm:my-6 transition-all duration-300`}
+      >
+        <div className="bg-white dark:bg-[#161411] rounded-2xl border border-stone-200 dark:border-stone-800 p-6 sm:p-7 shadow-xl space-y-5">
           {/* Header & Step Wizard Indicator */}
           <div className="space-y-3 text-left">
             <div className="flex items-center justify-between">
