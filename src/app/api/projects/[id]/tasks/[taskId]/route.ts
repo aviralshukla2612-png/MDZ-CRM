@@ -370,33 +370,6 @@ export async function DELETE(
 
   const actualProjectId = project.id;
 
-  // Authorization: OWNER or assigned EMPLOYEE
-  if (authRes.activeRole === "EMPLOYEE") {
-    if (!authRes.employeeId) {
-      return NextResponse.json({ success: false, error: "Forbidden: Employee profile missing" }, { status: 403 });
-    }
-
-    const membership = await prisma.projectMembership.findFirst({
-      where: {
-        projectId: actualProjectId,
-        employeeId: authRes.employeeId,
-        isActive: true,
-      },
-    });
-
-    if (!membership) {
-      return NextResponse.json(
-        { success: false, error: "Forbidden: You are not authorized to remove tasks from this project" },
-        { status: 403 }
-      );
-    }
-  } else if (!["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole as string)) {
-    return NextResponse.json(
-      { success: false, error: "Forbidden: Insufficient permissions" },
-      { status: 403 }
-    );
-  }
-
   try {
     const existingTask = await prisma.task.findUnique({
       where: { id: taskId },
@@ -409,24 +382,97 @@ export async function DELETE(
       );
     }
 
-    // Non-destructive archiving: set status to "ARCHIVED" and clear isMostImportant flag
-    await prisma.task.update({
-      where: { id: taskId },
-      data: { status: "ARCHIVED", isMostImportant: false },
+    // Authorization: Super Admin (OWNER, ADMIN) & Sub Admin (SUB_ADMIN) always authorized
+    const isSuperOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole as string);
+
+    if (!isSuperOrSubAdmin) {
+      if (authRes.activeRole === "EMPLOYEE" || authRes.activeRole === "SALES") {
+        const isTaskAssignee =
+          existingTask.assignedToId === authRes.id ||
+          (authRes.employeeId && existingTask.assignedToId === authRes.employeeId);
+        const isTaskCreator = existingTask.createdById === authRes.id;
+
+        const membership = await prisma.projectMembership.findFirst({
+          where: {
+            projectId: actualProjectId,
+            OR: [
+              ...(authRes.employeeId ? [{ employeeId: authRes.employeeId }] : []),
+              { employee: { userId: authRes.id } },
+            ],
+            isActive: true,
+          },
+        });
+
+        if (!membership && !isTaskAssignee && !isTaskCreator) {
+          return NextResponse.json(
+            { success: false, error: "Forbidden: You are not authorized to delete this task" },
+            { status: 403 }
+          );
+        }
+      } else {
+        return NextResponse.json(
+          { success: false, error: "Forbidden: Insufficient permissions" },
+          { status: 403 }
+        );
+      }
+    }
+
+    const { searchParams } = new URL(req.url);
+    const action = searchParams.get("action");
+
+    // If explicit archiving is requested:
+    if (action === "archive") {
+      await prisma.task.update({
+        where: { id: taskId },
+        data: { status: "ARCHIVED", isMostImportant: false },
+      });
+
+      const progress = await recalculateProjectProgress(actualProjectId);
+
+      return NextResponse.json({
+        success: true,
+        message: "Task archived successfully",
+        progress,
+      });
+    }
+
+    // Permanent Deletion:
+    // 1. Unlink work sessions referencing this task to maintain foreign key integrity
+    await prisma.workSession.updateMany({
+      where: { taskId },
+      data: { taskId: null },
     });
 
-    // Recalculate Progress Engine & Update Project Cache
+    // 2. If task was completed, decrement quota count for assignee
+    if (existingTask.status === "COMPLETED" || existingTask.status === "DONE") {
+      const assigneeId = existingTask.assignedToId || authRes.id;
+      if (assigneeId) {
+        await syncTaskCompletionToEmployeeQuota({
+          userId: assigneeId,
+          taskTitle: existingTask.title,
+          increment: -1,
+          loggedById: authRes.id,
+        });
+      }
+    }
+
+    // 3. Permanently delete the task from the database
+    await prisma.task.delete({
+      where: { id: taskId },
+    });
+
+    // 4. Recalculate project progress
     const progress = await recalculateProjectProgress(actualProjectId);
 
     return NextResponse.json({
       success: true,
-      message: "Task archived successfully",
+      message: "Task permanently deleted successfully",
       progress,
     });
   } catch (error) {
     console.error("DELETE /api/projects/[id]/tasks/[taskId] error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to archive task" },
+      { success: false, error: "Failed to delete task" },
       { status: 500 }
     );
   }

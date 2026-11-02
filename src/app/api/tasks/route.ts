@@ -351,3 +351,65 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function DELETE(req: Request) {
+  const authRes = await requireAuth();
+  if (authRes instanceof NextResponse) return authRes;
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const taskId = searchParams.get("id") || searchParams.get("taskId");
+    if (!taskId) {
+      return NextResponse.json({ success: false, error: "Task ID is required" }, { status: 400 });
+    }
+
+    const task = await prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) {
+      return NextResponse.json({ success: false, error: "Task not found" }, { status: 404 });
+    }
+
+    const isSuperOrSubAdmin = ["OWNER", "ADMIN", "SUB_ADMIN"].includes(authRes.activeRole as string);
+    if (!isSuperOrSubAdmin) {
+      const isAssignee = task.assignedToId === authRes.id || (authRes.employeeId && task.assignedToId === authRes.employeeId);
+      const isCreator = task.createdById === authRes.id;
+      if (!isAssignee && !isCreator) {
+        return NextResponse.json({ success: false, error: "Forbidden: Insufficient permissions" }, { status: 403 });
+      }
+    }
+
+    const action = searchParams.get("action");
+    if (action === "archive") {
+      await prisma.task.update({
+        where: { id: taskId },
+        data: { status: "ARCHIVED", isMostImportant: false },
+      });
+      if (task.projectId) await recalculateProjectProgress(task.projectId);
+      return NextResponse.json({ success: true, message: "Task archived successfully" });
+    }
+
+    await prisma.workSession.updateMany({
+      where: { taskId },
+      data: { taskId: null },
+    });
+
+    if (task.status === "COMPLETED" || task.status === "DONE") {
+      const assigneeId = task.assignedToId || authRes.id;
+      if (assigneeId) {
+        await syncTaskCompletionToEmployeeQuota({
+          userId: assigneeId,
+          taskTitle: task.title,
+          increment: -1,
+          loggedById: authRes.id,
+        });
+      }
+    }
+
+    await prisma.task.delete({ where: { id: taskId } });
+    if (task.projectId) await recalculateProjectProgress(task.projectId);
+
+    return NextResponse.json({ success: true, message: "Task permanently deleted successfully" });
+  } catch (error) {
+    console.error("DELETE /api/tasks error:", error);
+    return NextResponse.json({ success: false, error: "Failed to delete task" }, { status: 500 });
+  }
+}

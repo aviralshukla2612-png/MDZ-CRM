@@ -16,7 +16,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       where: { OR: [{ id: params.id }, { projectNumber: params.id }] },
       include: {
         client: true,
-        tasks: true,
+        tasks: {
+          include: { assignedTo: true },
+        },
         documents: true,
         changeRequests: {
           include: {

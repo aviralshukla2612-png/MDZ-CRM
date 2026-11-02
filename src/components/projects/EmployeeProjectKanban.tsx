@@ -28,6 +28,7 @@ import {
   GripVertical,
   Camera,
   Edit3,
+  Trash2,
   MessageSquare,
 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -342,7 +343,7 @@ export function EmployeeProjectKanban({
       const json = await res.json();
       if (json.success) {
         if (nextStatus === "COMPLETED" || nextStatus === "DONE") {
-          showToast("✓ Task completed!", "success");
+          showToast("✓ Task completed and moved to Calendar!", "success");
         } else if (nextStatus === "IN_PROGRESS" || nextStatus === "TODO") {
           showToast("✓ Task marked active", "success");
         } else {
@@ -1662,50 +1663,68 @@ export function EmployeeProjectKanban({
                             const isTaskDone = (s: string) =>
                               ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON"].includes(String(s || "").trim().toUpperCase());
 
-                            // Sort tasks: Active tasks first, completed/past tasks after
-                            const sortedTasks = [...cardTasks].sort((a: any, b: any) => {
-                              const aDone = isTaskDone(a.status);
-                              const bDone = isTaskDone(b.status);
-                              if (aDone === bDone) return 0;
-                              return aDone ? 1 : -1;
-                            });
+                            // Strictly separate not completed tasks vs completed tasks (which move to calendar)
+                            const notCompletedTasks = cardTasks.filter((t: any) => !isTaskDone(t.status));
+                            const completedTasks = cardTasks.filter((t: any) => isTaskDone(t.status));
+                            const completedCount = completedTasks.length;
 
-                            const isExpanded = !!expandedTasksProjects[proj.id];
-                            const hideDone = !!hideCompletedTasksPerProject[proj.id];
-                            const completedCount = cardTasks.filter((t: any) => isTaskDone(t.status)).length;
-                            const filteredByDone = hideDone ? sortedTasks.filter((t: any) => !isTaskDone(t.status)) : sortedTasks;
-                            const visibleTasksSlice = isExpanded ? filteredByDone : filteredByDone.slice(0, 3);
-
-                            return (
-                              <div className="space-y-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
-                                {completedCount > 0 && (
-                                  <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 font-medium px-0.5">
-                                    <span className="font-semibold">Tasks ({cardTasks.length})</span>
+                            if (notCompletedTasks.length === 0 && completedCount > 0) {
+                              return (
+                                <div className="space-y-1 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                                  <div className="flex items-center justify-between text-[10px] px-2 py-1.5 rounded-lg bg-emerald-50/90 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 font-medium">
+                                    <span className="flex items-center gap-1.5 truncate">
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      <span className="truncate">All {completedCount} task{completedCount === 1 ? "" : "s"} completed & on Calendar</span>
+                                    </span>
                                     <button
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setHideCompletedTasksPerProject((prev) => ({
-                                          ...prev,
-                                          [proj.id]: !prev[proj.id],
-                                        }));
+                                        setViewMode("calendar");
                                       }}
-                                      className="text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer text-[10px] font-bold"
+                                      className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 hover:underline shrink-0 ml-1 cursor-pointer flex items-center gap-0.5"
                                     >
-                                      {hideDone ? `Show completed (${completedCount})` : `Hide completed (${completedCount})`}
+                                      <span>View 📅</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            if (notCompletedTasks.length === 0) return null;
+
+                            const isExpanded = !!expandedTasksProjects[proj.id];
+                            const visibleTasksSlice = isExpanded ? notCompletedTasks : notCompletedTasks.slice(0, 3);
+
+                            return (
+                              <div className="space-y-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
+                                {completedCount > 0 && (
+                                  <div className="flex items-center justify-between text-[10px] px-1.5 py-0.5 rounded-lg bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+                                    <span className="flex items-center gap-1 font-medium truncate">
+                                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                      <span className="truncate">{completedCount} completed moved to Calendar</span>
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewMode("calendar");
+                                      }}
+                                      className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 hover:underline shrink-0 ml-1 cursor-pointer flex items-center gap-0.5"
+                                      title="Open dated Task Calendar"
+                                    >
+                                      <span>Calendar</span>
+                                      <ArrowRight className="w-2.5 h-2.5" />
                                     </button>
                                   </div>
                                 )}
                                 <div className="space-y-1">
                                   {visibleTasksSlice.map((tsk: any) => {
-                                    const done = isTaskDone(tsk.status);
                                     return (
                                       <div
                                         key={tsk.id}
                                         className={`p-1.5 rounded-lg border flex items-center justify-between gap-1.5 text-xs group/task transition-all ${
-                                          done
-                                            ? "bg-slate-50/70 dark:bg-slate-900/40 border-slate-100 dark:border-slate-800/60 opacity-80"
-                                            : tsk.isMostImportant
+                                          tsk.isMostImportant
                                             ? "bg-amber-50/80 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900/60"
                                             : "bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800"
                                         }`}
@@ -1718,32 +1737,24 @@ export function EmployeeProjectKanban({
                                               handleUpdateTaskFromKanban(
                                                 proj.id,
                                                 tsk.id,
-                                                done ? "IN_PROGRESS" : "COMPLETED"
+                                                "COMPLETED"
                                               );
                                             }}
-                                            className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-                                              done
-                                                ? "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
-                                                : "text-slate-300 dark:text-slate-600 hover:text-emerald-600"
-                                            }`}
-                                            title={done ? "Completed past task. Click to mark In Progress" : "Click to mark as Completed"}
+                                            className="w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 transition-colors cursor-pointer text-slate-300 dark:text-slate-600 hover:text-emerald-600"
+                                            title="Click to mark as Completed (moves to Calendar)"
                                           >
                                             <CheckCircle2 className="w-3.5 h-3.5" />
                                           </button>
                                           <span
-                                            className={`truncate font-medium text-[11px] flex-1 ${
-                                              done
-                                                ? "line-through text-slate-400 dark:text-slate-500 font-normal"
-                                                : "text-slate-800 dark:text-slate-200"
-                                            }`}
-                                            title={`${tsk.title}${done ? " (Completed)" : ""}`}
+                                            className="truncate font-medium text-[11px] flex-1 text-slate-800 dark:text-slate-200"
+                                            title={tsk.title}
                                           >
                                             {tsk.title}
                                           </span>
                                         </div>
 
                                         <div className="flex items-center gap-1 shrink-0">
-                                          {tsk.isMostImportant && !done && (
+                                          {tsk.isMostImportant && (
                                             <span className="text-[9px] font-extrabold px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
                                               ⭐
                                             </span>
@@ -1773,6 +1784,33 @@ export function EmployeeProjectKanban({
                                           >
                                             <Edit3 className="w-3 h-3" />
                                           </button>
+
+                                          <button
+                                            type="button"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              if (window.confirm(`Are you sure you want to permanently delete "${tsk.title}"?`)) {
+                                                try {
+                                                  const res = await fetch(`/mdz-crm/api/projects/${proj.id}/tasks/${tsk.id}?action=delete`, {
+                                                    method: "DELETE",
+                                                  });
+                                                  const json = await res.json();
+                                                  if (json.success) {
+                                                    showToast("✓ Task permanently deleted", "success");
+                                                    onRefresh();
+                                                  } else {
+                                                    showToast(json.error || "Failed to delete task", "error");
+                                                  }
+                                                } catch (err) {
+                                                  showToast("Error deleting task", "error");
+                                                }
+                                              }
+                                            }}
+                                            className="p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/60 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                                            title="Permanently Delete Task"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
                                         </div>
                                       </div>
                                     );
@@ -1780,7 +1818,7 @@ export function EmployeeProjectKanban({
                                 </div>
 
                                 {/* Expand / Collapse toggle if more than 3 tasks */}
-                                {sortedTasks.length > 3 && (
+                                {notCompletedTasks.length > 3 && (
                                   <button
                                     type="button"
                                     onClick={(e) => {
@@ -1794,7 +1832,7 @@ export function EmployeeProjectKanban({
                                   >
                                     {isExpanded
                                       ? "▲ Show less"
-                                      : `+${sortedTasks.length - 3} more tasks (Show all)`}
+                                      : `+${notCompletedTasks.length - 3} more tasks (Show all)`}
                                   </button>
                                 )}
                               </div>

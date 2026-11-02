@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   FileText,
   Clock,
+  Calendar,
   FolderKanban,
   Send,
   Plus,
@@ -28,6 +29,7 @@ import {
   Phone,
   Users,
   Edit3,
+  Trash2,
   ShieldAlert,
 } from "lucide-react";
 import DailyProgressEntryModal from "@/components/projects/DailyProgressEntryModal";
@@ -247,6 +249,11 @@ export default function EmployeeDeskPage() {
   const currentUserId = (session?.user as any)?.id;
   const currentEmpName = session?.user?.name;
 
+  const isTaskComplete = (s: string) =>
+    ["COMPLETED", "DONE", "COMPLETE", "DELIVERED", "RESOLVED", "WON"].includes(
+      String(s || "").trim().toUpperCase()
+    );
+
   const allTasks = projects.flatMap((p) =>
     (p.tasks || [])
       .filter((t: any) => {
@@ -258,12 +265,17 @@ export default function EmployeeDeskPage() {
       })
       .map((t: any) => ({ ...t, projectId: p.id, projectName: p.name }))
   );
-  const activeTasks = allTasks.filter((t) => t.status !== "ARCHIVED");
-  const completedCount = activeTasks.filter((t) => t.status === "COMPLETED" || t.status === "DONE").length;
+  const allActiveTasks = allTasks.filter((t) => t.status !== "ARCHIVED");
+  // Completed tasks move to Calendar
+  const completedTasks = allActiveTasks.filter((t) => isTaskComplete(t.status));
+  // Only non-completed tasks stay on the active task checklist / task bar
+  const activeTasks = allActiveTasks.filter((t) => !isTaskComplete(t.status));
+
+  const completedCount = completedTasks.length;
   const inProgressCount = activeTasks.filter((t) => t.status === "IN_PROGRESS" || t.status === "CURRENT").length;
   const revisionCount = activeTasks.filter((t) => t.status === "REVISION" || t.status === "ON_HOLD").length;
   const planningCount = activeTasks.filter((t) => t.status === "PLANNING" || t.status === "TODO").length;
-  const totalTasksCount = activeTasks.length;
+  const totalTasksCount = allActiveTasks.length;
   const overallPercentage = totalTasksCount === 0 ? 0 : Math.round((completedCount / totalTasksCount) * 100);
 
   const activeWorkTask = activeTasks.find((t) => t.status === "IN_PROGRESS" || t.status === "CURRENT") || activeTasks[0] || null;
@@ -293,13 +305,16 @@ export default function EmployeeDeskPage() {
       });
       const json = await res.json();
       if (json.success) {
-        showToast(`✓ Task updated to ${nextStatus}`, "success");
-        fetchEmployeeProjects();
-        if (nextStatus === "COMPLETED") {
+        if (nextStatus === "COMPLETED" || nextStatus === "DONE") {
+          showToast("✓ Task completed and moved to Calendar!", "success");
           handleIncrementMyTarget(1);
-        } else if (s === "COMPLETED" || s === "DONE") {
-          handleIncrementMyTarget(-1);
+        } else {
+          showToast(`✓ Task updated to ${nextStatus}`, "success");
+          if (s === "COMPLETED" || s === "DONE") {
+            handleIncrementMyTarget(-1);
+          }
         }
+        fetchEmployeeProjects();
       } else {
         showToast(json.error || "Failed to update task", "error");
       }
@@ -318,11 +333,13 @@ export default function EmployeeDeskPage() {
       });
       const json = await res.json();
       if (json.success) {
-        showToast(`✓ Task moved to ${targetStatus}`, "success");
-        fetchEmployeeProjects();
         if (targetStatus === "COMPLETED" || targetStatus === "DONE") {
+          showToast("✓ Task completed and moved to Calendar!", "success");
           handleIncrementMyTarget(1);
+        } else {
+          showToast(`✓ Task moved to ${targetStatus}`, "success");
         }
+        fetchEmployeeProjects();
       } else {
         showToast(json.error || "Failed to update task", "error");
       }
@@ -925,29 +942,85 @@ export default function EmployeeDeskPage() {
 
       {/* Section 3: Today Task Stack Checklist */}
       <div className="space-y-2.5 sm:space-y-3 pt-2.5 sm:pt-4 border-t border-slate-200 dark:border-slate-800">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-slate-100">
-            My Task Stack Checklist ({activeTasks.length})
-          </h2>
-          <button
-            onClick={() => setIsTaskSheetOpen(true)}
-            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            + Add Task
-          </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+          <div>
+            <h2 className="text-sm sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <span>My Task Stack Checklist</span>
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                {activeTasks.length} Active
+              </span>
+            </h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+              Only pending & in-progress tasks are shown here. Completed tasks automatically move to your Calendar.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Link
+              href="/projects?view=calendar"
+              className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-200 dark:border-slate-700"
+              title="Open your personal task calendar"
+            >
+              <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span>Task Calendar</span>
+              {completedCount > 0 && (
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-extrabold border border-emerald-200 dark:border-emerald-800">
+                  {completedCount}
+                </span>
+              )}
+            </Link>
+            <button
+              onClick={() => setIsTaskSheetOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs"
+            >
+              + Add Task
+            </button>
+          </div>
         </div>
+
+        {/* Completed Tasks Notice Bar */}
+        {completedCount > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 rounded-xl sm:rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs">
+            <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-medium">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>
+                <strong>{completedCount} completed task{completedCount === 1 ? "" : "s"}</strong> moved to Calendar & cleared from your active desk.
+              </span>
+            </div>
+            <Link
+              href="/projects?view=calendar"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-2xs transition-all shrink-0"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>View in Calendar</span>
+            </Link>
+          </div>
+        )}
 
         <div className="space-y-2 sm:space-y-2.5">
           {activeTasks.length === 0 ? (
-            <div className="p-6 sm:p-8 text-center bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs">
-              No active tasks found. Click "+ Add Task" to create project tasks.
+            <div className="p-6 sm:p-8 text-center bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 text-slate-400 text-xs space-y-2">
+              <div>
+                {completedCount > 0
+                  ? `🎉 All caught up! All ${completedCount} completed tasks have moved to your Task Calendar.`
+                  : "No active tasks found. Click '+ Add Task' to create project tasks."}
+              </div>
+              {completedCount > 0 && (
+                <div>
+                  <Link
+                    href="/projects?view=calendar"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline pt-1"
+                  >
+                    <span>Inspect Completed Tasks in Calendar</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             activeTasks.map((task) => {
-              const isDone = task.status === "COMPLETED" || task.status === "DONE";
               const isInProgress = task.status === "IN_PROGRESS" || task.status === "CURRENT";
               const isRevision = task.status === "REVISION" || task.status === "ON_HOLD";
-              const isPlanning = !isDone && !isInProgress && !isRevision;
+              const isPlanning = !isInProgress && !isRevision;
 
               return (
                 <div
@@ -991,13 +1064,8 @@ export default function EmployeeDeskPage() {
                           REVISION
                         </span>
                       )}
-                      {isDone && (
-                        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-mono">
-                          COMPLETED
-                        </span>
-                      )}
                     </div>
-                    <h3 className={`text-xs sm:text-sm font-bold truncate ${isDone ? "line-through text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
+                    <h3 className="text-xs sm:text-sm font-bold truncate text-slate-900 dark:text-slate-100">
                       {task.title}
                     </h3>
                   </div>
@@ -1005,9 +1073,7 @@ export default function EmployeeDeskPage() {
                   <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 self-end sm:self-auto">
                     <select
                       value={
-                        isDone
-                          ? "COMPLETED"
-                          : isRevision
+                        isRevision
                           ? "REVISION"
                           : isInProgress
                           ? "CURRENT"
@@ -1015,9 +1081,7 @@ export default function EmployeeDeskPage() {
                       }
                       onChange={(e) => handleSetTaskStatus(task.projectId, task.id, e.target.value)}
                       className={`px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold border transition-all cursor-pointer outline-none ${
-                        isDone
-                          ? "bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 border-emerald-200 dark:border-emerald-800"
-                          : isRevision
+                        isRevision
                           ? "bg-purple-50 dark:bg-purple-950/60 text-purple-700 border-purple-200 dark:border-purple-800"
                           : isInProgress
                           ? "bg-amber-50 dark:bg-amber-950/60 text-amber-700 border-amber-200 dark:border-amber-800"
@@ -1027,25 +1091,45 @@ export default function EmployeeDeskPage() {
                       <option value="PLANNING">📋 Plan</option>
                       <option value="CURRENT">⚡ Current</option>
                       <option value="REVISION">🔄 Revision</option>
-                      <option value="COMPLETED">✅ Done</option>
+                      <option value="COMPLETED">✅ Complete (Move to Calendar)</option>
                     </select>
 
-                    {!isDone ? (
-                      <button
-                        type="button"
-                        onClick={() => handleSetTaskStatus(task.projectId, task.id, "COMPLETED")}
-                        className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1"
-                        title="Mark task complete"
-                      >
-                        <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                        <span>Complete</span>
-                      </button>
-                    ) : (
-                      <span className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold text-xs flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-600" />
-                        <span>Done</span>
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleSetTaskStatus(task.projectId, task.id, "COMPLETED")}
+                      className="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                      title="Mark task complete and move to Calendar"
+                    >
+                      <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span>Complete</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.confirm(`Are you sure you want to permanently delete "${task.title}"?`)) {
+                          try {
+                            const res = await fetch(`/mdz-crm/api/projects/${task.projectId}/tasks/${task.id}?action=delete`, {
+                              method: "DELETE",
+                            });
+                            const json = await res.json();
+                            if (json.success) {
+                              showToast("✓ Task permanently deleted", "success");
+                              fetchEmployeeProjects();
+                            } else {
+                              showToast(json.error || "Failed to delete task", "error");
+                            }
+                          } catch (err) {
+                            showToast("Error deleting task", "error");
+                          }
+                        }
+                      }}
+                      className="p-1 sm:px-2.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-semibold text-xs transition-colors flex items-center gap-1 border border-rose-200 dark:border-rose-800 cursor-pointer"
+                      title="Permanently Delete Task"
+                    >
+                      <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
                   </div>
                 </div>
               );

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useToast } from "@/components/ui/Toast";
-import { CheckCircle2, Save, Calendar, User, Star, AlertCircle, Sparkles } from "lucide-react";
+import { CheckCircle2, Save, Calendar, User, Star, AlertCircle, Sparkles, Trash2 } from "lucide-react";
 
 export interface NormalizedEmployeeOption {
   value: string; // The User ID used for DB relation
@@ -45,6 +45,7 @@ export function EditTaskModal({
   const [deadline, setDeadline] = useState("");
   const [isMostImportant, setIsMostImportant] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [allCompanyEmployees, setAllCompanyEmployees] = useState<any[]>([]);
 
   // Fetch all company employees in background so reassignment can select ANY employee
@@ -219,6 +220,33 @@ export function EditTaskModal({
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!task?.id) return;
+    const confirmDelete = window.confirm(`Are you sure you want to permanently delete "${task.title || "this task"}"? This action cannot be undone.`);
+    if (!confirmDelete) return;
+
+    setDeleting(true);
+    try {
+      const targetProjectId = projectId || task?.projectId;
+      const res = await fetch(`/mdz-crm/api/projects/${targetProjectId}/tasks/${task.id}?action=delete`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        showToast("✓ Task permanently deleted successfully!", "success");
+        onSuccess();
+        onClose();
+      } else {
+        showToast(json.error || "Failed to delete task", "error");
+      }
+    } catch (err) {
+      console.error("Delete task error:", err);
+      showToast("Error deleting task", "error");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const currentSelectedAssignee = assigneeOptions.find((o) => o.value === assignedToId);
 
   return (
@@ -381,23 +409,38 @@ export function EditTaskModal({
         </label>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2 pt-2">
+        <div className="flex items-center justify-between gap-2 pt-2">
+          {/* Delete Task Button: Available to Super Admin, Sub Admin, and task assignees/creators */}
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition-colors cursor-pointer"
+            onClick={handleDeleteTask}
+            disabled={submitting || deleting}
+            className="px-3.5 py-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-600 dark:text-rose-400 font-bold text-xs border border-rose-200 dark:border-rose-800/80 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Permanently Delete Task"
           >
-            Cancel
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>{deleting ? "Deleting..." : "Delete Task"}</span>
           </button>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
-          >
-            <Save className="w-3.5 h-3.5" />
-            <span>{submitting ? "Saving..." : "Save & Reassign Task"}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting || deleting}
+              className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              disabled={submitting || deleting}
+              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-500/20 flex items-center gap-2 transition-all disabled:opacity-50 cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>{submitting ? "Saving..." : "Save & Reassign Task"}</span>
+            </button>
+          </div>
         </div>
       </form>
     </BottomSheet>

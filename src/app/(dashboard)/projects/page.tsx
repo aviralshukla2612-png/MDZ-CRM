@@ -50,6 +50,9 @@ export default function ProjectsDirectoryPage() {
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get("view");
       const empParam = params.get("employeeId");
+      if (empParam) {
+        setInitialEmployeeId(empParam);
+      }
       if (viewParam === "calendar") {
         setActiveView("calendar");
       } else if (viewParam === "kanban" || viewParam === "workload") {
@@ -57,7 +60,6 @@ export default function ProjectsDirectoryPage() {
       } else if (viewParam === "directory") {
         setActiveView("directory");
       } else if (empParam) {
-        setInitialEmployeeId(empParam);
         setActiveView("kanban");
       } else {
         // By default open Team Workload (All Company Projects is placed last)

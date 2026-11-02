@@ -274,16 +274,31 @@ export function ProjectTaskCalendar({
     return allTasks.filter((t) => {
       // Developer filter
       if (filterDeveloper !== "ALL") {
-        const matchesDirect = t.assignedToId === filterDeveloper || t.assignedTo?.id === filterDeveloper;
+        const targetEmp = employees.find(
+          (e: any) => e.id === filterDeveloper || e.userId === filterDeveloper || e.employeeId === filterDeveloper
+        );
+        const matchIds = new Set<string>([filterDeveloper]);
+        if (targetEmp) {
+          if (targetEmp.id) matchIds.add(targetEmp.id);
+          if (targetEmp.userId) matchIds.add(targetEmp.userId);
+          if (targetEmp.employeeId) matchIds.add(targetEmp.employeeId);
+        }
+
+        const matchesDirect =
+          (t.assignedToId && matchIds.has(t.assignedToId)) ||
+          (t.assignedTo?.id && matchIds.has(t.assignedTo.id)) ||
+          ((t.assignedTo as any)?.employeeId && matchIds.has((t.assignedTo as any).employeeId)) ||
+          (targetEmp?.name && t.assignee?.toLowerCase().trim() === targetEmp.name.toLowerCase().trim());
+
         const matchesProjectMember =
           (t.project as any)?.teamMembers?.some(
-            (m: any) => m.id === filterDeveloper || m.employeeId === filterDeveloper
+            (m: any) => matchIds.has(m.id) || (m.employeeId && matchIds.has(m.employeeId)) || (m.userId && matchIds.has(m.userId))
           ) ||
           (t.project as any)?.memberships?.some(
-            (m: any) => m.employeeId === filterDeveloper || m.id === filterDeveloper
+            (m: any) => matchIds.has(m.id) || (m.employeeId && matchIds.has(m.employeeId)) || (m.employee?.userId && matchIds.has(m.employee.userId))
           ) ||
-          (t.project as any)?.tmId === filterDeveloper ||
-          (t.project as any)?.assignedEmployeeId === filterDeveloper;
+          ((t.project as any)?.tmId && matchIds.has((t.project as any).tmId)) ||
+          ((t.project as any)?.assignedEmployeeId && matchIds.has((t.project as any).assignedEmployeeId));
 
         if (!matchesDirect && !matchesProjectMember) {
           return false;
