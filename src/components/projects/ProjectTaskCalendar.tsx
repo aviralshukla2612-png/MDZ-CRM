@@ -109,7 +109,7 @@ export function ProjectTaskCalendar({
   // Filters
   const [filterDeveloper, setFilterDeveloper] = useState<string>(selectedEmployeeId || "ALL");
   const [filterProject, setFilterProject] = useState<string>("ALL");
-  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [filterStatus, setFilterStatus] = useState<string>("PENDING");
   const [searchQuery, setSearchQuery] = useState("");
 
   // New Task Modal State
@@ -167,71 +167,28 @@ export function ProjectTaskCalendar({
         p.status === "DELIVERED" ||
         p.status === "WON";
 
-      // 1. PROJECT ASSIGNMENT / START MILESTONE
-      const assignDate = p.startDate || p.createdAt || activeMember?.assignedAt;
-      if (assignDate) {
-        aggregated.push({
-          id: `proj-assign-${p.id}`,
-          title: `📁 Assigned: ${p.name}`,
-          description: p.description || `Project assignment & kickoff for ${p.clientName || "Client"}`,
-          status: p.status || "PLANNING",
-          priority: p.priority || "HIGH",
-          deadline: assignDate,
-          startDate: assignDate,
-          createdAt: p.createdAt || assignDate,
-          assignedToId: primaryEmpId,
-          assignee: primaryEmpName,
-          assigneeAvatar: activeMember?.avatarUrl || null,
-          projectId: p.id,
-          projectName: p.name,
-          clientName: p.clientName || p.client?.companyName || "Client",
-          project: projectRef,
-        });
-      }
-
-      // 2. PROJECT TARGET DEADLINE MILESTONE
-      const deadlineDate = p.targetDeadline || p.deadline;
-      if (deadlineDate) {
-        aggregated.push({
-          id: `proj-deadline-${p.id}`,
-          title: `🎯 Deadline: ${p.name}`,
-          description: `Target delivery deadline for ${p.name}`,
-          status: p.status || "IN_PROGRESS",
-          priority: p.priority || "URGENT",
-          deadline: deadlineDate,
-          startDate: assignDate || deadlineDate,
-          createdAt: p.createdAt || deadlineDate,
-          assignedToId: primaryEmpId,
-          assignee: primaryEmpName,
-          assigneeAvatar: activeMember?.avatarUrl || null,
-          projectId: p.id,
-          projectName: p.name,
-          clientName: p.clientName || p.client?.companyName || "Client",
-          project: projectRef,
-        });
-      }
-
-      // 3. PROJECT COMPLETED MILESTONE
-      if (isCompleted) {
-        const completedDate = p.actualCompletionDate || p.completedAt || p.updatedAt || deadlineDate || p.createdAt;
-        aggregated.push({
-          id: `proj-completed-${p.id}`,
-          title: `✅ Completed: ${p.name}`,
-          description: `Project officially completed and delivered successfully.`,
-          status: "COMPLETED",
-          priority: "HIGH",
-          deadline: completedDate,
-          completedAt: completedDate,
-          startDate: assignDate || completedDate,
-          createdAt: p.createdAt || completedDate,
-          assignedToId: primaryEmpId,
-          assignee: primaryEmpName,
-          assigneeAvatar: activeMember?.avatarUrl || null,
-          projectId: p.id,
-          projectName: p.name,
-          clientName: p.clientName || p.client?.companyName || "Client",
-          project: projectRef,
-        });
+      // Only include active project target deadline milestone if project is NOT completed
+      if (!isCompleted) {
+        const deadlineDate = p.targetDeadline || p.deadline;
+        if (deadlineDate) {
+          aggregated.push({
+            id: `proj-deadline-${p.id}`,
+            title: `🎯 Deadline: ${p.name}`,
+            description: `Target delivery deadline for ${p.name}`,
+            status: p.status || "IN_PROGRESS",
+            priority: p.priority || "URGENT",
+            deadline: deadlineDate,
+            startDate: p.startDate || p.createdAt || deadlineDate,
+            createdAt: p.createdAt || deadlineDate,
+            assignedToId: primaryEmpId,
+            assignee: primaryEmpName,
+            assigneeAvatar: activeMember?.avatarUrl || null,
+            projectId: p.id,
+            projectName: p.name,
+            clientName: p.clientName || p.client?.companyName || "Client",
+            project: projectRef,
+          });
+        }
       }
 
       // 4. SUB-TASKS (if any)
@@ -353,15 +310,15 @@ export function ProjectTaskCalendar({
   };
 
   // Map tasks by date string (YYYY-MM-DD)
-  // Priority order for task date: for completed tasks, completedAt -> deadline -> startDate -> createdAt -> today; for active tasks, deadline -> startDate -> createdAt -> today
+  // Priority order for task date: for completed tasks, completedAt -> deadline -> startDate; for active tasks, deadline -> startDate -> createdAt
   const tasksByDateMap = useMemo(() => {
     const map = new Map<string, TaskCalendarItem[]>();
 
     filteredTasks.forEach((task) => {
       const isCompleted = task.status === "COMPLETED" || task.status === "DONE";
       const dateKey = isCompleted
-        ? (getDateKey(task.completedAt) || getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt) || getDateKey(new Date()))
-        : (getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt) || getDateKey(new Date()));
+        ? (getDateKey(task.completedAt) || getDateKey(task.deadline) || getDateKey(task.startDate))
+        : (getDateKey(task.deadline) || getDateKey(task.startDate) || getDateKey(task.createdAt));
 
       if (dateKey) {
         const list = map.get(dateKey) || [];
@@ -468,8 +425,14 @@ export function ProjectTaskCalendar({
   const selectedDateKey = useMemo(() => getDateKey(selectedDate), [selectedDate]);
   const tasksForSelectedDate = useMemo(() => {
     if (!selectedDateKey) return [];
-    return tasksByDateMap.get(selectedDateKey) || [];
-  }, [selectedDateKey, tasksByDateMap]);
+    const list = tasksByDateMap.get(selectedDateKey) || [];
+    if (filterStatus === "PENDING") {
+      return list.filter(
+        (t) => t.status !== "COMPLETED" && t.status !== "DONE" && t.status !== "DELIVERED" && t.status !== "WON"
+      );
+    }
+    return list;
+  }, [selectedDateKey, tasksByDateMap, filterStatus]);
 
   // Handlers for month navigation
   const handlePrevMonth = () => {
@@ -734,10 +697,11 @@ export function ProjectTaskCalendar({
               const completedCountTotal = allTasks.filter(
                 (t) => t.status === "COMPLETED" || t.status === "DONE" || t.status === "DELIVERED" || t.status === "WON"
               ).length;
+              const activeCountTotal = allTasks.length - completedCountTotal;
 
               return [
-                { id: "ALL", label: `All Items (${filteredTasks.length})` },
-                { id: "PENDING", label: "To Do / Active" },
+                { id: "PENDING", label: `To Do / Active (${activeCountTotal})` },
+                { id: "ALL", label: `All Items (${allTasks.length})` },
                 { id: "COMPLETED", label: `✓ Completed (${completedCountTotal})` },
               ].map((st) => (
                 <button
