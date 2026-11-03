@@ -194,6 +194,7 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
   };
 
   return (
+    <>
     <header className={`sticky top-0 z-40 bg-white/95 dark:bg-[#12100E]/95 backdrop-blur-2xl border-b ${themeStyle.sidebarBorder} px-2.5 sm:px-4 md:px-6 py-2 flex items-center justify-between shadow-xs dark:shadow-2xl transition-all shrink-0 h-14 sm:h-16 w-full max-w-full overflow-hidden`}>
       {/* Left Brand Logo & Context */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -632,26 +633,27 @@ export function Header({ currentUser, onOpenSearch, onToggleMobileMenu, onLogout
           </button>
         </form>
       </BottomSheet>
-
-      {/* Unclosed Shift Work Summary Modal */}
-      <UnclosedShiftModal
-        isOpen={isUnclosedModalOpen}
-        onClose={() => setIsUnclosedModalOpen(false)}
-        unclosedRecord={activeUnclosedRecord || unclosedShift}
-        onSuccess={async () => {
-          setIsUnclosedModalOpen(false);
-          setActiveUnclosedRecord(null);
-          await refreshStatus();
-        }}
-      />
-
-      {/* Videographer Shoot Footage Upload Modal */}
-      <VideographerUploadModal
-        isOpen={isVideographerUploadModalOpen}
-        onClose={() => setIsVideographerUploadModalOpen(false)}
-        videographerName={currentUser.name}
-        workedDurationStr={lastShootDurationStr}
-      />
     </header>
+
+    {/* Unclosed Shift Work Summary Modal */}
+    <UnclosedShiftModal
+      isOpen={isUnclosedModalOpen}
+      onClose={() => setIsUnclosedModalOpen(false)}
+      unclosedRecord={activeUnclosedRecord || unclosedShift}
+      onSuccess={async () => {
+        setIsUnclosedModalOpen(false);
+        setActiveUnclosedRecord(null);
+        await refreshStatus();
+      }}
+    />
+
+    {/* Videographer Shoot Footage Upload Modal */}
+    <VideographerUploadModal
+      isOpen={isVideographerUploadModalOpen}
+      onClose={() => setIsVideographerUploadModalOpen(false)}
+      videographerName={currentUser.name}
+      workedDurationStr={lastShootDurationStr}
+    />
+    </>
   );
 }

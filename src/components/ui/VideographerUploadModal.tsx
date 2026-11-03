@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Video,
   Camera,
@@ -31,7 +32,23 @@ export function VideographerUploadModal({
 }: VideographerUploadModalProps) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [editors, setEditors] = useState<{ id: string; name: string; designation: string }[]>([]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   const [shootTitle, setShootTitle] = useState("");
   const [driveUrl, setDriveUrl] = useState("");
@@ -54,7 +71,7 @@ export function VideographerUploadModal({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,9 +116,9 @@ export function VideographerUploadModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-      <div className="bg-white dark:bg-[#111622] rounded-3xl max-w-lg w-full p-6 sm:p-7 border border-orange-500/30 dark:border-orange-500/20 shadow-2xl shadow-orange-500/10 relative overflow-hidden">
+  const content = (
+    <div className="fixed inset-0 z-[99999] bg-slate-950/75 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+      <div className="bg-white dark:bg-[#111622] rounded-3xl max-w-lg w-full p-5 sm:p-7 border border-orange-500/30 dark:border-orange-500/20 shadow-2xl shadow-orange-500/10 relative overflow-hidden my-auto max-h-[92vh] flex flex-col justify-between">
         {/* Glow accent */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-500/20 via-orange-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
 
@@ -257,4 +274,6 @@ export function VideographerUploadModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

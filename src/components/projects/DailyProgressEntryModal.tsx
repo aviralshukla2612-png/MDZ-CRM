@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Send, AlertCircle, CheckCircle2, Plus, Trash2, Layers } from "lucide-react";
 
 export interface ProjectOption {
@@ -36,6 +37,22 @@ export default function DailyProgressEntryModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
 
   useEffect(() => {
     if (initialProjectId) {
@@ -45,7 +62,7 @@ export default function DailyProgressEntryModal({
     }
   }, [initialProjectId, projects, selectedProjectId]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const currentProject = projects.find((p) => p.id === selectedProjectId);
   const displayProjectName =
@@ -139,9 +156,9 @@ export default function DailyProgressEntryModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs font-sans overflow-y-auto">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-8">
+  const content = (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-md font-sans overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 my-auto max-h-[92vh] flex flex-col justify-between">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
           <div className="space-y-0.5">
@@ -313,4 +330,6 @@ export default function DailyProgressEntryModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }

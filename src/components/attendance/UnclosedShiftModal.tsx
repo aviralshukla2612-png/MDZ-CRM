@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { AlertCircle, Clock, CheckCircle2, FileText, Send, Sparkles, Moon } from "lucide-react";
 import { useToast } from "@/components/ui/Toast";
 
@@ -25,9 +26,25 @@ export function UnclosedShiftModal({
 }: UnclosedShiftModalProps) {
   const [workSummary, setWorkSummary] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { showToast } = useToast();
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
 
   const isMidnightMode = mode === "MIDNIGHT_WRAPUP";
 
@@ -79,9 +96,9 @@ export function UnclosedShiftModal({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-amber-300 dark:border-amber-700/60 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-amber-500/10 dark:shadow-slate-950/80 space-y-6 overflow-hidden">
+  const content = (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      <div className="relative w-full max-w-lg bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl border border-amber-300 dark:border-amber-700/60 rounded-3xl p-5 sm:p-8 shadow-2xl shadow-amber-500/10 dark:shadow-slate-950/80 space-y-5 sm:space-y-6 overflow-hidden my-auto max-h-[92vh] flex flex-col justify-between">
         
         {/* Glow decoration */}
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-amber-400/20 via-orange-500/10 to-transparent rounded-full blur-2xl pointer-events-none" />
@@ -163,7 +180,7 @@ export function UnclosedShiftModal({
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Remind Later
               </button>
@@ -172,7 +189,7 @@ export function UnclosedShiftModal({
             <button
               type="submit"
               disabled={loading || !workSummary.trim()}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:scale-95 text-white font-bold text-xs shadow-lg shadow-indigo-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {loading ? (
                 <>
@@ -192,4 +209,6 @@ export function UnclosedShiftModal({
       </div>
     </div>
   );
+
+  return createPortal(content, document.body);
 }
